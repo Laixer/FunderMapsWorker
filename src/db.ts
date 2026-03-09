@@ -8,6 +8,9 @@ export const sql = postgres({
   username: env.FUNDERMAPS_DATABASE_USER,
   password: env.FUNDERMAPS_DATABASE_PASSWORD,
   ssl: "prefer",
+  connection: {
+    application_name: "fundermaps-worker",
+  },
   max: 10,
   idle_timeout: 30,
   connect_timeout: 10,
@@ -29,5 +32,5 @@ export const sql = postgres({
 });
 
 export function pgConnectionString(): string {
-  return `PG:dbname='${env.FUNDERMAPS_DATABASE_NAME}' host='${env.FUNDERMAPS_DATABASE_HOST}' port='${env.FUNDERMAPS_DATABASE_PORT}' user='${env.FUNDERMAPS_DATABASE_USER}' password='${env.FUNDERMAPS_DATABASE_PASSWORD}'`;
+  return `PG:dbname='${env.FUNDERMAPS_DATABASE_NAME}' host='${env.FUNDERMAPS_DATABASE_HOST}' port='${env.FUNDERMAPS_DATABASE_PORT}' user='${env.FUNDERMAPS_DATABASE_USER}' password='${env.FUNDERMAPS_DATABASE_PASSWORD}' application_name='fundermaps-worker'`;
 }
