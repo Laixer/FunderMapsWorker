@@ -15,7 +15,7 @@ export async function generatePdf(
   orientation = "Portrait",
   margins = "10mm"
 ): Promise<PdfResult> {
-  if (!env.FUNDERMAPS_PDFCO_API_KEY) {
+  if (!env.FUNDERMAPS_PDF_API_KEY) {
     throw new Error("PDF.co API key not configured");
   }
 
@@ -31,7 +31,7 @@ export async function generatePdf(
   const response = await fetch(`${BASE_URL}/pdf/convert/from/url`, {
     method: "POST",
     headers: {
-      "x-api-key": env.FUNDERMAPS_PDFCO_API_KEY,
+      "x-api-key": env.FUNDERMAPS_PDF_API_KEY,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: body.toString(),

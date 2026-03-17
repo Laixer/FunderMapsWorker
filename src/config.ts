@@ -16,7 +16,7 @@ const envSchema = z.object({
   FUNDERMAPS_S3_SECRET_KEY: z.string(),
 
   // PDF.co
-  FUNDERMAPS_PDFCO_API_KEY: z.string().optional(),
+  FUNDERMAPS_PDF_API_KEY: z.string().optional(),
 
   // Mailgun
   FUNDERMAPS_MAIL_API_KEY: z.string().optional(),
@@ -32,6 +32,7 @@ const envSchema = z.object({
   // Worker
   POLL_INTERVAL: z.coerce.number().default(30),
   MAX_CONCURRENT: z.coerce.number().default(3),
+  MAX_TILESET_WORKERS: z.coerce.number().optional(),
   JOB_TIMEOUT: z.coerce.number().default(14400),
 });
 
