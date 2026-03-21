@@ -4,7 +4,6 @@ import { env } from "./config.ts";
 import { log, ACCENT, RESET } from "./lib/log.ts";
 import { concurrentMap } from "./lib/queue.ts";
 import { processMapset } from "./commands/process-mapset.ts";
-import { refreshModels } from "./commands/refresh-models.ts";
 import { exportProduct } from "./commands/export-product.ts";
 import { loadDataset } from "./commands/load-dataset.ts";
 import { generatePdfCommand } from "./commands/generate-pdf.ts";
@@ -28,11 +27,6 @@ const payloadSchemas = {
   process_mapset: z.object({
     tileset: z.union([z.string(), z.array(z.string())]).optional(),
     max_workers: z.number().optional(),
-  }),
-  refresh_models: z.object({
-    skip_risk: z.boolean().optional(),
-    skip_statistics: z.boolean().optional(),
-    view: z.string().optional(),
   }),
   export_product: z.object({
     date: z.string().optional(),
@@ -59,15 +53,6 @@ type JobType = keyof typeof payloadSchemas;
 
 const handlers: Record<JobType, (payload: unknown) => Promise<boolean>> = {
   process_mapset: (p) => processMapset(p as z.infer<typeof payloadSchemas.process_mapset>),
-  refresh_models: async (p) => {
-    const payload = p as z.infer<typeof payloadSchemas.refresh_models>;
-    const ok = await refreshModels(payload);
-    if (ok) {
-      log.info("Refresh complete, chaining process_mapset...");
-      return processMapset({});
-    }
-    return ok;
-  },
   export_product: (p) => exportProduct(p as z.infer<typeof payloadSchemas.export_product>),
   load_dataset: (p) => loadDataset(p as z.infer<typeof payloadSchemas.load_dataset>),
   generate_pdf: (p) => generatePdfCommand(p as z.infer<typeof payloadSchemas.generate_pdf>),
@@ -247,18 +232,22 @@ async function processJob(job: Job): Promise<boolean> {
 
 // -- Stale job recovery -------------------------------------------------------
 
-const STALE_THRESHOLD_MINUTES = 120;
+const STALE_THRESHOLD_HOURS = 2;
 
 async function recoverStaleJobs(): Promise<void> {
+  const errorMsg = `Reset: stuck in processing for >${STALE_THRESHOLD_HOURS}h (likely OOM or crash)`;
   const stale = await sql<{ id: number; job_type: string }[]>`
     UPDATE application.worker_jobs
-    SET status = 'pending', last_error = 'Recovered from stale processing state', updated_at = NOW()
+    SET status = 'pending', updated_at = NOW(), last_error = ${errorMsg}
     WHERE status = 'processing'
-      AND updated_at < NOW() - ${`${STALE_THRESHOLD_MINUTES} minutes`}::interval
+      AND updated_at < NOW() - ${`${STALE_THRESHOLD_HOURS} hours`}::interval
     RETURNING id, job_type
   `;
+
   for (const job of stale) {
-    log.warn(`Recovered stale job ${ACCENT.job}#${job.id}${RESET} ${ACCENT.type}${job.job_type}${RESET}`);
+    log.warn(
+      `Recovered stale job ${ACCENT.job}#${job.id}${RESET} (${job.job_type})`
+    );
   }
 }
 
@@ -267,6 +256,8 @@ async function recoverStaleJobs(): Promise<void> {
 let shuttingDown = false;
 
 async function processJobs(): Promise<void> {
+  await recoverStaleJobs();
+
   const jobs = await getPendingJobs();
   if (jobs.length === 0) return;
 
@@ -305,9 +296,6 @@ log.info("Starting worker", {
   concurrency: env.MAX_CONCURRENT,
   timeout: `${env.JOB_TIMEOUT}s`,
 });
-
-// Recover any jobs left in 'processing' from a previous crash
-await recoverStaleJobs();
 
 while (!shuttingDown) {
   try {

@@ -4,6 +4,7 @@ import { concurrentMap } from "../lib/queue.ts";
 import { fromPostgis, ogr2ogr } from "../providers/gdal.ts";
 import { tippecanoe } from "../providers/tippecanoe.ts";
 import * as s3 from "../providers/s3.ts";
+import { env } from "../config.ts";
 import {
   datePath,
   collectFilesWithExtension,
@@ -63,8 +64,14 @@ async function generateTileset(
     log.step(`Converting '${ACCENT.type}${tileset.tileset}${RESET}' to GeoJSON`);
     await ogr2ogr(gpkg, geojson);
 
+    // Free GPKG memory before tippecanoe runs
+    await rm(gpkg, { force: true });
+
     log.step(`Generating tiles for '${ACCENT.type}${tileset.tileset}${RESET}'`);
     await tippecanoe(geojson, tileDir, tileset.tileset, tileset.maxZoom, tileset.minZoom);
+
+    // Free GeoJSON after tiles are generated
+    await rm(geojson, { force: true });
 
     return true;
   } catch (e) {
@@ -156,7 +163,7 @@ export async function processMapset(payload: {
       ? payload.tileset
       : [payload.tileset]
     : [];
-  const maxWorkers = payload.max_workers ?? 3;
+  const maxWorkers = payload.max_workers ?? env.MAX_TILESET_WORKERS ?? env.MAX_CONCURRENT;
 
   let bundles: TileBundle[];
 
@@ -185,8 +192,8 @@ export async function processMapset(payload: {
     `Processing ${ACCENT.job}${bundles.length}${RESET} tilesets with ${ACCENT.job}${maxWorkers}${RESET} workers`
   );
 
-  // Shuffle for load distribution
-  bundles.sort(() => Math.random() - 0.5);
+  // Sort alphabetically for deterministic ordering
+  bundles.sort((a, b) => a.tileset.localeCompare(b.tileset));
 
   const { ok, failed } = await concurrentMap(bundles, maxWorkers, processOne);
 

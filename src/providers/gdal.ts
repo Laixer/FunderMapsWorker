@@ -86,7 +86,11 @@ export async function ogr2ogr(
     ...args,
   ];
 
-  const result = await spawn(cmd, { timeout: 600_000 });
+  // PostGIS downloads of large tables (10M+ rows) can take 20+ minutes
+  const isPostgis = input.startsWith("PG:") || output.startsWith("PG:");
+  const timeout = isPostgis ? 7_200_000 : 3_600_000;
+
+  const result = await spawn(cmd, { timeout });
   if (result.exitCode !== 0) {
     throw new Error(`ogr2ogr failed: ${result.stderr}`);
   }

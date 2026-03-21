@@ -1,5 +1,5 @@
 # Stage 1: Build tippecanoe
-FROM debian:bookworm-slim AS tippecanoe-builder
+FROM docker.io/debian:bookworm-slim AS tippecanoe-builder
 
 RUN apt-get update && apt-get install -y \
     git build-essential libsqlite3-dev zlib1g-dev \
@@ -11,7 +11,7 @@ RUN git clone --depth 1 https://github.com/felt/tippecanoe.git /tippecanoe \
     && make install
 
 # Stage 2: Runtime
-FROM oven/bun:1-debian
+FROM docker.io/oven/bun:1-debian
 
 RUN apt-get update && apt-get install -y \
     gdal-bin \

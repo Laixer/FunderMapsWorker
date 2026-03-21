@@ -33,7 +33,7 @@ export async function tippecanoe(
 
   cmd.push(String(input));
 
-  const result = await spawn(cmd, { timeout: 600_000 });
+  const result = await spawn(cmd, { timeout: 7_200_000 });
   if (result.exitCode !== 0) {
     throw new Error(`tippecanoe failed: ${result.stderr}`);
   }
