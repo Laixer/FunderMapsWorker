@@ -256,13 +256,25 @@ async function recoverStaleJobs(): Promise<void> {
 let shuttingDown = false;
 
 async function processJobs(): Promise<void> {
+  // Health check: Ensure DB is reachable before polling
+  try {
+    await sql`SELECT 1`;
+  } catch (e) {
+    log.error("Database health check failed", { error: String(e) });
+    return;
+  }
+
   await recoverStaleJobs();
 
   const jobs = await getPendingJobs();
   if (jobs.length === 0) return;
 
   log.info(`Found ${ACCENT.job}${jobs.length}${RESET} pending job(s)`);
-  await concurrentMap(jobs, env.MAX_CONCURRENT, processJob);
+  try {
+    await concurrentMap(jobs, env.MAX_CONCURRENT, processJob);
+  } catch (e) {
+    log.error("Queue execution crashed", { error: String(e) });
+  }
 }
 
 async function shutdown(signal: string): Promise<void> {
@@ -270,11 +282,21 @@ async function shutdown(signal: string): Promise<void> {
   shuttingDown = true;
   log.warn(`Received ${signal}, shutting down gracefully...`);
 
+  // Force exit after 10s if graceful shutdown hangs
+  setTimeout(() => {
+    log.error("Graceful shutdown timed out, forcing exit");
+    process.exit(1);
+  }, 10000).unref();
+
   // Give in-flight jobs a few seconds to finish their current DB writes
   await Bun.sleep(2000);
 
   // Close the postgres connection pool
-  await sql.end({ timeout: 5 });
+  try {
+    await sql.end({ timeout: 5 });
+  } catch (e) {
+    log.error("Error closing database pool", { error: String(e) });
+  }
   log.info("Shutdown complete");
   process.exit(0);
 }
@@ -285,7 +307,10 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 process.on("unhandledRejection", (reason) => {
-  log.error("Unhandled rejection (not crashing)", { error: String(reason) });
+  log.error("CRITICAL: Unhandled promise rejection", {
+    error: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
 });
 
 // -- Start --------------------------------------------------------------------

@@ -20,19 +20,26 @@ export async function concurrentMap<T>(
       while (running < maxConcurrent && queue.length > 0) {
         const item = queue.shift()!;
         running++;
-        fn(item)
-          .then((success) => {
-            if (success) ok++;
-            else failed++;
-          })
-          .catch((e) => {
-            failed++;
-            log.error("Concurrent task failed", { error: String(e) });
-          })
-          .finally(() => {
-            running--;
-            next();
-          });
+        try {
+          fn(item)
+            .then((success) => {
+              if (success) ok++;
+              else failed++;
+            })
+            .catch((e) => {
+              failed++;
+              log.error("Concurrent task failed", { error: String(e) });
+            })
+            .finally(() => {
+              running--;
+              next();
+            });
+        } catch (e) {
+          running--;
+          failed++;
+          log.error("Failed to initiate concurrent task", { error: String(e) });
+          next();
+        }
       }
     }
     next();

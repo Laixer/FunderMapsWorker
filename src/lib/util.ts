@@ -59,9 +59,36 @@ export async function httpDownloadFile(
   url: string,
   destPath: string
 ): Promise<void> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  await withRetry(async () => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    await Bun.write(destPath, response);
+  });
+}
+
+/**
+ * Executes an async function with exponential backoff retries.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: { maxAttempts?: number; delay?: number } = {}
+): Promise<T> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const delay = options.delay ?? 1000;
+
+  let lastError: Error | unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      if (attempt < maxAttempts) {
+        const backoff = delay * Math.pow(2, attempt - 1);
+        await Bun.sleep(backoff);
+      }
+    }
   }
-  await Bun.write(destPath, response);
+  throw lastError;
 }

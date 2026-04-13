@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { relative } from "node:path";
 import { env } from "../config.ts";
+import { withRetry } from "../lib/util.ts";
 
 const client = new S3Client({
   endpoint: env.FUNDERMAPS_S3_ENDPOINT,
@@ -24,14 +25,16 @@ export async function uploadFile(
   extraArgs?: Record<string, string>
 ): Promise<void> {
   const body = await Bun.file(filePath).arrayBuffer();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
-      Key: key,
-      Body: new Uint8Array(body),
-      ...extraArgs,
-    })
-  );
+  await withRetry(async () => {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
+        Key: key,
+        Body: new Uint8Array(body),
+        ...extraArgs,
+      })
+    );
+  });
 }
 
 export async function downloadFile(
@@ -39,26 +42,30 @@ export async function downloadFile(
   key: string,
   bucket?: string
 ): Promise<void> {
-  const response = await client.send(
-    new GetObjectCommand({
-      Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
-      Key: key,
-    })
-  );
-  const bytes = await response.Body!.transformToByteArray();
-  await Bun.write(filePath, bytes);
+  await withRetry(async () => {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
+        Key: key,
+      })
+    );
+    const bytes = await response.Body!.transformToByteArray();
+    await Bun.write(filePath, bytes);
+  });
 }
 
 export async function deleteFile(
   key: string,
   bucket?: string
 ): Promise<void> {
-  await client.send(
-    new DeleteObjectCommand({
-      Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
-      Key: key,
-    })
-  );
+  await withRetry(async () => {
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
+        Key: key,
+      })
+    );
+  });
 }
 
 export async function uploadDirectory(

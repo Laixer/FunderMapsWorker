@@ -4,6 +4,10 @@ export interface SpawnResult {
   stderr: string;
 }
 
+/**
+ * Executes a command and captures output.
+ * Optimized for long-running GIS tools with large output potential.
+ */
 export async function spawn(
   cmd: string[],
   options?: { timeout?: number }
@@ -16,7 +20,7 @@ export async function spawn(
   let timer: ReturnType<typeof setTimeout> | undefined;
   if (options?.timeout) {
     timer = setTimeout(() => {
-      // Kill the entire process group so child processes (ogr2ogr workers) die too
+      // Attempt to kill the process group (using negative PID)
       try {
         process.kill(-proc.pid, "SIGKILL");
       } catch {
@@ -25,13 +29,48 @@ export async function spawn(
     }, options.timeout);
   }
 
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
+  // Stream logs to keep memory usage low even if tools are verbose.
+  // We keep the last 1MB of logs for error reporting.
+  const MAX_LOG_SIZE = 1024 * 1024;
+  let stdout = "";
+  let stderr = "";
+
+  const readStream = async (stream: ReadableStream, append: (chunk: string) => void) => {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        append(chunk);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  };
+
+  const capture = (type: "out" | "err") => (chunk: string) => {
+    if (type === "out") {
+      stdout += chunk;
+      if (stdout.length > MAX_LOG_SIZE) stdout = stdout.slice(-MAX_LOG_SIZE);
+    } else {
+      stderr += chunk;
+      if (stderr.length > MAX_LOG_SIZE) stderr = stderr.slice(-MAX_LOG_SIZE);
+    }
+  };
+
+  await Promise.all([
+    readStream(proc.stdout, capture("out")),
+    readStream(proc.stderr, capture("err")),
   ]);
 
   const exitCode = await proc.exited;
   if (timer) clearTimeout(timer);
 
-  return { exitCode, stdout: stdout.trim(), stderr: stderr.trim() };
+  return {
+    exitCode,
+    stdout: stdout.trim(),
+    stderr: stderr.trim(),
+  };
 }
