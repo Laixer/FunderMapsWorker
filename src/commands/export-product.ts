@@ -61,8 +61,12 @@ export async function exportProduct(payload: {
     const csvPath = join(tmpdir(), `${org}.csv`);
     await Bun.write(csvPath, csvLines.join("\n"));
 
-    const year = referenceDate.getFullYear();
-    const month = referenceDate
+    // Identify the year and month of the data being exported (one month before the reference date)
+    const exportDate = new Date(referenceDate);
+    exportDate.setMonth(exportDate.getMonth() - 1);
+
+    const year = exportDate.getFullYear();
+    const month = exportDate
       .toLocaleString("en", { month: "short" })
       .toLowerCase();
     const s3Path = `product/${year}/${month}/${org}.csv`;
