@@ -9,6 +9,7 @@ import { loadDataset } from "./commands/load-dataset.ts";
 import { generatePdfCommand } from "./commands/generate-pdf.ts";
 import { cleanupStorage } from "./commands/cleanup-storage.ts";
 import { sendMail } from "./commands/send-mail.ts";
+import { exportSamples } from "./commands/export-samples.ts";
 
 // -- Job types ----------------------------------------------------------------
 
@@ -47,6 +48,9 @@ const payloadSchemas = {
     subject: z.string(),
     text: z.string(),
   }),
+  export_samples: z.object({
+    date: z.string().optional(),
+  }),
 } as const;
 
 type JobType = keyof typeof payloadSchemas;
@@ -58,6 +62,7 @@ const handlers: Record<JobType, (payload: unknown) => Promise<boolean>> = {
   generate_pdf: (p) => generatePdfCommand(p as z.infer<typeof payloadSchemas.generate_pdf>),
   cleanup_storage: () => cleanupStorage(),
   send_mail: (p) => sendMail(p as z.infer<typeof payloadSchemas.send_mail>),
+  export_samples: (p) => exportSamples(p as z.infer<typeof payloadSchemas.export_samples>),
 };
 
 // -- DB helpers ---------------------------------------------------------------

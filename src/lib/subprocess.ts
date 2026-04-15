@@ -10,11 +10,12 @@ export interface SpawnResult {
  */
 export async function spawn(
   cmd: string[],
-  options?: { timeout?: number }
+  options?: { timeout?: number; env?: Record<string, string> }
 ): Promise<SpawnResult> {
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
+    env: { ...process.env, ...options?.env },
   });
 
   let timer: ReturnType<typeof setTimeout> | undefined;
