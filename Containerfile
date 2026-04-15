@@ -16,6 +16,7 @@ FROM docker.io/oven/bun:1-debian
 RUN apt-get update && apt-get install -y \
     gdal-bin \
     libsqlite3-0 \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=tippecanoe-builder /usr/local/bin/tippecanoe /usr/local/bin/
