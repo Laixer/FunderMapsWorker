@@ -25,7 +25,9 @@ export async function exportSamples(payload: {
   log.info(`Exporting samples for: ${ACCENT.time}${year}-${month}${RESET}`);
 
   const tables = [
+    { schema: "report", name: "inquiry" },
     { schema: "report", name: "inquiry_sample" },
+    { schema: "report", name: "recovery" },
     { schema: "report", name: "recovery_sample" },
   ];
 
