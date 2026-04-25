@@ -56,7 +56,7 @@ SELECT
     date_part('year', i.create_date)::integer AS year,
     count(i.id) AS count
 FROM report.incident i
-JOIN geocoder.building_active ba ON ba.external_id = i.building::text
+JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
 JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
 JOIN geocoder.district d ON d.id = n.district_id
 JOIN geocoder.municipality m ON m.id = d.municipality_id
