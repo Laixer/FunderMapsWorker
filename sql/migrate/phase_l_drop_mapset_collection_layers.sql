@@ -1,0 +1,27 @@
+-- Phase L: drop redundant application.mapset_collection.layers.
+--
+-- The column held a text array of layer IDs (e.g. {enforcement-term,
+-- inquiry-type, overall-quality, damage-cause}). The same data plus
+-- richer config (names, colors, fields) is in mapset_collection.layerset
+-- (jsonb). 10 of 11 records had both populated and the array was
+-- always derivable from layerset.
+--
+-- Verified 2026-04-25: zero frontend consumers actually read
+-- mapset.layers in any Vue component or composable. WebFront/Report
+-- carry it through interfaces and through mapMapset() into IMapsetFE,
+-- but no rendering logic uses it. layerSet (the jsonb one) is
+-- everywhere.
+--
+-- Coordinated with code changes:
+--   * C# Mapset.Layers property removed
+--   * 3 SQL refs in MapsetRepository.cs removed
+--   * TS API Drizzle: mapsetCollection.layers field removed
+--   * WebFront IMapset.layers + IMapsetFE.layers + mapMapset mapping removed
+--   * Report:    same shape, same removals
+--
+-- Note: application.mapset (different table) also has a layers
+-- column, but it has no layerset alternative there. Out of scope.
+--
+-- Run as: fundermaps (owner)
+
+ALTER TABLE application.mapset_collection DROP COLUMN layers;
