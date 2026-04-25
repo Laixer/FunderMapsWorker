@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict nLOeFyfTZEB5yBwIkn6fd5NDgIfJ2dshi8NP07EYdizZalwf63inae9gJ1BIPWb
+\restrict wbKmzr6cohaopIJueghUSqsDXQaiIA91Vk1v4ITUEk9B5IejjtVHz4g6e6Z0cXO
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1520,7 +1520,6 @@ CREATE VIEW application.mapset_collection AS
     name,
     lower(regexp_replace(name, '\s+'::text, '-'::text, 'g'::text)) AS slug,
     style,
-    layers,
     metadata,
     public,
     consent,
@@ -1762,7 +1761,7 @@ CREATE TABLE data.building_precomputed (
 CREATE TABLE geocoder.building (
     id geocoder.geocoder_id NOT NULL,
     built_year geocoder.year,
-    is_active boolean NOT NULL,
+    active boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL,
     external_id text NOT NULL,
     building_type geocoder.building_type,
@@ -2186,7 +2185,7 @@ CREATE VIEW geocoder.building_active AS
     building_type,
     neighborhood_id
    FROM geocoder.building
-  WHERE ((is_active = true) AND (geom IS NOT NULL));
+  WHERE ((active = true) AND (geom IS NOT NULL));
 
 
 --
@@ -2287,6 +2286,17 @@ CREATE VIEW data.building_height AS
     (roof - ground) AS height
    FROM data.building_elevation be
   WHERE ((roof IS NOT NULL) AND (ground IS NOT NULL));
+
+
+--
+-- Name: building_subsidence_history; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.building_subsidence_history (
+    building_id text NOT NULL,
+    velocity double precision NOT NULL,
+    mark_at date NOT NULL
+);
 
 
 --
@@ -2536,17 +2546,6 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
      JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
   GROUP BY m.id, ((date_part('year'::text, i.document_date))::integer)
   WITH NO DATA;
-
-
---
--- Name: subsidence_history; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.subsidence_history (
-    building_id text NOT NULL,
-    velocity double precision NOT NULL,
-    mark_at date NOT NULL
-);
 
 
 --
@@ -3398,6 +3397,14 @@ ALTER TABLE ONLY data.building_precomputed
 
 
 --
+-- Name: building_subsidence_history building_subsidence_history_pkey; Type: CONSTRAINT; Schema: data; Owner: -
+--
+
+ALTER TABLE ONLY data.building_subsidence_history
+    ADD CONSTRAINT building_subsidence_history_pkey PRIMARY KEY (building_id, mark_at);
+
+
+--
 -- Name: building_subsidence building_subsidence_pkey; Type: CONSTRAINT; Schema: data; Owner: -
 --
 
@@ -3411,14 +3418,6 @@ ALTER TABLE ONLY data.building_subsidence
 
 ALTER TABLE ONLY data.cluster_recovery_sample
     ADD CONSTRAINT cluster_recovery_sample_pkey PRIMARY KEY (cluster_id);
-
-
---
--- Name: subsidence_history subsidence_history_pkey; Type: CONSTRAINT; Schema: data; Owner: -
---
-
-ALTER TABLE ONLY data.subsidence_history
-    ADD CONSTRAINT subsidence_history_pkey PRIMARY KEY (building_id, mark_at);
 
 
 --
@@ -4558,11 +4557,11 @@ ALTER TABLE ONLY data.building_subsidence
 
 
 --
--- Name: subsidence_history subsidence_history_building_id_fkey; Type: FK CONSTRAINT; Schema: data; Owner: -
+-- Name: building_subsidence_history building_subsidence_history_building_id_fkey; Type: FK CONSTRAINT; Schema: data; Owner: -
 --
 
-ALTER TABLE ONLY data.subsidence_history
-    ADD CONSTRAINT subsidence_history_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY data.building_subsidence_history
+    ADD CONSTRAINT building_subsidence_history_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4689,5 +4688,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict nLOeFyfTZEB5yBwIkn6fd5NDgIfJ2dshi8NP07EYdizZalwf63inae9gJ1BIPWb
+\unrestrict wbKmzr6cohaopIJueghUSqsDXQaiIA91Vk1v4ITUEk9B5IejjtVHz4g6e6Z0cXO
 
