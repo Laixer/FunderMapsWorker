@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict pe8AXeOly4aG0X3cWlxXDuhjOZJx5KJDsugqg6uZiaJkhlI1C11hSvilYMZuJRE
+\restrict 8l2jrsGGrtpVscpFhqi9k1OIymZUiwZcnNJp0QmqK9zTW1KHQtVFSotEnWRFQ6a
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -374,7 +374,7 @@ CREATE TYPE report.foundation_damage_cause AS ENUM (
     'gas',
     'vibrations',
     'partial_foundation_recovery',
-    'japanse_knotweed',
+    'japanese_knotweed',
     'groundwater_level_reduction'
 );
 
@@ -468,7 +468,7 @@ CREATE TYPE report.inquiry_type AS ENUM (
     'unknown',
     'demolition_research',
     'second_opinion',
-    'archieve_research',
+    'archive_research',
     'architectural_research',
     'foundation_advice',
     'inspectionpit',
@@ -493,7 +493,7 @@ CREATE DOMAIN report.length AS numeric(5,2);
 
 CREATE TYPE report.pile_type AS ENUM (
     'press',
-    'intgernally_driven',
+    'internally_driven',
     'segment'
 );
 
@@ -574,10 +574,10 @@ CREATE TYPE report.substructure AS ENUM (
 
 
 --
--- Name: wood_encroachement; Type: TYPE; Schema: report; Owner: -
+-- Name: wood_encroachment; Type: TYPE; Schema: report; Owner: -
 --
 
-CREATE TYPE report.wood_encroachement AS ENUM (
+CREATE TYPE report.wood_encroachment AS ENUM (
     'fungus_infection',
     'bio_fungus_infection',
     'bio_infection'
@@ -1840,7 +1840,7 @@ CREATE TABLE report.inquiry_sample (
     damage_characteristics report.foundation_damage_characteristics,
     construction_pile report.construction_pile,
     wood_type report.wood_type,
-    wood_encroachement report.wood_encroachement,
+    wood_encroachment report.wood_encroachment,
     crack_indoor_restored boolean,
     crack_indoor_type report.crack_type,
     crack_indoor_size report.crack_size,
@@ -1903,7 +1903,7 @@ CREATE MATERIALIZED VIEW data.building_sample AS
             WHEN 'additional_research'::report.inquiry_type THEN 4
             WHEN 'demolition_research'::report.inquiry_type THEN 5
             WHEN 'architectural_research'::report.inquiry_type THEN 6
-            WHEN 'archieve_research'::report.inquiry_type THEN 7
+            WHEN 'archive_research'::report.inquiry_type THEN 7
             WHEN 'quickscan'::report.inquiry_type THEN 8
             ELSE 100
         END, i.document_date DESC
@@ -1962,7 +1962,7 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
             WHEN 'additional_research'::report.inquiry_type THEN 4
             WHEN 'demolition_research'::report.inquiry_type THEN 5
             WHEN 'architectural_research'::report.inquiry_type THEN 6
-            WHEN 'archieve_research'::report.inquiry_type THEN 7
+            WHEN 'archive_research'::report.inquiry_type THEN 7
             WHEN 'quickscan'::report.inquiry_type THEN 8
             ELSE 100
         END, i.document_date DESC
@@ -2012,7 +2012,7 @@ CREATE MATERIALIZED VIEW data.supercluster_sample AS
             WHEN 'additional_research'::report.inquiry_type THEN 4
             WHEN 'demolition_research'::report.inquiry_type THEN 5
             WHEN 'architectural_research'::report.inquiry_type THEN 6
-            WHEN 'archieve_research'::report.inquiry_type THEN 7
+            WHEN 'archive_research'::report.inquiry_type THEN 7
             WHEN 'quickscan'::report.inquiry_type THEN 8
             ELSE 100
         END, i.document_date DESC
@@ -2451,7 +2451,7 @@ CREATE TABLE report.incident (
     chained_building boolean NOT NULL,
     owner boolean NOT NULL,
     foundation_recovery boolean NOT NULL,
-    neightbor_recovery boolean NOT NULL,
+    neighbor_recovery boolean NOT NULL,
     foundation_damage_cause report.foundation_damage_cause,
     document_file text[],
     note text,
@@ -4689,5 +4689,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict pe8AXeOly4aG0X3cWlxXDuhjOZJx5KJDsugqg6uZiaJkhlI1C11hSvilYMZuJRE
+\unrestrict 8l2jrsGGrtpVscpFhqi9k1OIymZUiwZcnNJp0QmqK9zTW1KHQtVFSotEnWRFQ6a
 
