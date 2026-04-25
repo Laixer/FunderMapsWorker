@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 92u54Dk0S4f70v4jDbLybOQrNx07SETgwdtenLEBCUXujCzwyV50JeNgzSvAXKM
+\restrict nLOeFyfTZEB5yBwIkn6fd5NDgIfJ2dshi8NP07EYdizZalwf63inae9gJ1BIPWb
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -3809,10 +3809,10 @@ CREATE INDEX building_precomputed_neighborhood_id_idx ON data.building_precomput
 
 
 --
--- Name: building_sample_v2_building_id_idx; Type: INDEX; Schema: data; Owner: -
+-- Name: building_sample_building_id_idx; Type: INDEX; Schema: data; Owner: -
 --
 
-CREATE UNIQUE INDEX building_sample_v2_building_id_idx ON data.building_sample USING btree (building_id);
+CREATE UNIQUE INDEX building_sample_building_id_idx ON data.building_sample USING btree (building_id);
 
 
 --
@@ -4089,10 +4089,10 @@ CREATE INDEX residence_address_id_idx ON geocoder.residence USING btree (address
 
 
 --
--- Name: residence_building_idx; Type: INDEX; Schema: geocoder; Owner: -
+-- Name: residence_building_id_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
-CREATE INDEX residence_building_idx ON geocoder.residence USING btree (building_id);
+CREATE INDEX residence_building_id_idx ON geocoder.residence USING btree (building_id);
 
 
 --
@@ -4689,5 +4689,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 92u54Dk0S4f70v4jDbLybOQrNx07SETgwdtenLEBCUXujCzwyV50JeNgzSvAXKM
+\unrestrict nLOeFyfTZEB5yBwIkn6fd5NDgIfJ2dshi8NP07EYdizZalwf63inae9gJ1BIPWb
 
