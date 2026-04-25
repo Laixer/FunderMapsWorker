@@ -1,0 +1,22 @@
+-- Phase F.5: rename misspelled column.
+--   report.incident.neightbor_recovery  →  neighbor_recovery
+--
+-- Long-standing typo. C# IncidentRepository was already aliasing the
+-- column on every SELECT (i.neightbor_recovery AS neighbor_recovery)
+-- so the wire format and frontend property names have always been
+-- correctly spelled. The repo even had a "// Typo in database" comment
+-- on a related line. After this migration the alias is no longer
+-- needed and has been removed from the repository SQL bodies.
+--
+-- Coordinated with C# changes:
+--   * 7 SQL refs in IncidentRepository (col list, VALUES, params, JOINs, UPDATE)
+--   * @NeightborRecovery → @NeighborRecovery (parameter name)
+--   * SELECT alias removed (was: i.neightbor_recovery AS neighbor_recovery)
+--   * stale "Typo in database" comment cleaned up
+--
+-- TS API: Drizzle field renamed neightborRecovery → neighborRecovery
+-- + column-name string updated. Field unused outside the schema file.
+--
+-- Run as: fundermaps (owner)
+
+ALTER TABLE report.incident RENAME COLUMN neightbor_recovery TO neighbor_recovery;
