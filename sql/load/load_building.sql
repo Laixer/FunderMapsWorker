@@ -1,4 +1,4 @@
-INSERT INTO geocoder.building(built_year, is_active, geom, external_id, building_type, neighborhood_id, zone_function)
+INSERT INTO geocoder.building(built_year, active, geom, external_id, building_type, neighborhood_id, zone_function)
 SELECT
     case
         when p.bouwjaar > 2099 then null
@@ -40,11 +40,11 @@ FROM public.pand p
 ON CONFLICT (external_id)
 DO UPDATE
     SET built_year = excluded.built_year,
-    is_active = excluded.is_active,
+    active = excluded.active,
     geom = excluded.geom,
     zone_function = excluded.zone_function;
 
-INSERT INTO geocoder.building(built_year, is_active, geom, external_id, building_type, neighborhood_id)
+INSERT INTO geocoder.building(built_year, active, geom, external_id, building_type, neighborhood_id)
 SELECT
     null,
     true,
@@ -57,7 +57,7 @@ ON CONFLICT (external_id)
 DO UPDATE
     SET geom = excluded.geom;
     
-INSERT INTO geocoder.building(built_year, is_active, geom, external_id, building_type, neighborhood_id)
+INSERT INTO geocoder.building(built_year, active, geom, external_id, building_type, neighborhood_id)
 SELECT
     null,
     true,
@@ -71,13 +71,13 @@ DO UPDATE
     SET geom = excluded.geom;
 
 UPDATE geocoder.building
-SET is_active = false
+SET active = false
 WHERE NOT EXISTS (
     SELECT 1
     FROM public.pand
     WHERE public.pand.identificatie = geocoder.building.external_id
 )
-AND geocoder.building.is_active = true
+AND geocoder.building.active = true
 AND geocoder.building.external_id like 'NL.IMBAG.PAND.%';
 
 UPDATE geocoder.building
