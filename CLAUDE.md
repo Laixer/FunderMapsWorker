@@ -24,11 +24,12 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 
 ### Layers
 
-- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types: `process-mapset`, `refresh-models`, `export-product`, `load-dataset`, `generate-pdf`, `cleanup-storage`, `send-mail`.
+- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types: `process-mapset`, `export-product`, `load-dataset`, `generate-pdf`, `cleanup-storage`, `send-mail`, `export-samples`.
 - **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, PDF.co.
 - **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
 - **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
 - **`src/db.ts`** — PostgreSQL connection pool (uses `postgres` library with SSL prefer mode).
+- **`sql/`** — Hand-written SQL: `load/` (BAG/subsidence/3DBAG ingest), `model/` (risk model refresh), `migrate/` (one-shot schema migrations). Run manually via `psql`; the worker does not auto-apply migrations.
 
 ### Key patterns
 
