@@ -50,4 +50,9 @@ SELECT
     ) AS layerset
 FROM application.mapset m;
 
+-- DROP VIEW destroys grants — re-establish to match sibling tables
+-- (mapset, mapset_layer) which both grant SELECT to fundermaps_webapp
+-- only.
+GRANT SELECT ON application.mapset_collection TO fundermaps_webapp;
+
 COMMIT;
