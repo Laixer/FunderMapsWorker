@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 8l2jrsGGrtpVscpFhqi9k1OIymZUiwZcnNJp0QmqK9zTW1KHQtVFSotEnWRFQ6a
+\restrict 92u54Dk0S4f70v4jDbLybOQrNx07SETgwdtenLEBCUXujCzwyV50JeNgzSvAXKM
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1298,7 +1298,7 @@ CREATE TABLE application.application (
 CREATE TABLE application.application_user (
     user_id application.user_id NOT NULL,
     application_id text NOT NULL,
-    metadata json,
+    metadata jsonb,
     update_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -1521,7 +1521,7 @@ CREATE VIEW application.mapset_collection AS
     lower(regexp_replace(name, '\s+'::text, '-'::text, 'g'::text)) AS slug,
     style,
     layers,
-    metadata AS options,
+    metadata,
     public,
     consent,
     note,
@@ -1584,7 +1584,7 @@ CREATE TABLE application.organization_geolock_neighborhood (
 CREATE TABLE application.organization_mapset (
     organization_id application.organization_id NOT NULL,
     mapset_id text NOT NULL,
-    metadata json
+    metadata jsonb
 );
 
 
@@ -4689,5 +4689,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 8l2jrsGGrtpVscpFhqi9k1OIymZUiwZcnNJp0QmqK9zTW1KHQtVFSotEnWRFQ6a
+\unrestrict 92u54Dk0S4f70v4jDbLybOQrNx07SETgwdtenLEBCUXujCzwyV50JeNgzSvAXKM
 
