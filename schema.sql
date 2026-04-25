@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GLx6qfAUl4bz8ISwY8uqyuV60L3GNAxbjpTWKicvuA5JpSe7ZiYVuspG1Emrr5V
+\restrict pe8AXeOly4aG0X3cWlxXDuhjOZJx5KJDsugqg6uZiaJkhlI1C11hSvilYMZuJRE
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1645,7 +1645,7 @@ CREATE TABLE application."user" (
 
 CREATE TABLE application.worker_jobs (
     id bigint NOT NULL,
-    job_type character varying(255) NOT NULL,
+    job_type text NOT NULL,
     payload jsonb,
     status application.job_status DEFAULT 'pending'::application.job_status NOT NULL,
     priority integer DEFAULT 0 NOT NULL,
@@ -2465,8 +2465,8 @@ CREATE TABLE report.incident (
     audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL,
     internal_note text,
     question_type report.incident_question_type DEFAULT 'other'::report.incident_question_type NOT NULL,
-    contact_name character varying,
-    contact_phone_number character varying,
+    contact_name text,
+    contact_phone_number text,
     building_id geocoder.geocoder_id NOT NULL,
     file_resource_key text
 );
@@ -3550,6 +3550,13 @@ ALTER TABLE ONLY report.recovery_sample
 
 
 --
+-- Name: application_user_application_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX application_user_application_id_idx ON application.application_user USING btree (application_id);
+
+
+--
 -- Name: attribution_contractor_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -3676,6 +3683,48 @@ CREATE INDEX file_resources_status_idx ON application.file_resources USING btree
 
 
 --
+-- Name: organization_geolock_district_district_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX organization_geolock_district_district_id_idx ON application.organization_geolock_district USING btree (district_id);
+
+
+--
+-- Name: organization_geolock_municipality_municipality_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX organization_geolock_municipality_municipality_id_idx ON application.organization_geolock_municipality USING btree (municipality_id);
+
+
+--
+-- Name: organization_geolock_neighborhood_neighborhood_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX organization_geolock_neighborhood_neighborhood_id_idx ON application.organization_geolock_neighborhood USING btree (neighborhood_id);
+
+
+--
+-- Name: organization_mapset_mapset_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX organization_mapset_mapset_id_idx ON application.organization_mapset USING btree (mapset_id);
+
+
+--
+-- Name: organization_user_organization_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX organization_user_organization_id_idx ON application.organization_user USING btree (organization_id);
+
+
+--
+-- Name: product_tracker_building_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX product_tracker_building_id_idx ON application.product_tracker USING btree (building_id);
+
+
+--
 -- Name: product_tracker_create_date_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -3687,6 +3736,13 @@ CREATE INDEX product_tracker_create_date_idx ON application.product_tracker USIN
 --
 
 CREATE INDEX product_tracker_mismatch_create_date_idx ON application.product_tracker_mismatch USING btree (create_date DESC);
+
+
+--
+-- Name: product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX product_tracker_mismatch_organization_id_idx ON application.product_tracker_mismatch USING btree (organization_id);
 
 
 --
@@ -4026,6 +4082,13 @@ CREATE INDEX postal_code_geom_idx ON geocoder.postal_code USING gist (geom);
 
 
 --
+-- Name: residence_address_id_idx; Type: INDEX; Schema: geocoder; Owner: -
+--
+
+CREATE INDEX residence_address_id_idx ON geocoder.residence USING btree (address_id);
+
+
+--
 -- Name: residence_building_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
@@ -4149,6 +4212,13 @@ CREATE INDEX recovery_sample_contractor_id_idx ON report.recovery_sample USING b
 --
 
 CREATE INDEX recovery_sample_pile_type_idx ON report.recovery_sample USING btree (pile_type);
+
+
+--
+-- Name: recovery_sample_recovery_id_idx; Type: INDEX; Schema: report; Owner: -
+--
+
+CREATE INDEX recovery_sample_recovery_id_idx ON report.recovery_sample USING btree (recovery_id);
 
 
 --
@@ -4436,7 +4506,7 @@ ALTER TABLE ONLY application.reset_key
 --
 
 ALTER TABLE ONLY data.building_cluster
-    ADD CONSTRAINT building_cluster_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_cluster_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4444,7 +4514,7 @@ ALTER TABLE ONLY data.building_cluster
 --
 
 ALTER TABLE ONLY data.building_elevation
-    ADD CONSTRAINT building_elevation_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_elevation_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4452,7 +4522,7 @@ ALTER TABLE ONLY data.building_elevation
 --
 
 ALTER TABLE ONLY data.building_geographic_region
-    ADD CONSTRAINT building_geographic_region_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_geographic_region_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4460,7 +4530,7 @@ ALTER TABLE ONLY data.building_geographic_region
 --
 
 ALTER TABLE ONLY data.building_groundwater_level
-    ADD CONSTRAINT building_groundwater_level_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_groundwater_level_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4468,7 +4538,7 @@ ALTER TABLE ONLY data.building_groundwater_level
 --
 
 ALTER TABLE ONLY data.building_ownership
-    ADD CONSTRAINT building_ownership_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_ownership_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4476,7 +4546,7 @@ ALTER TABLE ONLY data.building_ownership
 --
 
 ALTER TABLE ONLY data.building_pleistocene
-    ADD CONSTRAINT building_pleistocene_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_pleistocene_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4484,7 +4554,7 @@ ALTER TABLE ONLY data.building_pleistocene
 --
 
 ALTER TABLE ONLY data.building_subsidence
-    ADD CONSTRAINT building_subsidence_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT building_subsidence_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4492,7 +4562,7 @@ ALTER TABLE ONLY data.building_subsidence
 --
 
 ALTER TABLE ONLY data.subsidence_history
-    ADD CONSTRAINT subsidence_history_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT subsidence_history_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4500,7 +4570,7 @@ ALTER TABLE ONLY data.subsidence_history
 --
 
 ALTER TABLE ONLY geocoder.address
-    ADD CONSTRAINT address_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT address_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -4508,7 +4578,7 @@ ALTER TABLE ONLY geocoder.address
 --
 
 ALTER TABLE ONLY geocoder.building
-    ADD CONSTRAINT building_neighborhood_id_fkey FOREIGN KEY (neighborhood_id) REFERENCES geocoder.neighborhood(id);
+    ADD CONSTRAINT building_neighborhood_id_fkey FOREIGN KEY (neighborhood_id) REFERENCES geocoder.neighborhood(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -4516,7 +4586,7 @@ ALTER TABLE ONLY geocoder.building
 --
 
 ALTER TABLE ONLY geocoder.district
-    ADD CONSTRAINT district_municipality_id_fkey FOREIGN KEY (municipality_id) REFERENCES geocoder.municipality(id);
+    ADD CONSTRAINT district_municipality_id_fkey FOREIGN KEY (municipality_id) REFERENCES geocoder.municipality(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4524,7 +4594,7 @@ ALTER TABLE ONLY geocoder.district
 --
 
 ALTER TABLE ONLY geocoder.neighborhood
-    ADD CONSTRAINT neighborhood_district_id_fkey FOREIGN KEY (district_id) REFERENCES geocoder.district(id);
+    ADD CONSTRAINT neighborhood_district_id_fkey FOREIGN KEY (district_id) REFERENCES geocoder.district(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4532,7 +4602,7 @@ ALTER TABLE ONLY geocoder.neighborhood
 --
 
 ALTER TABLE ONLY geocoder.residence
-    ADD CONSTRAINT residence_address_id_fkey FOREIGN KEY (address_id) REFERENCES geocoder.address(external_id);
+    ADD CONSTRAINT residence_address_id_fkey FOREIGN KEY (address_id) REFERENCES geocoder.address(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4540,7 +4610,7 @@ ALTER TABLE ONLY geocoder.residence
 --
 
 ALTER TABLE ONLY geocoder.residence
-    ADD CONSTRAINT residence_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT residence_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4548,7 +4618,7 @@ ALTER TABLE ONLY geocoder.residence
 --
 
 ALTER TABLE ONLY geocoder.state
-    ADD CONSTRAINT state_country_id_fkey FOREIGN KEY (country_id) REFERENCES geocoder.country(id);
+    ADD CONSTRAINT state_country_id_fkey FOREIGN KEY (country_id) REFERENCES geocoder.country(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4596,7 +4666,7 @@ ALTER TABLE ONLY report.recovery
 --
 
 ALTER TABLE ONLY report.recovery_sample
-    ADD CONSTRAINT recovery_sample_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id);
+    ADD CONSTRAINT recovery_sample_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -4619,5 +4689,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GLx6qfAUl4bz8ISwY8uqyuV60L3GNAxbjpTWKicvuA5JpSe7ZiYVuspG1Emrr5V
+\unrestrict pe8AXeOly4aG0X3cWlxXDuhjOZJx5KJDsugqg6uZiaJkhlI1C11hSvilYMZuJRE
 
