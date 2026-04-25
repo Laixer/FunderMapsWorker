@@ -1,27 +1,53 @@
--- Phase L: drop redundant application.mapset_collection.layers.
+-- Phase L: drop redundant `layers` column from application.mapset_collection.
 --
--- The column held a text array of layer IDs (e.g. {enforcement-term,
--- inquiry-type, overall-quality, damage-cause}). The same data plus
--- richer config (names, colors, fields) is in mapset_collection.layerset
--- (jsonb). 10 of 11 records had both populated and the array was
--- always derivable from layerset.
+-- IMPORTANT CORRECTION: mapset_collection is a VIEW (not a table), so
+-- DROP COLUMN is not supported. Instead we redefine the view to omit
+-- the `layers` passthrough.
 --
--- Verified 2026-04-25: zero frontend consumers actually read
--- mapset.layers in any Vue component or composable. WebFront/Report
--- carry it through interfaces and through mapMapset() into IMapsetFE,
--- but no rendering logic uses it. layerSet (the jsonb one) is
--- everywhere.
+-- The underlying application.mapset.layers column STAYS — it's the
+-- source of truth for which layer IDs belong to a mapset, and the
+-- view's `layerset` jsonb_agg JOINs through it. We're only stripping
+-- the column from the view's projection so API consumers stop
+-- receiving the redundant text array.
 --
--- Coordinated with code changes:
---   * C# Mapset.Layers property removed
---   * 3 SQL refs in MapsetRepository.cs removed
---   * TS API Drizzle: mapsetCollection.layers field removed
---   * WebFront IMapset.layers + IMapsetFE.layers + mapMapset mapping removed
---   * Report:    same shape, same removals
---
--- Note: application.mapset (different table) also has a layers
--- column, but it has no layerset alternative there. Out of scope.
+-- Verified 2026-04-25:
+--   * Zero views/matviews depend on mapset_collection
+--   * Zero frontend consumers actually read the layers field
+--   * C# MapsetRepository.cs has already had c.layers removed from
+--     all 3 SELECT lists (FunderMaps commit 83986779)
+--   * TS API + WebFront + Report interfaces already updated
 --
 -- Run as: fundermaps (owner)
 
-ALTER TABLE application.mapset_collection DROP COLUMN layers;
+BEGIN;
+
+DROP VIEW application.mapset_collection;
+
+CREATE VIEW application.mapset_collection AS
+SELECT
+    m.id,
+    m.name,
+    lower(regexp_replace(m.name, '\s+'::text, '-'::text, 'g'::text)) AS slug,
+    m.style,
+    m.metadata,
+    m.public,
+    m.consent,
+    m.note,
+    m.icon,
+    m."order",
+    (
+        SELECT jsonb_agg(maplayers.layer) AS jsonb_agg
+        FROM (
+            SELECT l.*::application.mapset_layer AS layer
+            FROM application.mapset_layer l
+            WHERE l.id IN (
+                SELECT unnest(m2.layers) AS unnest
+                FROM application.mapset m2
+                WHERE m2.id = m.id
+            )
+            ORDER BY l."order"
+        ) maplayers
+    ) AS layerset
+FROM application.mapset m;
+
+COMMIT;
