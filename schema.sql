@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict YTBtDnGBdYIORYg0pxJdtdpJlICntMJhbEC2Tz7OWbxqH3KzDrZnMdt6vDUrR2p
+\restrict GLx6qfAUl4bz8ISwY8uqyuV60L3GNAxbjpTWKicvuA5JpSe7ZiYVuspG1Emrr5V
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1309,11 +1309,11 @@ CREATE TABLE application.application_user (
 
 CREATE TABLE application.attribution (
     id integer NOT NULL,
-    reviewer application.user_id NOT NULL,
-    creator application.user_id NOT NULL,
-    owner application.organization_id NOT NULL,
-    contractor integer NOT NULL,
-    CONSTRAINT creator_reviewer_chk CHECK (((creator)::uuid <> (reviewer)::uuid))
+    reviewer_id application.user_id NOT NULL,
+    creator_id application.user_id NOT NULL,
+    owner_id application.organization_id NOT NULL,
+    contractor_id integer NOT NULL,
+    CONSTRAINT creator_reviewer_chk CHECK (((creator_id)::uuid <> (reviewer_id)::uuid))
 );
 
 
@@ -1787,7 +1787,7 @@ CREATE TABLE report.inquiry (
     note text,
     document_date date NOT NULL,
     document_file text NOT NULL,
-    attribution integer NOT NULL,
+    attribution_id integer NOT NULL,
     access_policy application.access_policy DEFAULT 'private'::application.access_policy NOT NULL,
     type report.inquiry_type NOT NULL,
     standard_f3o boolean DEFAULT false NOT NULL,
@@ -1801,7 +1801,7 @@ CREATE TABLE report.inquiry (
 
 CREATE TABLE report.inquiry_sample (
     id integer NOT NULL,
-    inquiry integer NOT NULL,
+    inquiry_id integer NOT NULL,
     address geocoder.geocoder_id DEFAULT NULL::text,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
@@ -1866,7 +1866,7 @@ CREATE TABLE report.inquiry_sample (
     settlement_speed double precision,
     skewed_window_frame boolean,
     skewed_perpendicular_facade report.rotation_type,
-    building geocoder.geocoder_id NOT NULL,
+    building_id geocoder.geocoder_id NOT NULL,
     facade_scan_risk report.facade_scan_risk,
     metadata jsonb
 );
@@ -1891,8 +1891,8 @@ CREATE MATERIALIZED VIEW data.building_sample AS
     i.document_date,
     i.id
    FROM ((report.inquiry_sample is2
-     JOIN report.inquiry i ON ((is2.inquiry = i.id)))
-     JOIN geocoder.building b ON ((b.external_id = (is2.building)::text)))
+     JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
+     JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
   WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
   ORDER BY b.external_id,
         CASE i.type
@@ -1950,8 +1950,8 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
     i.id
    FROM (((data.building_cluster bc
      JOIN geocoder.building b ON ((b.external_id = bc.building_id)))
-     JOIN report.inquiry_sample is2 ON (((is2.building)::text = b.external_id)))
-     JOIN report.inquiry i ON ((is2.inquiry = i.id)))
+     JOIN report.inquiry_sample is2 ON (((is2.building_id)::text = b.external_id)))
+     JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
   WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
   ORDER BY bc.cluster_id,
         CASE i.type
@@ -2000,8 +2000,8 @@ CREATE MATERIALIZED VIEW data.supercluster_sample AS
    FROM ((((data.supercluster s
      JOIN data.building_cluster bc ON ((bc.cluster_id = s.cluster_id)))
      JOIN geocoder.building b ON ((b.external_id = bc.building_id)))
-     JOIN report.inquiry_sample is2 ON (((is2.building)::text = b.external_id)))
-     JOIN report.inquiry i ON ((is2.inquiry = i.id)))
+     JOIN report.inquiry_sample is2 ON (((is2.building_id)::text = b.external_id)))
+     JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
   WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
   ORDER BY s.supercluster_id,
         CASE i.type
@@ -2025,7 +2025,7 @@ CREATE MATERIALIZED VIEW data.supercluster_sample AS
 
 CREATE TABLE report.recovery_sample (
     id integer NOT NULL,
-    recovery integer NOT NULL,
+    recovery_id integer NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
     delete_date timestamp with time zone,
@@ -2037,7 +2037,7 @@ CREATE TABLE report.recovery_sample (
     permit text,
     permit_date date,
     recovery_date date,
-    contractor integer,
+    contractor_id integer,
     building_id text NOT NULL,
     metadata jsonb
 );
@@ -2312,7 +2312,7 @@ CREATE MATERIALIZED VIEW data.statistics_postal_code_data_collected AS
  SELECT a.postal_code,
     (((count(a.id) FILTER (WHERE (i.id IS NOT NULL)))::double precision / (count(a.id))::double precision) * (100)::double precision) AS percentage
    FROM (geocoder.address a
-     LEFT JOIN report.inquiry_sample i ON (((i.building)::text = (a.building_id)::text)))
+     LEFT JOIN report.inquiry_sample i ON (((i.building_id)::text = (a.building_id)::text)))
   GROUP BY a.postal_code
   WITH NO DATA;
 
@@ -2405,7 +2405,7 @@ CREATE MATERIALIZED VIEW data.statistics_product_data_collected AS
     (((count(a.id) FILTER (WHERE (i.id IS NOT NULL)))::double precision / (count(a.id))::double precision) * (100)::double precision) AS percentage
    FROM ((geocoder.address a
      JOIN geocoder.building_active ba ON (((a.building_id)::text = ba.external_id)))
-     LEFT JOIN report.inquiry_sample i ON (((i.building)::text = (a.building_id)::text)))
+     LEFT JOIN report.inquiry_sample i ON (((i.building_id)::text = (a.building_id)::text)))
   GROUP BY ba.neighborhood_id
   WITH NO DATA;
 
@@ -2467,7 +2467,7 @@ CREATE TABLE report.incident (
     question_type report.incident_question_type DEFAULT 'other'::report.incident_question_type NOT NULL,
     contact_name character varying,
     contact_phone_number character varying,
-    building geocoder.geocoder_id NOT NULL,
+    building_id geocoder.geocoder_id NOT NULL,
     file_resource_key text
 );
 
@@ -2481,7 +2481,7 @@ CREATE MATERIALIZED VIEW data.statistics_product_incident_municipality AS
     (date_part('year'::text, i.create_date))::integer AS year,
     count(i.id) AS count
    FROM ((((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building)::text)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
      JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
      JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
@@ -2498,7 +2498,7 @@ CREATE MATERIALIZED VIEW data.statistics_product_incidents AS
     year.year,
     count(i.id) AS count
    FROM (report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building)::text))),
+     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text))),
     LATERAL CAST((date_part('year'::text, i.create_date))::integer AS integer) year(year)
   GROUP BY ba.neighborhood_id, year.year
   WITH NO DATA;
@@ -2513,8 +2513,8 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiries AS
     year.year,
     count(i.id) AS count
    FROM ((report.inquiry i
-     JOIN report.inquiry_sample is2 ON ((is2.inquiry = i.id)))
-     JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building)::text))),
+     JOIN report.inquiry_sample is2 ON ((is2.inquiry_id = i.id)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building_id)::text))),
     LATERAL CAST((date_part('year'::text, i.document_date))::integer AS integer) year(year)
   GROUP BY ba.neighborhood_id, year.year
   WITH NO DATA;
@@ -2529,8 +2529,8 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
     (date_part('year'::text, i.document_date))::integer AS year,
     count(is2.id) AS count
    FROM (((((report.inquiry_sample is2
-     JOIN report.inquiry i ON ((i.id = is2.inquiry)))
-     JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building)::text)))
+     JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
      JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
      JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
@@ -2715,8 +2715,8 @@ CREATE VIEW maplayer.analysis_monitoring AS
     m.external_id AS municipality_id,
     ba.geom
    FROM ((((((report.inquiry_sample is2
-     JOIN report.inquiry i ON ((i.id = is2.inquiry)))
-     JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building)::text)))
+     JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building_id)::text)))
      JOIN data.building_height bh ON ((bh.building_id = ba.external_id)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
      JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
@@ -2919,7 +2919,7 @@ CREATE VIEW maplayer.facade_scan AS
             is2.facade_scan_risk,
             ba.geom
            FROM ((((((report.inquiry_sample is2
-             JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building)::text)))
+             JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building_id)::text)))
              JOIN data.building_height bh ON ((bh.building_id = ba.external_id)))
              LEFT JOIN data.building_ownership bo ON ((bo.building_id = ba.external_id)))
              JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
@@ -2941,7 +2941,7 @@ CREATE VIEW maplayer.incident AS
     round((GREATEST(bh.height, (0)::real))::numeric, 2) AS height,
     ba.geom
    FROM ((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building)::text)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN data.building_height bh ON ((bh.building_id = ba.external_id)));
 
 
@@ -2953,7 +2953,7 @@ CREATE VIEW maplayer.incident_district AS
  SELECT d.geom,
     count(d.id) AS incident_count
    FROM (((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building)::text)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
      JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
   GROUP BY d.id, d.geom;
@@ -2967,7 +2967,7 @@ CREATE VIEW maplayer.incident_municipality AS
  SELECT m.geom,
     count(m.id) AS incident_count
    FROM ((((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building)::text)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
      JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
      JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
@@ -2982,7 +2982,7 @@ CREATE VIEW maplayer.incident_neighborhood AS
  SELECT n.geom,
     count(n.id) AS incident_count
    FROM ((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building)::text)))
+     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
   GROUP BY n.id, n.geom;
 
@@ -3060,7 +3060,7 @@ CREATE TABLE report.recovery (
     update_date timestamp with time zone,
     delete_date timestamp with time zone,
     note text,
-    attribution integer NOT NULL,
+    attribution_id integer NOT NULL,
     access_policy application.access_policy DEFAULT 'private'::application.access_policy NOT NULL,
     type report.recovery_document_type DEFAULT 'unknown'::report.recovery_document_type NOT NULL,
     document_date date NOT NULL,
@@ -3550,31 +3550,31 @@ ALTER TABLE ONLY report.recovery_sample
 
 
 --
--- Name: attribution_contractor_idx; Type: INDEX; Schema: application; Owner: -
+-- Name: attribution_contractor_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
-CREATE INDEX attribution_contractor_idx ON application.attribution USING btree (contractor);
-
-
---
--- Name: attribution_creator_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX attribution_creator_idx ON application.attribution USING btree (creator);
+CREATE INDEX attribution_contractor_id_idx ON application.attribution USING btree (contractor_id);
 
 
 --
--- Name: attribution_owner_idx; Type: INDEX; Schema: application; Owner: -
+-- Name: attribution_creator_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
-CREATE INDEX attribution_owner_idx ON application.attribution USING btree (owner);
+CREATE INDEX attribution_creator_id_idx ON application.attribution USING btree (creator_id);
 
 
 --
--- Name: attribution_reviewer_idx; Type: INDEX; Schema: application; Owner: -
+-- Name: attribution_owner_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
-CREATE INDEX attribution_reviewer_idx ON application.attribution USING btree (reviewer);
+CREATE INDEX attribution_owner_id_idx ON application.attribution USING btree (owner_id);
+
+
+--
+-- Name: attribution_reviewer_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX attribution_reviewer_id_idx ON application.attribution USING btree (reviewer_id);
 
 
 --
@@ -4061,10 +4061,10 @@ CREATE INDEX state_name_idx ON geocoder.state USING btree (name);
 
 
 --
--- Name: incident_building_idx; Type: INDEX; Schema: report; Owner: -
+-- Name: incident_building_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
-CREATE INDEX incident_building_idx ON report.incident USING btree (building);
+CREATE INDEX incident_building_id_idx ON report.incident USING btree (building_id);
 
 
 --
@@ -4075,10 +4075,10 @@ CREATE INDEX inquiry_access_policy_idx ON report.inquiry USING btree (access_pol
 
 
 --
--- Name: inquiry_attribution_idx; Type: INDEX; Schema: report; Owner: -
+-- Name: inquiry_attribution_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
-CREATE INDEX inquiry_attribution_idx ON report.inquiry USING btree (attribution);
+CREATE INDEX inquiry_attribution_id_idx ON report.inquiry USING btree (attribution_id);
 
 
 --
@@ -4096,17 +4096,17 @@ CREATE INDEX inquiry_sample_address_idx ON report.inquiry_sample USING btree (ad
 
 
 --
--- Name: inquiry_sample_building_idx; Type: INDEX; Schema: report; Owner: -
+-- Name: inquiry_sample_building_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
-CREATE INDEX inquiry_sample_building_idx ON report.inquiry_sample USING btree (building);
+CREATE INDEX inquiry_sample_building_id_idx ON report.inquiry_sample USING btree (building_id);
 
 
 --
--- Name: inquiry_sample_inquiry_idx; Type: INDEX; Schema: report; Owner: -
+-- Name: inquiry_sample_inquiry_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
-CREATE INDEX inquiry_sample_inquiry_idx ON report.inquiry_sample USING btree (inquiry);
+CREATE INDEX inquiry_sample_inquiry_id_idx ON report.inquiry_sample USING btree (inquiry_id);
 
 
 --
@@ -4124,10 +4124,10 @@ CREATE INDEX recovery_access_policy_idx ON report.recovery USING btree (access_p
 
 
 --
--- Name: recovery_attribution_idx; Type: INDEX; Schema: report; Owner: -
+-- Name: recovery_attribution_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
-CREATE INDEX recovery_attribution_idx ON report.recovery USING btree (attribution);
+CREATE INDEX recovery_attribution_id_idx ON report.recovery USING btree (attribution_id);
 
 
 --
@@ -4138,10 +4138,10 @@ CREATE INDEX recovery_sample_building_id_idx ON report.recovery_sample USING btr
 
 
 --
--- Name: recovery_sample_contractor_idx; Type: INDEX; Schema: report; Owner: -
+-- Name: recovery_sample_contractor_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
-CREATE INDEX recovery_sample_contractor_idx ON report.recovery_sample USING btree (contractor);
+CREATE INDEX recovery_sample_contractor_id_idx ON report.recovery_sample USING btree (contractor_id);
 
 
 --
@@ -4224,35 +4224,35 @@ ALTER TABLE ONLY application.application_user
 
 
 --
--- Name: attribution attribution_contractor_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+-- Name: attribution attribution_contractor_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_contractor_fkey FOREIGN KEY (contractor) REFERENCES application.contractor(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT attribution_contractor_id_fkey FOREIGN KEY (contractor_id) REFERENCES application.contractor(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
--- Name: attribution attribution_creator_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_creator_fkey FOREIGN KEY (creator) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: attribution attribution_owner_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+-- Name: attribution attribution_creator_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_owner_fkey FOREIGN KEY (owner) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT attribution_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
--- Name: attribution attribution_reviewer_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+-- Name: attribution attribution_owner_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_reviewer_fkey FOREIGN KEY (reviewer) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT attribution_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: attribution attribution_reviewer_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.attribution
+    ADD CONSTRAINT attribution_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -4552,43 +4552,43 @@ ALTER TABLE ONLY geocoder.state
 
 
 --
--- Name: incident incident_building_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+-- Name: incident incident_building_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
 ALTER TABLE ONLY report.incident
-    ADD CONSTRAINT incident_building_fkey FOREIGN KEY (building) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT incident_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
--- Name: inquiry inquiry_attribution_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+-- Name: inquiry inquiry_attribution_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
 ALTER TABLE ONLY report.inquiry
-    ADD CONSTRAINT inquiry_attribution_fkey FOREIGN KEY (attribution) REFERENCES application.attribution(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT inquiry_attribution_id_fkey FOREIGN KEY (attribution_id) REFERENCES application.attribution(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
--- Name: inquiry_sample inquiry_sample_building_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
---
-
-ALTER TABLE ONLY report.inquiry_sample
-    ADD CONSTRAINT inquiry_sample_building_fkey FOREIGN KEY (building) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: inquiry_sample inquiry_sample_inquiry_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+-- Name: inquiry_sample inquiry_sample_building_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
 ALTER TABLE ONLY report.inquiry_sample
-    ADD CONSTRAINT inquiry_sample_inquiry_fkey FOREIGN KEY (inquiry) REFERENCES report.inquiry(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT inquiry_sample_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
--- Name: recovery recovery_attribution_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+-- Name: inquiry_sample inquiry_sample_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.inquiry_sample
+    ADD CONSTRAINT inquiry_sample_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES report.inquiry(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: recovery recovery_attribution_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
 ALTER TABLE ONLY report.recovery
-    ADD CONSTRAINT recovery_attribution_fkey FOREIGN KEY (attribution) REFERENCES application.attribution(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT recovery_attribution_id_fkey FOREIGN KEY (attribution_id) REFERENCES application.attribution(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -4600,24 +4600,24 @@ ALTER TABLE ONLY report.recovery_sample
 
 
 --
--- Name: recovery_sample recovery_sample_contractor_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+-- Name: recovery_sample recovery_sample_contractor_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
 ALTER TABLE ONLY report.recovery_sample
-    ADD CONSTRAINT recovery_sample_contractor_fkey FOREIGN KEY (contractor) REFERENCES application.contractor(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT recovery_sample_contractor_id_fkey FOREIGN KEY (contractor_id) REFERENCES application.contractor(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
--- Name: recovery_sample recovery_sample_recovery_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+-- Name: recovery_sample recovery_sample_recovery_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
 ALTER TABLE ONLY report.recovery_sample
-    ADD CONSTRAINT recovery_sample_recovery_fkey FOREIGN KEY (recovery) REFERENCES report.recovery(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT recovery_sample_recovery_id_fkey FOREIGN KEY (recovery_id) REFERENCES report.recovery(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YTBtDnGBdYIORYg0pxJdtdpJlICntMJhbEC2Tz7OWbxqH3KzDrZnMdt6vDUrR2p
+\unrestrict GLx6qfAUl4bz8ISwY8uqyuV60L3GNAxbjpTWKicvuA5JpSe7ZiYVuspG1Emrr5V
 
