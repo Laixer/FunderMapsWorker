@@ -42,7 +42,7 @@ ALTER TABLE data.cluster_recovery_sample RENAME CONSTRAINT cluster_recovery_samp
 -- geocoder schema
 ALTER TABLE geocoder.address RENAME CONSTRAINT address_building_fk TO address_building_id_fkey;
 ALTER TABLE geocoder.building RENAME CONSTRAINT building_neighborhood_id TO building_neighborhood_id_fkey;
-ALTER TABLE geocoder.district RENAME CONSTRAINT district_country_fk TO district_country_id_fkey;
+ALTER TABLE geocoder.district RENAME CONSTRAINT district_country_fk TO district_municipality_id_fkey;
 ALTER TABLE geocoder.neighborhood RENAME CONSTRAINT neighborhood_district_fk TO neighborhood_district_id_fkey;
 ALTER TABLE geocoder.state RENAME CONSTRAINT state_country_fk TO state_country_id_fkey;
 ALTER TABLE geocoder.residence RENAME CONSTRAINT residence_address_fk TO residence_address_id_fkey;
@@ -63,5 +63,16 @@ ALTER TABLE application.auth_refresh_token RENAME CONSTRAINT refresh_token_user_
 
 -- application schema: fix stale table name reference
 ALTER TABLE application.organization_mapset RENAME CONSTRAINT map_organization_organization_id_fkey TO organization_mapset_organization_id_fkey;
+
+-- data schema: add missing _id in column portion of FK name (column is building_id, constraint says building)
+ALTER TABLE data.building_cluster RENAME CONSTRAINT building_cluster_building_fkey TO building_cluster_building_id_fkey;
+ALTER TABLE data.building_elevation RENAME CONSTRAINT building_elevation_building_fkey TO building_elevation_building_id_fkey;
+ALTER TABLE data.building_geographic_region RENAME CONSTRAINT building_geographic_region_building_fkey TO building_geographic_region_building_id_fkey;
+ALTER TABLE data.building_groundwater_level RENAME CONSTRAINT building_groundwater_level_building_fkey TO building_groundwater_level_building_id_fkey;
+ALTER TABLE data.building_ownership RENAME CONSTRAINT building_ownership_building_fkey TO building_ownership_building_id_fkey;
+ALTER TABLE data.building_pleistocene RENAME CONSTRAINT building_pleistocene_building_fkey TO building_pleistocene_building_id_fkey;
+
+-- report schema: same pattern
+ALTER TABLE report.recovery_sample RENAME CONSTRAINT recovery_sample_building_fkey TO recovery_sample_building_id_fkey;
 
 COMMIT;
