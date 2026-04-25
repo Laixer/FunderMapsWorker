@@ -35,8 +35,8 @@ SELECT DISTINCT ON (b.external_id)
     i.document_date,
     i.id
 FROM report.inquiry_sample is2
-JOIN report.inquiry i ON is2.inquiry = i.id
-JOIN geocoder.building b ON b.external_id = is2.building::text
+JOIN report.inquiry i ON is2.inquiry_id = i.id
+JOIN geocoder.building b ON b.external_id = is2.building_id::text
 WHERE i.document_date >= b.built_year::date - interval '5 years'
 ORDER BY b.external_id,
     CASE i.type
@@ -75,8 +75,8 @@ SELECT DISTINCT ON (bc.cluster_id)
     i.id
 FROM data.building_cluster bc
 JOIN geocoder.building b ON b.external_id = bc.building_id
-JOIN report.inquiry_sample is2 ON is2.building::text = b.external_id
-JOIN report.inquiry i ON is2.inquiry = i.id
+JOIN report.inquiry_sample is2 ON is2.building_id::text = b.external_id
+JOIN report.inquiry i ON is2.inquiry_id = i.id
 WHERE i.document_date >= b.built_year::date - interval '5 years'
 ORDER BY bc.cluster_id,
     CASE i.type
@@ -116,8 +116,8 @@ SELECT DISTINCT ON (s.supercluster_id)
 FROM data.supercluster s
 JOIN data.building_cluster bc ON bc.cluster_id = s.cluster_id
 JOIN geocoder.building b ON b.external_id = bc.building_id
-JOIN report.inquiry_sample is2 ON is2.building::text = b.external_id
-JOIN report.inquiry i ON is2.inquiry = i.id
+JOIN report.inquiry_sample is2 ON is2.building_id::text = b.external_id
+JOIN report.inquiry i ON is2.inquiry_id = i.id
 WHERE i.document_date >= b.built_year::date - interval '5 years'
 ORDER BY s.supercluster_id,
     CASE i.type

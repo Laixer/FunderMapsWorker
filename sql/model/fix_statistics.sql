@@ -88,8 +88,8 @@ SELECT
     date_part('year', i.document_date)::integer AS year,
     count(is2.id) AS count
 FROM report.inquiry_sample is2
-JOIN report.inquiry i ON i.id = is2.inquiry
-JOIN geocoder.building_active ba ON ba.external_id = is2.building::text
+JOIN report.inquiry i ON i.id = is2.inquiry_id
+JOIN geocoder.building_active ba ON ba.external_id = is2.building_id::text
 JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
 JOIN geocoder.district d ON d.id = n.district_id
 JOIN geocoder.municipality m ON m.id = d.municipality_id
@@ -205,7 +205,7 @@ FROM (
         is2.facade_scan_risk,
         ba.geom
     FROM report.inquiry_sample is2
-    JOIN geocoder.building_active ba ON ba.external_id = is2.building::text
+    JOIN geocoder.building_active ba ON ba.external_id = is2.building_id::text
     JOIN data.building_height bh ON bh.building_id = ba.external_id
     LEFT JOIN data.building_ownership bo ON bo.building_id = ba.external_id
     JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
@@ -246,8 +246,8 @@ SELECT DISTINCT ON (ba.external_id)
     m.external_id AS municipality_id,
     ba.geom
 FROM report.inquiry_sample is2
-JOIN report.inquiry i ON i.id = is2.inquiry
-JOIN geocoder.building_active ba ON ba.external_id = is2.building::text
+JOIN report.inquiry i ON i.id = is2.inquiry_id
+JOIN geocoder.building_active ba ON ba.external_id = is2.building_id::text
 JOIN data.building_height bh ON bh.building_id = ba.external_id
 JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
 JOIN geocoder.district d ON d.id = n.district_id
