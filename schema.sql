@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict wbKmzr6cohaopIJueghUSqsDXQaiIA91Vk1v4ITUEk9B5IejjtVHz4g6e6Z0cXO
+\restrict S9ncnsUn2mdCD52JfcjeXV5RPdgkMLpodvd2Z8FhBPh1eW9rWSUdTr6BKxVmvFe
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -97,6 +97,13 @@ CREATE DOMAIN application.email AS text
 
 
 --
+-- Name: DOMAIN email; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON DOMAIN application.email IS 'Domain for an email address.';
+
+
+--
 -- Name: job_status; Type: TYPE; Schema: application; Owner: -
 --
 
@@ -114,6 +121,13 @@ CREATE TYPE application.job_status AS ENUM (
 --
 
 CREATE DOMAIN application.organization_id AS uuid DEFAULT gen_random_uuid();
+
+
+--
+-- Name: DOMAIN organization_id; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON DOMAIN application.organization_id IS 'Domain for an organization identifier.';
 
 
 --
@@ -137,6 +151,13 @@ CREATE DOMAIN application.phone AS text
 
 
 --
+-- Name: DOMAIN phone; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON DOMAIN application.phone IS 'Domain for a phone number.';
+
+
+--
 -- Name: role; Type: TYPE; Schema: application; Owner: -
 --
 
@@ -152,6 +173,13 @@ CREATE TYPE application.role AS ENUM (
 --
 
 CREATE DOMAIN application.user_id AS uuid DEFAULT gen_random_uuid();
+
+
+--
+-- Name: DOMAIN user_id; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON DOMAIN application.user_id IS 'Domain for a user identifier.';
 
 
 --
@@ -201,10 +229,24 @@ CREATE FUNCTION geocoder.geocoder_generate_id() RETURNS text
 
 
 --
+-- Name: FUNCTION geocoder_generate_id(); Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder id.';
+
+
+--
 -- Name: geocoder_id; Type: DOMAIN; Schema: geocoder; Owner: -
 --
 
 CREATE DOMAIN geocoder.geocoder_id AS text DEFAULT geocoder.geocoder_generate_id();
+
+
+--
+-- Name: DOMAIN geocoder_id; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON DOMAIN geocoder.geocoder_id IS 'Domain for our internal geocoder identifier.';
 
 
 --
@@ -213,6 +255,13 @@ CREATE DOMAIN geocoder.geocoder_id AS text DEFAULT geocoder.geocoder_generate_id
 
 CREATE DOMAIN geocoder.year AS date DEFAULT CURRENT_TIMESTAMP
 	CONSTRAINT range CHECK (((date_part('Y'::text, VALUE) > (900)::double precision) AND (date_part('Y'::text, VALUE) < (2100)::double precision)));
+
+
+--
+-- Name: DOMAIN year; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON DOMAIN geocoder.year IS 'Domain for a year between 900 and 2100.';
 
 
 --
@@ -272,6 +321,13 @@ CREATE DOMAIN report.crack_size AS integer
 
 
 --
+-- Name: DOMAIN crack_size; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON DOMAIN report.crack_size IS 'Domain for crack size.';
+
+
+--
 -- Name: crack_type; Type: TYPE; Schema: report; Owner: -
 --
 
@@ -289,6 +345,13 @@ CREATE TYPE report.crack_type AS ENUM (
 --
 
 CREATE DOMAIN report.diameter AS numeric(5,2);
+
+
+--
+-- Name: DOMAIN diameter; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON DOMAIN report.diameter IS 'Domain for the diameter of an object.';
 
 
 --
@@ -442,6 +505,13 @@ CREATE DOMAIN report.height AS numeric(5,2);
 
 
 --
+-- Name: DOMAIN height; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON DOMAIN report.height IS 'Domain for the height of an object.';
+
+
+--
 -- Name: incident_question_type; Type: TYPE; Schema: report; Owner: -
 --
 
@@ -485,6 +555,13 @@ CREATE TYPE report.inquiry_type AS ENUM (
 --
 
 CREATE DOMAIN report.length AS numeric(5,2);
+
+
+--
+-- Name: DOMAIN length; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON DOMAIN report.length IS 'Domain for the length of an object.';
 
 
 --
@@ -612,6 +689,13 @@ CREATE TYPE report.wood_type AS ENUM (
 
 CREATE DOMAIN report.year AS date DEFAULT CURRENT_TIMESTAMP
 	CONSTRAINT range CHECK (((date_part('Y'::text, VALUE) > (900)::double precision) AND (date_part('Y'::text, VALUE) < (2100)::double precision)));
+
+
+--
+-- Name: DOMAIN year; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON DOMAIN report.year IS 'Domain for a year between 900 and 2100.';
 
 
 --
@@ -1236,6 +1320,13 @@ $_$;
 
 
 --
+-- Name: FUNCTION fir_generate_id(client_id integer); Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON FUNCTION report.fir_generate_id(client_id integer) IS 'Generate a new FIR identifier.';
+
+
+--
 -- Name: last_record_update(); Type: FUNCTION; Schema: report; Owner: -
 --
 
@@ -1246,6 +1337,13 @@ CREATE FUNCTION report.last_record_update() RETURNS trigger
 	RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION last_record_update(); Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON FUNCTION report.last_record_update() IS 'Trigger function that sets the update date when a record is updated.';
 
 
 SET default_tablespace = '';
@@ -1264,6 +1362,13 @@ CREATE TABLE application.product_tracker_mismatch (
 
 
 --
+-- Name: COLUMN product_tracker_mismatch.create_date; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.product_tracker_mismatch.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
 -- Name: product_tracker; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1273,6 +1378,27 @@ CREATE TABLE application.product_tracker (
     building_id geocoder.geocoder_id NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     identifier text NOT NULL
+);
+
+
+--
+-- Name: account; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.account (
+    id text NOT NULL,
+    user_id uuid NOT NULL,
+    account_id text NOT NULL,
+    provider_id text NOT NULL,
+    access_token text,
+    refresh_token text,
+    access_token_expires_at timestamp without time zone,
+    refresh_token_expires_at timestamp without time zone,
+    scope text,
+    id_token text,
+    password text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1292,6 +1418,13 @@ CREATE TABLE application.application (
 
 
 --
+-- Name: TABLE application; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.application IS 'Contains all applications.';
+
+
+--
 -- Name: application_user; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1301,6 +1434,13 @@ CREATE TABLE application.application_user (
     metadata jsonb,
     update_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+
+--
+-- Name: TABLE application_user; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.application_user IS 'Linking table between application and user.';
 
 
 --
@@ -1315,6 +1455,13 @@ CREATE TABLE application.attribution (
     contractor_id integer NOT NULL,
     CONSTRAINT creator_reviewer_chk CHECK (((creator_id)::uuid <> (reviewer_id)::uuid))
 );
+
+
+--
+-- Name: TABLE attribution; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.attribution IS 'Intermediate object between an uploaded sample or report and the assigned user reviewer or owner. In case of user deletion a reference still exists, only the reference to said user or owner will be set to NULL.';
 
 
 --
@@ -1371,10 +1518,14 @@ CREATE TABLE application.auth_code (
 --
 
 CREATE TABLE application.auth_key (
-    key text DEFAULT concat('fmsk.', application.random_string(32)) NOT NULL,
     user_id uuid NOT NULL,
     name text,
-    last_used timestamp with time zone
+    last_used timestamp with time zone,
+    key_hash text NOT NULL,
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    id uuid DEFAULT gen_random_uuid() NOT NULL
 );
 
 
@@ -1391,6 +1542,13 @@ CREATE TABLE application.auth_logs (
     "timestamp" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     metadata jsonb
 );
+
+
+--
+-- Name: TABLE auth_logs; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.auth_logs IS 'Stores a record of user authentication-related events for security auditing and monitoring.';
 
 
 --
@@ -1454,6 +1612,13 @@ CREATE TABLE application.file_resources (
 
 
 --
+-- Name: TABLE file_resources; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.file_resources IS 'Stores metadata about file resources stored in an S3-compatible object storage.';
+
+
+--
 -- Name: file_resources_orphaned; Type: VIEW; Schema: application; Owner: -
 --
 
@@ -1469,6 +1634,19 @@ CREATE VIEW application.file_resources_orphaned AS
     updated_at
    FROM application.file_resources
   WHERE ((status = ANY (ARRAY['uploaded'::text, 'processing'::text])) AND (updated_at < (now() - '1 day'::interval)));
+
+
+--
+-- Name: jwks; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.jwks (
+    id text NOT NULL,
+    public_key text NOT NULL,
+    private_key text NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    expires_at timestamp without time zone
+);
 
 
 --
@@ -1537,6 +1715,59 @@ CREATE VIEW application.mapset_collection AS
 
 
 --
+-- Name: oauth_access_token; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_access_token (
+    id text NOT NULL,
+    access_token text NOT NULL,
+    refresh_token text NOT NULL,
+    access_token_expires_at timestamp without time zone NOT NULL,
+    refresh_token_expires_at timestamp without time zone NOT NULL,
+    client_id text NOT NULL,
+    user_id uuid,
+    scopes text NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: oauth_application; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_application (
+    id text NOT NULL,
+    name text NOT NULL,
+    icon text,
+    metadata text,
+    client_id text NOT NULL,
+    client_secret text,
+    redirect_urls text NOT NULL,
+    type text NOT NULL,
+    disabled boolean DEFAULT false,
+    user_id uuid,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: oauth_consent; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_consent (
+    id text NOT NULL,
+    client_id text NOT NULL,
+    user_id uuid NOT NULL,
+    scopes text NOT NULL,
+    consent_given boolean NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: organization; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1544,6 +1775,13 @@ CREATE TABLE application.organization (
     id application.organization_id NOT NULL,
     name text NOT NULL
 );
+
+
+--
+-- Name: TABLE organization; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization IS 'Contains all organizations that are using FunderMaps.';
 
 
 --
@@ -1557,6 +1795,13 @@ CREATE TABLE application.organization_geolock_district (
 
 
 --
+-- Name: TABLE organization_geolock_district; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_geolock_district IS 'Linking table between organizations and their geolock objects.';
+
+
+--
 -- Name: organization_geolock_municipality; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1567,6 +1812,13 @@ CREATE TABLE application.organization_geolock_municipality (
 
 
 --
+-- Name: TABLE organization_geolock_municipality; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_geolock_municipality IS 'Linking table between organizations and their geolock objects.';
+
+
+--
 -- Name: organization_geolock_neighborhood; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1574,6 +1826,13 @@ CREATE TABLE application.organization_geolock_neighborhood (
     organization_id application.organization_id NOT NULL,
     neighborhood_id text NOT NULL
 );
+
+
+--
+-- Name: TABLE organization_geolock_neighborhood; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_geolock_neighborhood IS 'Linking table between organizations and their geolock objects.';
 
 
 --
@@ -1599,6 +1858,13 @@ CREATE TABLE application.organization_user (
 
 
 --
+-- Name: TABLE organization_user; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_user IS 'Linking table between organizations and their users.';
+
+
+--
 -- Name: portal; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1620,6 +1886,29 @@ CREATE TABLE application.reset_key (
 
 
 --
+-- Name: COLUMN reset_key.create_date; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.reset_key.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
+-- Name: session; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.session (
+    id text NOT NULL,
+    user_id uuid NOT NULL,
+    token text NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    ip_address text,
+    user_agent text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1634,7 +1923,32 @@ CREATE TABLE application."user" (
     phone_number application.phone,
     access_failed_count integer DEFAULT 0 NOT NULL,
     role application.role DEFAULT 'user'::application.role NOT NULL,
-    last_login timestamp with time zone
+    last_login timestamp with time zone,
+    name text,
+    email_verified boolean DEFAULT false NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE "user"; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application."user" IS 'Contains all FunderMaps users.';
+
+
+--
+-- Name: verification; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.verification (
+    id text NOT NULL,
+    identifier text NOT NULL,
+    value text NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1771,6 +2085,13 @@ CREATE TABLE geocoder.building (
 
 
 --
+-- Name: TABLE building; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.building IS 'Contains all buildings in our own format.';
+
+
+--
 -- Name: inquiry; Type: TABLE; Schema: report; Owner: -
 --
 
@@ -1792,6 +2113,41 @@ CREATE TABLE report.inquiry (
     standard_f3o boolean DEFAULT false NOT NULL,
     audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL
 );
+
+
+--
+-- Name: TABLE inquiry; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON TABLE report.inquiry IS 'Contains inquiries.';
+
+
+--
+-- Name: COLUMN inquiry.document_name; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry.document_name IS 'User provided document name';
+
+
+--
+-- Name: COLUMN inquiry.create_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
+-- Name: COLUMN inquiry.update_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry.update_date IS 'Timestamp of last record update, automatically updated on record modification';
+
+
+--
+-- Name: COLUMN inquiry.delete_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry.delete_date IS 'Timestamp of soft delete';
 
 
 --
@@ -1869,6 +2225,34 @@ CREATE TABLE report.inquiry_sample (
     facade_scan_risk report.facade_scan_risk,
     metadata jsonb
 );
+
+
+--
+-- Name: TABLE inquiry_sample; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON TABLE report.inquiry_sample IS 'Contains sample data for inquiries.';
+
+
+--
+-- Name: COLUMN inquiry_sample.create_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry_sample.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
+-- Name: COLUMN inquiry_sample.update_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry_sample.update_date IS 'Timestamp of last record update, automatically updated on record modification';
+
+
+--
+-- Name: COLUMN inquiry_sample.delete_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry_sample.delete_date IS 'Timestamp of soft delete';
 
 
 --
@@ -2043,6 +2427,34 @@ CREATE TABLE report.recovery_sample (
 
 
 --
+-- Name: TABLE recovery_sample; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON TABLE report.recovery_sample IS 'Contains sample data for recovery operations.';
+
+
+--
+-- Name: COLUMN recovery_sample.create_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery_sample.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
+-- Name: COLUMN recovery_sample.update_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery_sample.update_date IS 'Timestamp of last record update, automatically updated on record modification';
+
+
+--
+-- Name: COLUMN recovery_sample.delete_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery_sample.delete_date IS 'Timestamp of soft delete';
+
+
+--
 -- Name: model_risk_dynamic_all; Type: VIEW; Schema: data; Owner: -
 --
 
@@ -2189,6 +2601,13 @@ CREATE VIEW geocoder.building_active AS
 
 
 --
+-- Name: VIEW building_active; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON VIEW geocoder.building_active IS 'Contains all entries from geocoder.building which have their status set to active.';
+
+
+--
 -- Name: district; Type: TABLE; Schema: geocoder; Owner: -
 --
 
@@ -2200,6 +2619,13 @@ CREATE TABLE geocoder.district (
     water boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL
 );
+
+
+--
+-- Name: TABLE district; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.district IS 'Contains all districts in our own format.';
 
 
 --
@@ -2217,6 +2643,13 @@ CREATE TABLE geocoder.municipality (
 
 
 --
+-- Name: TABLE municipality; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.municipality IS 'Contains all municipalities in our own format.';
+
+
+--
 -- Name: neighborhood; Type: TABLE; Schema: geocoder; Owner: -
 --
 
@@ -2228,6 +2661,13 @@ CREATE TABLE geocoder.neighborhood (
     water boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL
 );
+
+
+--
+-- Name: TABLE neighborhood; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.neighborhood IS 'Contains all neighborhoods in our own format.';
 
 
 --
@@ -2289,6 +2729,13 @@ CREATE VIEW data.building_height AS
 
 
 --
+-- Name: VIEW building_height; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON VIEW data.building_height IS 'Absolute building height';
+
+
+--
 -- Name: building_subsidence_history; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -2312,6 +2759,13 @@ CREATE TABLE geocoder.address (
     city text NOT NULL,
     building_id geocoder.geocoder_id
 );
+
+
+--
+-- Name: TABLE address; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, including a tsvector column to enable full text search.';
 
 
 --
@@ -2483,6 +2937,41 @@ CREATE TABLE report.incident (
 
 
 --
+-- Name: TABLE incident; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON TABLE report.incident IS 'Contains reported incidents.';
+
+
+--
+-- Name: COLUMN incident.contact; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.incident.contact IS 'Link to the contact';
+
+
+--
+-- Name: COLUMN incident.create_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.incident.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
+-- Name: COLUMN incident.update_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.incident.update_date IS 'Timestamp of last record update, automatically updated on record modification';
+
+
+--
+-- Name: COLUMN incident.delete_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.incident.delete_date IS 'Timestamp of soft delete';
+
+
+--
 -- Name: statistics_product_incident_municipality; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -2561,6 +3050,13 @@ CREATE TABLE geocoder.residence (
 
 
 --
+-- Name: TABLE residence; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.residence IS 'Link between building and address';
+
+
+--
 -- Name: state; Type: TABLE; Schema: geocoder; Owner: -
 --
 
@@ -2572,6 +3068,13 @@ CREATE TABLE geocoder.state (
     water boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL
 );
+
+
+--
+-- Name: TABLE state; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.state IS 'Contains all states in our own format.';
 
 
 --
@@ -2612,6 +3115,13 @@ CREATE TABLE geocoder.country (
     name text NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL
 );
+
+
+--
+-- Name: TABLE country; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.country IS 'Contains all countries in our own format.';
 
 
 --
@@ -3070,6 +3580,41 @@ CREATE TABLE report.recovery (
 
 
 --
+-- Name: TABLE recovery; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON TABLE report.recovery IS 'Contains recovery operations.';
+
+
+--
+-- Name: COLUMN recovery.create_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery.create_date IS 'Timestamp of record creation, set by insert';
+
+
+--
+-- Name: COLUMN recovery.update_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery.update_date IS 'Timestamp of last record update, automatically updated on record modification';
+
+
+--
+-- Name: COLUMN recovery.delete_date; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery.delete_date IS 'Timestamp of soft delete';
+
+
+--
+-- Name: COLUMN recovery.document_name; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery.document_name IS 'User provided document name';
+
+
+--
 -- Name: recovery_id_seq; Type: SEQUENCE; Schema: report; Owner: -
 --
 
@@ -3157,6 +3702,14 @@ ALTER TABLE ONLY report.recovery_sample ALTER COLUMN id SET DEFAULT nextval('rep
 
 
 --
+-- Name: account account_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.account
+    ADD CONSTRAINT account_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: application application_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -3201,7 +3754,7 @@ ALTER TABLE ONLY application.auth_code
 --
 
 ALTER TABLE ONLY application.auth_key
-    ADD CONSTRAINT auth_key_pkey PRIMARY KEY (key);
+    ADD CONSTRAINT auth_key_pkey PRIMARY KEY (id);
 
 
 --
@@ -3237,6 +3790,14 @@ ALTER TABLE ONLY application.file_resources
 
 
 --
+-- Name: jwks jwks_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.jwks
+    ADD CONSTRAINT jwks_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: key_store key_store_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -3258,6 +3819,54 @@ ALTER TABLE ONLY application.mapset_layer
 
 ALTER TABLE ONLY application.mapset
     ADD CONSTRAINT mapset_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_access_token oauth_access_token_access_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_access_token_key UNIQUE (access_token);
+
+
+--
+-- Name: oauth_access_token oauth_access_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_access_token oauth_access_token_refresh_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_refresh_token_key UNIQUE (refresh_token);
+
+
+--
+-- Name: oauth_application oauth_application_client_id_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_application
+    ADD CONSTRAINT oauth_application_client_id_key UNIQUE (client_id);
+
+
+--
+-- Name: oauth_application oauth_application_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_application
+    ADD CONSTRAINT oauth_application_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_consent oauth_consent_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_consent
+    ADD CONSTRAINT oauth_consent_pkey PRIMARY KEY (id);
 
 
 --
@@ -3325,11 +3934,35 @@ ALTER TABLE ONLY application.reset_key
 
 
 --
+-- Name: session session_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.session
+    ADD CONSTRAINT session_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: session session_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.session
+    ADD CONSTRAINT session_token_key UNIQUE (token);
+
+
+--
 -- Name: user user_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application."user"
     ADD CONSTRAINT user_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: verification verification_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.verification
+    ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
 
 
 --
@@ -3626,6 +4259,20 @@ CREATE INDEX auth_code_user_id_idx ON application.auth_code USING btree (user_id
 
 
 --
+-- Name: auth_key_expires_at_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX auth_key_expires_at_idx ON application.auth_key USING btree (expires_at) WHERE (expires_at IS NOT NULL);
+
+
+--
+-- Name: auth_key_key_hash_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE UNIQUE INDEX auth_key_key_hash_idx ON application.auth_key USING btree (key_hash);
+
+
+--
 -- Name: auth_key_user_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -3679,6 +4326,62 @@ CREATE INDEX file_resources_key_idx ON application.file_resources USING btree (k
 --
 
 CREATE INDEX file_resources_status_idx ON application.file_resources USING btree (status);
+
+
+--
+-- Name: idx_account_user_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_account_user_id ON application.account USING btree (user_id);
+
+
+--
+-- Name: idx_oauth_access_token_client_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_access_token_client_id ON application.oauth_access_token USING btree (client_id);
+
+
+--
+-- Name: idx_oauth_access_token_user_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_access_token_user_id ON application.oauth_access_token USING btree (user_id);
+
+
+--
+-- Name: idx_oauth_application_user_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_application_user_id ON application.oauth_application USING btree (user_id);
+
+
+--
+-- Name: idx_oauth_consent_client_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_consent_client_id ON application.oauth_consent USING btree (client_id);
+
+
+--
+-- Name: idx_oauth_consent_user_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_consent_user_id ON application.oauth_consent USING btree (user_id);
+
+
+--
+-- Name: idx_session_token; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_session_token ON application.session USING btree (token);
+
+
+--
+-- Name: idx_session_user_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_session_user_id ON application.session USING btree (user_id);
 
 
 --
@@ -4277,6 +4980,14 @@ CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery_sample FOR EA
 
 
 --
+-- Name: account account_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.account
+    ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: application_user application_user_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -4389,6 +5100,46 @@ ALTER TABLE ONLY application.auth_refresh_token
 
 
 --
+-- Name: oauth_access_token oauth_access_token_client_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_client_id_fkey FOREIGN KEY (client_id) REFERENCES application.oauth_application(client_id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_access_token oauth_access_token_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_application oauth_application_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_application
+    ADD CONSTRAINT oauth_application_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_consent oauth_consent_client_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_consent
+    ADD CONSTRAINT oauth_consent_client_id_fkey FOREIGN KEY (client_id) REFERENCES application.oauth_application(client_id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_consent oauth_consent_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_consent
+    ADD CONSTRAINT oauth_consent_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: organization_geolock_district organization_geolock_district_district_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -4498,6 +5249,14 @@ ALTER TABLE ONLY application.product_tracker
 
 ALTER TABLE ONLY application.reset_key
     ADD CONSTRAINT reset_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: session session_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.session
+    ADD CONSTRAINT session_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -4688,5 +5447,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict wbKmzr6cohaopIJueghUSqsDXQaiIA91Vk1v4ITUEk9B5IejjtVHz4g6e6Z0cXO
+\unrestrict S9ncnsUn2mdCD52JfcjeXV5RPdgkMLpodvd2Z8FhBPh1eW9rWSUdTr6BKxVmvFe
 
