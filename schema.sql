@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict S9ncnsUn2mdCD52JfcjeXV5RPdgkMLpodvd2Z8FhBPh1eW9rWSUdTr6BKxVmvFe
+\restrict q5E4te4PFW1ODcSQrxAzWd0iozRWglFBZGS3BR1QREy3WUb8JaLj533CG1NvpAE
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1412,7 +1412,7 @@ CREATE TABLE application.application (
     data jsonb,
     secret text DEFAULT concat('app-sk-', application.random_string(32)) NOT NULL,
     redirect_url text,
-    public text DEFAULT false,
+    public boolean DEFAULT false NOT NULL,
     user_id application.user_id
 );
 
@@ -5447,5 +5447,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict S9ncnsUn2mdCD52JfcjeXV5RPdgkMLpodvd2Z8FhBPh1eW9rWSUdTr6BKxVmvFe
+\unrestrict q5E4te4PFW1ODcSQrxAzWd0iozRWglFBZGS3BR1QREy3WUb8JaLj533CG1NvpAE
 
