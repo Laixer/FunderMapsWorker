@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict q5E4te4PFW1ODcSQrxAzWd0iozRWglFBZGS3BR1QREy3WUb8JaLj533CG1NvpAE
+\restrict WI6duIzsVumk2SlsPQT11fjpZOBwAKuovVW2d57IagXzlDQYm3coEMZ1JFSFsMX
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -706,39 +706,41 @@ CREATE PROCEDURE application.cleanup_auth_data()
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    -- Log the start of the cleanup process (optional but helpful for debugging)
     RAISE NOTICE 'Starting authentication data cleanup';
 
-    -- Delete expired access tokens
-    -- Removes tokens whose expiration timestamp is in the past.
-    RAISE NOTICE 'Deleting expired access tokens...';
+    -- Legacy C# WebApi tables --------------------------------------------------
+
     DELETE FROM application.auth_access_token
     WHERE expired_at < NOW();
-    RAISE NOTICE 'Deleted % expired access tokens.', FOUND::TEXT; -- FOUND is a special variable in PL/pgSQL
+    RAISE NOTICE 'Deleted % expired access tokens (legacy).', FOUND::TEXT;
 
-    -- Delete expired authorization codes
-    -- Removes auth codes (often used in OAuth flows) that have expired.
-    RAISE NOTICE 'Deleting expired authorization codes...';
     DELETE FROM application.auth_code
     WHERE expired_at < NOW();
-    RAISE NOTICE 'Deleted % expired auth codes.', FOUND::TEXT;
+    RAISE NOTICE 'Deleted % expired auth codes (legacy).', FOUND::TEXT;
 
-    -- Delete expired refresh tokens
-    -- Removes refresh tokens that are no longer valid.
-    RAISE NOTICE 'Deleting expired refresh tokens...';
     DELETE FROM application.auth_refresh_token
     WHERE expired_at < NOW();
-    RAISE NOTICE 'Deleted % expired refresh tokens.', FOUND::TEXT;
+    RAISE NOTICE 'Deleted % expired refresh tokens (legacy).', FOUND::TEXT;
 
-    -- Delete old password reset keys
-    -- Removes reset keys older than 1 hour to limit their validity window.
-    -- Using INTERVAL '1 hour' is standard SQL for specifying a time duration.
-    RAISE NOTICE 'Deleting old password reset keys (older than 1 hour)...';
     DELETE FROM application.reset_key
     WHERE create_date < (NOW() - INTERVAL '1 hour');
-    RAISE NOTICE 'Deleted % old reset keys.', FOUND::TEXT;
+    RAISE NOTICE 'Deleted % old reset keys (legacy).', FOUND::TEXT;
 
-    -- Log the completion of the cleanup process
+    -- Better Auth tables -------------------------------------------------------
+
+    DELETE FROM application.session
+    WHERE expires_at < NOW();
+    RAISE NOTICE 'Deleted % expired Better Auth sessions.', FOUND::TEXT;
+
+    DELETE FROM application.verification
+    WHERE expires_at < NOW();
+    RAISE NOTICE 'Deleted % expired Better Auth verifications.', FOUND::TEXT;
+
+    DELETE FROM application.oauth_access_token
+    WHERE access_token_expires_at < NOW()
+      AND refresh_token_expires_at < NOW();
+    RAISE NOTICE 'Deleted % fully-expired OAuth access tokens.', FOUND::TEXT;
+
     RAISE NOTICE 'Authentication data cleanup finished';
 END;
 $$;
@@ -2270,6 +2272,7 @@ CREATE MATERIALIZED VIEW data.building_sample AS
     is2.groundwater_level_temp AS groundwater_level,
     is2.wood_level,
     is2.foundation_depth,
+    is2.facade_scan_risk,
     i.type AS inquiry_type,
     i.document_date,
     i.id
@@ -2483,15 +2486,17 @@ CREATE VIEW data.model_risk_dynamic_all AS
             WHEN data.is_wood_pile(foundation_type.ft) THEN (gwl.level - (1.5)::double precision)
             ELSE NULL::double precision
         END AS drystand,
-    COALESCE(data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_drystand_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS drystand_risk,
+    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_drystand_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS drystand_risk,
         CASE
+            WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
             WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
             WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
             WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
             ELSE 'indicative'::data.reliability
         END AS drystand_risk_reliability,
-    COALESCE(data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_bio_risk(foundation_type.ft, pile_length.pile_length, bs.velocity, (recovery.type IS NOT NULL))) AS bio_infection_risk,
+    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_bio_risk(foundation_type.ft, pile_length.pile_length, bs.velocity, (recovery.type IS NOT NULL))) AS bio_infection_risk,
         CASE
+            WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
             WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
             WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
             WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
@@ -2504,8 +2509,9 @@ CREATE VIEW data.model_risk_dynamic_all AS
             WHEN data.is_no_pile_family(foundation_type.ft) THEN (gwl.level - (0.6)::double precision)
             ELSE NULL::double precision
         END AS dewatering_depth,
-    COALESCE(data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_dewatering_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS dewatering_depth_risk,
+    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_dewatering_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS dewatering_depth_risk,
         CASE
+            WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
             WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
             WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
             WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
@@ -5447,5 +5453,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict q5E4te4PFW1ODcSQrxAzWd0iozRWglFBZGS3BR1QREy3WUb8JaLj533CG1NvpAE
+\unrestrict WI6duIzsVumk2SlsPQT11fjpZOBwAKuovVW2d57IagXzlDQYm3coEMZ1JFSFsMX
 
