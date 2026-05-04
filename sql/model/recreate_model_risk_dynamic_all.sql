@@ -56,7 +56,12 @@ SELECT
     END AS drystand,
 
     -- Drystand risk (established > cluster > supercluster > indicative)
+    -- Issue #979: established.facade_scan_risk is a report-provided, building-
+    -- level override. When non-null it wins regardless of inquiry_type and
+    -- forces reliability to 'established'. Does NOT propagate via cluster /
+    -- supercluster — those joins never expose facade_scan_risk.
     COALESCE(
+        established.facade_scan_risk::text::data.foundation_risk_indication,
         data.compute_damage_risk(
             recovery.type IS NOT NULL,
             established.damage_cause,
@@ -80,6 +85,7 @@ SELECT
         )
     ) AS drystand_risk,
     CASE
+        WHEN established.facade_scan_risk IS NOT NULL THEN 'established'::data.reliability
         WHEN established.id IS NOT NULL THEN 'established'::data.reliability
         WHEN cluster.id IS NOT NULL THEN 'cluster'::data.reliability
         WHEN supercluster.id IS NOT NULL THEN 'supercluster'::data.reliability
@@ -87,7 +93,9 @@ SELECT
     END AS drystand_risk_reliability,
 
     -- Bio infection risk (established > cluster > supercluster > indicative)
+    -- Issue #979: facade_scan_risk override (see drystand_risk note above).
     COALESCE(
+        established.facade_scan_risk::text::data.foundation_risk_indication,
         data.compute_damage_risk(
             recovery.type IS NOT NULL,
             established.damage_cause,
@@ -111,6 +119,7 @@ SELECT
         )
     ) AS bio_infection_risk,
     CASE
+        WHEN established.facade_scan_risk IS NOT NULL THEN 'established'::data.reliability
         WHEN established.id IS NOT NULL THEN 'established'::data.reliability
         WHEN cluster.id IS NOT NULL THEN 'cluster'::data.reliability
         WHEN supercluster.id IS NOT NULL THEN 'supercluster'::data.reliability
@@ -133,7 +142,9 @@ SELECT
     END AS dewatering_depth,
 
     -- Dewatering depth risk (established > cluster > supercluster > indicative)
+    -- Issue #979: facade_scan_risk override (see drystand_risk note above).
     COALESCE(
+        established.facade_scan_risk::text::data.foundation_risk_indication,
         data.compute_damage_risk(
             recovery.type IS NOT NULL,
             established.damage_cause,
@@ -157,6 +168,7 @@ SELECT
         )
     ) AS dewatering_depth_risk,
     CASE
+        WHEN established.facade_scan_risk IS NOT NULL THEN 'established'::data.reliability
         WHEN established.id IS NOT NULL THEN 'established'::data.reliability
         WHEN cluster.id IS NOT NULL THEN 'cluster'::data.reliability
         WHEN supercluster.id IS NOT NULL THEN 'supercluster'::data.reliability
