@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WI6duIzsVumk2SlsPQT11fjpZOBwAKuovVW2d57IagXzlDQYm3coEMZ1JFSFsMX
+\restrict H4Q2hixzOPxjl83oNbJxPMf3cgeZN99OErBuL7WPfmibxNa2YnHwsmdJMtAcy7w
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -2262,37 +2262,61 @@ COMMENT ON COLUMN report.inquiry_sample.delete_date IS 'Timestamp of soft delete
 --
 
 CREATE MATERIALIZED VIEW data.building_sample AS
- SELECT DISTINCT ON (b.external_id) b.external_id AS building_id,
-    is2.foundation_type,
-    is2.enforcement_term,
-    is2.damage_cause,
-    is2.overall_quality,
-    is2.recovery_advised,
-    (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
-    is2.groundwater_level_temp AS groundwater_level,
-    is2.wood_level,
-    is2.foundation_depth,
-    is2.facade_scan_risk,
-    i.type AS inquiry_type,
-    i.document_date,
-    i.id
-   FROM ((report.inquiry_sample is2
-     JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
-     JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
-  WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
-  ORDER BY b.external_id,
-        CASE i.type
-            WHEN 'foundation_research'::report.inquiry_type THEN 0
-            WHEN 'inspectionpit'::report.inquiry_type THEN 1
-            WHEN 'second_opinion'::report.inquiry_type THEN 2
-            WHEN 'note'::report.inquiry_type THEN 3
-            WHEN 'additional_research'::report.inquiry_type THEN 4
-            WHEN 'demolition_research'::report.inquiry_type THEN 5
-            WHEN 'architectural_research'::report.inquiry_type THEN 6
-            WHEN 'archive_research'::report.inquiry_type THEN 7
-            WHEN 'quickscan'::report.inquiry_type THEN 8
-            ELSE 100
-        END, i.document_date DESC
+ WITH ranked AS (
+         SELECT DISTINCT ON (b.external_id) b.external_id AS building_id,
+            is2.foundation_type,
+            is2.enforcement_term,
+            is2.damage_cause,
+            is2.overall_quality,
+            is2.recovery_advised,
+            (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
+            is2.groundwater_level_temp AS groundwater_level,
+            is2.wood_level,
+            is2.foundation_depth,
+            i.type AS inquiry_type,
+            i.document_date,
+            i.id
+           FROM ((report.inquiry_sample is2
+             JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
+             JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
+          WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
+          ORDER BY b.external_id,
+                CASE i.type
+                    WHEN 'foundation_research'::report.inquiry_type THEN 0
+                    WHEN 'inspectionpit'::report.inquiry_type THEN 1
+                    WHEN 'second_opinion'::report.inquiry_type THEN 2
+                    WHEN 'note'::report.inquiry_type THEN 3
+                    WHEN 'additional_research'::report.inquiry_type THEN 4
+                    WHEN 'demolition_research'::report.inquiry_type THEN 5
+                    WHEN 'architectural_research'::report.inquiry_type THEN 6
+                    WHEN 'archive_research'::report.inquiry_type THEN 7
+                    WHEN 'quickscan'::report.inquiry_type THEN 8
+                    ELSE 100
+                END, i.document_date DESC
+        ), facade AS (
+         SELECT DISTINCT ON ((is2.building_id)::text) (is2.building_id)::text AS building_id,
+            is2.facade_scan_risk
+           FROM (report.inquiry_sample is2
+             JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
+          WHERE (is2.facade_scan_risk IS NOT NULL)
+          ORDER BY (is2.building_id)::text, i.document_date DESC
+        )
+ SELECT r.building_id,
+    r.foundation_type,
+    r.enforcement_term,
+    r.damage_cause,
+    r.overall_quality,
+    r.recovery_advised,
+    r.built_year,
+    r.groundwater_level,
+    r.wood_level,
+    r.foundation_depth,
+    f.facade_scan_risk,
+    r.inquiry_type,
+    r.document_date,
+    r.id
+   FROM (ranked r
+     LEFT JOIN facade f ON ((f.building_id = r.building_id)))
   WITH NO DATA;
 
 
@@ -5453,5 +5477,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WI6duIzsVumk2SlsPQT11fjpZOBwAKuovVW2d57IagXzlDQYm3coEMZ1JFSFsMX
+\unrestrict H4Q2hixzOPxjl83oNbJxPMf3cgeZN99OErBuL7WPfmibxNa2YnHwsmdJMtAcy7w
 
