@@ -46,7 +46,28 @@ What it does NOT do:
 - Set up pg_cron jobs. Trigger refreshes manually (Step 3).
 - Load any data — that's `seed.sql.gz`.
 
-## Step 2 — Seed data
+## Step 2 — Generate the seed
+
+`sql/seed.sql.gz` is **not committed** — at Rotterdam scope it's ~170 MB,
+above GitHub's 100 MB hard limit. Generate it once on a host with prod
+read access (your workstation or the VM itself if it can reach prod):
+
+```bash
+DATABASE_URL=postgres://READONLY_USER:PW@PROD_HOST:PORT/fundermaps \
+  bun scripts/build_seed.ts
+```
+
+The script is read-only on the source — only `SELECT` and
+`COPY … TO STDOUT`. Bulk dumps run via `psql` (faster and more reliable
+than postgres.js streaming for this volume).
+
+If you generated it on a workstation, `scp` the result to the VM:
+
+```bash
+scp sql/seed.sql.gz vm:~/FunderMapsWorker/sql/seed.sql.gz
+```
+
+## Step 3 — Load the seed
 
 ```bash
 gunzip -c sql/seed.sql.gz | psql "$DATABASE_URL"
@@ -88,27 +109,14 @@ The admin row's `password_hash` is `NULL` — login by password requires
 running a Better Auth password-set/reset flow once on first login. API
 access via the API key works immediately.
 
-## Step 3 — (Re)generating the seed
+## Optional knobs for `build_seed.ts`
 
-`sql/seed.sql.gz` is committed. Regenerate when prod data has shifted
-(after a BAG reload, or to switch municipality):
-
-```bash
-DATABASE_URL=postgres://READONLY_USER:PW@PROD_HOST:PORT/fundermaps \
-  bun scripts/build_seed.ts
-```
-
-Optional env:
-
-- `MUNICIPALITY=0518` to switch (0518 = Den Haag, 0599 = Rotterdam,
-  0344 = Utrecht; codes are CBS gemeente IDs and stored as
-  `geocoder.municipality.external_id`).
+- `MUNICIPALITY=GM0518` to switch (GM0518 = Den Haag, GM0599 = Rotterdam,
+  GM0344 = Utrecht; the `GM`-prefixed CBS gemeente IDs are stored verbatim
+  as `geocoder.municipality.external_id`).
 - `OUTPUT=/tmp/seed.sql.gz` to write elsewhere.
 - `SYNTHETIC_INQUIRIES=200` to change inquiry count.
 - `SEED=42` to vary the synthetic random seed.
-
-The script is read-only on the source — it only issues `SELECT` and
-`COPY … TO STDOUT`. Run it from a workstation, not on prod.
 
 ## Notes / known limits
 

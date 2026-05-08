@@ -28,7 +28,7 @@
  *     bun scripts/build_seed.ts
  *
  * Optional env:
- *   MUNICIPALITY        external_id of target (default '0599' = Rotterdam)
+ *   MUNICIPALITY        external_id of target (default 'GM0599' = Rotterdam)
  *   OUTPUT              output path (default 'sql/seed.sql.gz')
  *   SYNTHETIC_INQUIRIES count of synthetic inquiries (default 100)
  *   SEED                PRNG seed for synthetic data (default 1)
@@ -47,7 +47,7 @@ if (!SRC_URL) {
   process.exit(1);
 }
 
-const MUNICIPALITY = process.env.MUNICIPALITY ?? "0599";
+const MUNICIPALITY = process.env.MUNICIPALITY ?? "GM0599";
 const OUTPUT = process.env.OUTPUT ?? "sql/seed.sql.gz";
 const SYNTHETIC_INQUIRIES = Number(process.env.SYNTHETIC_INQUIRIES ?? "100");
 const SEED = Number(process.env.SEED ?? "1");
@@ -93,12 +93,23 @@ async function flush() {
 }
 
 // --- COPY helpers -----------------------------------------------------------
-/** Stream COPY (...) TO STDOUT from prod, wrap as a COPY ... FROM stdin block. */
+/** Stream COPY (...) TO STDOUT from prod (via psql, more reliable than
+ *  postgres.js .readable() which hangs on multi-table sequences) and wrap it
+ *  as a COPY ... FROM stdin block in the seed file. */
 async function dumpCopy(targetTable: string, srcQuery: string) {
   await write(`COPY ${targetTable} FROM stdin;\n`);
-  const reader = await sql.unsafe(`COPY (${srcQuery}) TO STDOUT`).readable();
-  for await (const chunk of reader) {
+  const proc = Bun.spawn(
+    ["psql", SRC_URL!, "-X", "-q", "-v", "ON_ERROR_STOP=1",
+     "-c", `\\copy (${srcQuery}) TO STDOUT`],
+    { stdout: "pipe", stderr: "pipe", stdin: "ignore" }
+  );
+  for await (const chunk of proc.stdout as unknown as AsyncIterable<Uint8Array>) {
     await write(chunk);
+  }
+  const exit = await proc.exited;
+  if (exit !== 0) {
+    const err = await new Response(proc.stderr).text();
+    throw new Error(`psql COPY failed for ${targetTable}: ${err.trim()}`);
   }
   await write("\\.\n\n");
 }
