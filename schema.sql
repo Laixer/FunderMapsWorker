@@ -3376,6 +3376,33 @@ CREATE TABLE maplayer.bundle (
 
 
 --
+-- Name: model_gevelscan; Type: TABLE; Schema: public; Owner: -
+--
+-- TODO: relocate to a FunderMaps schema (likely 'data') and update the
+-- maplayer.facade_scan view. Lives in 'public' for historical reasons.
+
+CREATE TABLE public.model_gevelscan (
+    skewed_parallel report.rotation_type,
+    facade_type report.crack_type,
+    skewed_perpendicular report.rotation_type,
+    risk data.foundation_risk_indication
+);
+
+
+--
+-- Name: risk_table_priority; Type: TABLE; Schema: public; Owner: -
+--
+-- TODO: relocate to a FunderMaps schema (likely 'data') and update the
+-- maplayer.facade_scan view. Lives in 'public' for historical reasons.
+
+CREATE TABLE public.risk_table_priority (
+    risk data.foundation_risk_indication,
+    settlement_speed report.rotation_type,
+    priority character varying(50)
+);
+
+
+--
 -- Name: facade_scan; Type: VIEW; Schema: maplayer; Owner: -
 --
 
