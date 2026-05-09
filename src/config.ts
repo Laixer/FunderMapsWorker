@@ -18,6 +18,9 @@ const envSchema = z.object({
   // PDF.co
   FUNDERMAPS_PDF_API_KEY: z.string().optional(),
 
+  // Gotenberg (experimental — not wired into generate-pdf yet).
+  FUNDERMAPS_GOTENBERG_URL: z.string().optional(),
+
   // Mailgun
   FUNDERMAPS_MAIL_API_KEY: z.string().optional(),
   FUNDERMAPS_MAIL_DOMAIN: z.string().default("fundermaps.com"),
