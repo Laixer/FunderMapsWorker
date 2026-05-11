@@ -36,7 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCHEMA_FILE="${REPO_ROOT}/schema.sql"
 GRANTS_FILE="${REPO_ROOT}/sql/init/grants.sql"
-PUBLIC_MODEL_DATA="${REPO_ROOT}/sql/init/public_model_data.sql"
+MODEL_LOOKUP_SEED="${REPO_ROOT}/sql/init/data_model_lookup_seed.sql"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
     echo "error: DATABASE_URL is not set" >&2
@@ -126,13 +126,12 @@ sed -e '/^\\restrict /d' -e '/^\\unrestrict /d' "${SCHEMA_FILE}" \
     | PGOPTIONS='--client-min-messages=warning' \
         psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -X -q
 
-# --- Step 4: public-schema lookup data --------------------------------------
-# public.model_gevelscan and public.risk_table_priority are static lookup
-# tables that drive maplayer.facade_scan. They live in 'public' for
-# historical reasons (TODO to relocate). Their structure is in schema.sql,
-# their data lives here.
-echo "==> Loading public model lookup data"
-psql_exec -f "${PUBLIC_MODEL_DATA}"
+# --- Step 4: model lookup data ----------------------------------------------
+# data.model_gevelscan and data.risk_table_priority are static lookup tables
+# that drive maplayer.facade_scan. Their structure is in schema.sql, their
+# data lives here. Relocated from public to data schema 2026-05-11.
+echo "==> Loading model lookup data"
+psql_exec -f "${MODEL_LOOKUP_SEED}"
 
 # --- Step 5: grants ---------------------------------------------------------
 echo "==> Applying grants"

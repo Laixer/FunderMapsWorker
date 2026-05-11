@@ -220,11 +220,11 @@ FROM (
     -- BUG FIX: Added ORDER BY for deterministic DISTINCT ON
     ORDER BY ba.external_id, is2.create_date DESC
 ) inputz
-JOIN public.model_gevelscan mg
+JOIN data.model_gevelscan mg
     ON mg.skewed_parallel = inputz.skewed_parallel_facade
    AND mg.skewed_perpendicular = inputz.skewed_perpendicular_facade
    AND mg.facade_type = inputz.facade_type
-LEFT JOIN public.risk_table_priority rtp
+LEFT JOIN data.risk_table_priority rtp
     ON rtp.risk = mg.risk
    AND rtp.settlement_speed = inputz.settlement_speed;
 
