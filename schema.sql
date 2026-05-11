@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict cgLg5cAHnESSgUTk0LFQbhNcjFQmApOn8FptHwYsMlv0AShznOcyoN08I60RNf1
+\restrict h1c3m7u5iR0IoNKsw6QvRURDIoVY8je7yZPbwrhfaPYiYZUlNWnlho2YFUiMqbC
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -3250,28 +3250,28 @@ CREATE VIEW maplayer.analysis_risk AS
 
 
 --
--- Name: boundry_district; Type: VIEW; Schema: maplayer; Owner: -
+-- Name: boundary_district; Type: VIEW; Schema: maplayer; Owner: -
 --
 
-CREATE VIEW maplayer.boundry_district AS
+CREATE VIEW maplayer.boundary_district AS
  SELECT geom
    FROM geocoder.district d;
 
 
 --
--- Name: boundry_municipality; Type: VIEW; Schema: maplayer; Owner: -
+-- Name: boundary_municipality; Type: VIEW; Schema: maplayer; Owner: -
 --
 
-CREATE VIEW maplayer.boundry_municipality AS
+CREATE VIEW maplayer.boundary_municipality AS
  SELECT geom
    FROM geocoder.municipality m;
 
 
 --
--- Name: boundry_neighborhood; Type: VIEW; Schema: maplayer; Owner: -
+-- Name: boundary_neighborhood; Type: VIEW; Schema: maplayer; Owner: -
 --
 
-CREATE VIEW maplayer.boundry_neighborhood AS
+CREATE VIEW maplayer.boundary_neighborhood AS
  SELECT geom
    FROM geocoder.neighborhood n;
 
@@ -5372,5 +5372,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict cgLg5cAHnESSgUTk0LFQbhNcjFQmApOn8FptHwYsMlv0AShznOcyoN08I60RNf1
+\unrestrict h1c3m7u5iR0IoNKsw6QvRURDIoVY8je7yZPbwrhfaPYiYZUlNWnlho2YFUiMqbC
 
