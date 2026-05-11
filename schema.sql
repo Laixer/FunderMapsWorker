@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Of0rHvACSTwe77oBfoXx0SzalElLBeWr1u3UnonpmXzfUCUth3V6QMjgGtc74Kh
+\restrict cgLg5cAHnESSgUTk0LFQbhNcjFQmApOn8FptHwYsMlv0AShznOcyoN08I60RNf1
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -2900,8 +2900,6 @@ CREATE TABLE report.incident (
     neighbor_recovery boolean NOT NULL,
     foundation_damage_cause report.foundation_damage_cause,
     document_file text[],
-    note text,
-    contact text NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
     delete_date timestamp with time zone,
@@ -2911,8 +2909,6 @@ CREATE TABLE report.incident (
     audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL,
     internal_note text,
     question_type report.incident_question_type DEFAULT 'other'::report.incident_question_type NOT NULL,
-    contact_name text,
-    contact_phone_number text,
     building_id geocoder.geocoder_id NOT NULL,
     file_resource_key text
 );
@@ -2923,13 +2919,6 @@ CREATE TABLE report.incident (
 --
 
 COMMENT ON TABLE report.incident IS 'Contains reported incidents.';
-
-
---
--- Name: COLUMN incident.contact; Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON COLUMN report.incident.contact IS 'Link to the contact';
 
 
 --
@@ -5383,5 +5372,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Of0rHvACSTwe77oBfoXx0SzalElLBeWr1u3UnonpmXzfUCUth3V6QMjgGtc74Kh
+\unrestrict cgLg5cAHnESSgUTk0LFQbhNcjFQmApOn8FptHwYsMlv0AShznOcyoN08I60RNf1
 
