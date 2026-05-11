@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict H4Q2hixzOPxjl83oNbJxPMf3cgeZN99OErBuL7WPfmibxNa2YnHwsmdJMtAcy7w
+\restrict GRpL0Gg5OrQjPF8YPV050r20VLemZAt7bMh0SvLHbwDSWr8csCcqL0eV4r4ibNX
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -65,30 +65,6 @@ CREATE TYPE application.access_policy AS ENUM (
 
 
 --
--- Name: auth_action_type; Type: TYPE; Schema: application; Owner: -
---
-
-CREATE TYPE application.auth_action_type AS ENUM (
-    'login_attempt',
-    'login_success',
-    'login_fail_bad_credentials',
-    'login_fail_user_not_found',
-    'login_fail_account_locked',
-    'login_fail_mfa',
-    'logout',
-    'session_expired',
-    'password_reset_request',
-    'password_reset_success',
-    'password_change_success',
-    'mfa_setup_initiated',
-    'mfa_setup_complete',
-    'mfa_removed',
-    'api_key_issued',
-    'api_key_revoked'
-);
-
-
---
 -- Name: email; Type: DOMAIN; Schema: application; Owner: -
 --
 
@@ -120,7 +96,7 @@ CREATE TYPE application.job_status AS ENUM (
 -- Name: organization_id; Type: DOMAIN; Schema: application; Owner: -
 --
 
-CREATE DOMAIN application.organization_id AS uuid DEFAULT gen_random_uuid();
+CREATE DOMAIN application.organization_id AS uuid;
 
 
 --
@@ -163,8 +139,7 @@ COMMENT ON DOMAIN application.phone IS 'Domain for a phone number.';
 
 CREATE TYPE application.role AS ENUM (
     'administrator',
-    'user',
-    'service'
+    'user'
 );
 
 
@@ -172,7 +147,7 @@ CREATE TYPE application.role AS ENUM (
 -- Name: user_id; Type: DOMAIN; Schema: application; Owner: -
 --
 
-CREATE DOMAIN application.user_id AS uuid DEFAULT gen_random_uuid();
+CREATE DOMAIN application.user_id AS uuid;
 
 
 --
@@ -220,26 +195,10 @@ CREATE TYPE geocoder.building_type AS ENUM (
 
 
 --
--- Name: geocoder_generate_id(); Type: FUNCTION; Schema: geocoder; Owner: -
---
-
-CREATE FUNCTION geocoder.geocoder_generate_id() RETURNS text
-    LANGUAGE sql PARALLEL SAFE
-    AS $$SELECT 'gfm-' || REPLACE(gen_random_uuid()::text, '-', '')$$;
-
-
---
--- Name: FUNCTION geocoder_generate_id(); Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder id.';
-
-
---
 -- Name: geocoder_id; Type: DOMAIN; Schema: geocoder; Owner: -
 --
 
-CREATE DOMAIN geocoder.geocoder_id AS text DEFAULT geocoder.geocoder_generate_id();
+CREATE DOMAIN geocoder.geocoder_id AS text;
 
 
 --
@@ -721,10 +680,6 @@ BEGIN
     DELETE FROM application.auth_refresh_token
     WHERE expired_at < NOW();
     RAISE NOTICE 'Deleted % expired refresh tokens (legacy).', FOUND::TEXT;
-
-    DELETE FROM application.reset_key
-    WHERE create_date < (NOW() - INTERVAL '1 hour');
-    RAISE NOTICE 'Deleted % old reset keys (legacy).', FOUND::TEXT;
 
     -- Better Auth tables -------------------------------------------------------
 
@@ -1312,6 +1267,22 @@ $$;
 
 
 --
+-- Name: geocoder_generate_id(); Type: FUNCTION; Schema: geocoder; Owner: -
+--
+
+CREATE FUNCTION geocoder.geocoder_generate_id() RETURNS text
+    LANGUAGE sql PARALLEL SAFE
+    AS $$SELECT 'gfm-' || REPLACE(gen_random_uuid()::text, '-', '')$$;
+
+
+--
+-- Name: FUNCTION geocoder_generate_id(); Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder id.';
+
+
+--
 -- Name: fir_generate_id(integer); Type: FUNCTION; Schema: report; Owner: -
 --
 
@@ -1529,28 +1500,6 @@ CREATE TABLE application.auth_key (
     updated_at timestamp with time zone DEFAULT now(),
     id uuid DEFAULT gen_random_uuid() NOT NULL
 );
-
-
---
--- Name: auth_logs; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.auth_logs (
-    log_id bigint NOT NULL,
-    user_id application.user_id NOT NULL,
-    action_type application.auth_action_type NOT NULL,
-    ip_address inet NOT NULL,
-    user_agent text,
-    "timestamp" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    metadata jsonb
-);
-
-
---
--- Name: TABLE auth_logs; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.auth_logs IS 'Stores a record of user authentication-related events for security auditing and monitoring.';
 
 
 --
@@ -1774,7 +1723,7 @@ CREATE TABLE application.oauth_consent (
 --
 
 CREATE TABLE application.organization (
-    id application.organization_id NOT NULL,
+    id application.organization_id DEFAULT gen_random_uuid() NOT NULL,
     name text NOT NULL
 );
 
@@ -1877,24 +1826,6 @@ CREATE TABLE application.portal (
 
 
 --
--- Name: reset_key; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.reset_key (
-    key uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
--- Name: COLUMN reset_key.create_date; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON COLUMN application.reset_key.create_date IS 'Timestamp of record creation, set by insert';
-
-
---
 -- Name: session; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1915,15 +1846,13 @@ CREATE TABLE application.session (
 --
 
 CREATE TABLE application."user" (
-    id application.user_id NOT NULL,
+    id application.user_id DEFAULT gen_random_uuid() NOT NULL,
     given_name text,
     last_name text,
     email application.email NOT NULL,
     avatar text,
     job_title text,
-    password_hash text,
     phone_number application.phone,
-    access_failed_count integer DEFAULT 0 NOT NULL,
     role application.role DEFAULT 'user'::application.role NOT NULL,
     last_login timestamp with time zone,
     name text,
@@ -2075,7 +2004,7 @@ CREATE TABLE data.building_precomputed (
 --
 
 CREATE TABLE geocoder.building (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     built_year geocoder.year,
     active boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL,
@@ -2642,7 +2571,7 @@ COMMENT ON VIEW geocoder.building_active IS 'Contains all entries from geocoder.
 --
 
 CREATE TABLE geocoder.district (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     external_id text NOT NULL,
     municipality_id geocoder.geocoder_id NOT NULL,
     name text NOT NULL,
@@ -2663,7 +2592,7 @@ COMMENT ON TABLE geocoder.district IS 'Contains all districts in our own format.
 --
 
 CREATE TABLE geocoder.municipality (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     external_id text NOT NULL,
     name text NOT NULL,
     water boolean NOT NULL,
@@ -2684,7 +2613,7 @@ COMMENT ON TABLE geocoder.municipality IS 'Contains all municipalities in our ow
 --
 
 CREATE TABLE geocoder.neighborhood (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     external_id text NOT NULL,
     district_id geocoder.geocoder_id NOT NULL,
     name text NOT NULL,
@@ -2781,7 +2710,7 @@ CREATE TABLE data.building_subsidence_history (
 --
 
 CREATE TABLE geocoder.address (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     building_number text NOT NULL,
     postal_code text,
     street text NOT NULL,
@@ -3091,7 +3020,7 @@ COMMENT ON TABLE geocoder.residence IS 'Link between building and address';
 --
 
 CREATE TABLE geocoder.state (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     external_id text NOT NULL,
     country_id geocoder.geocoder_id NOT NULL,
     name text NOT NULL,
@@ -3140,7 +3069,7 @@ CREATE VIEW geocoder.building_geocoder AS
 --
 
 CREATE TABLE geocoder.country (
-    id geocoder.geocoder_id NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     external_id text NOT NULL,
     name text NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL
@@ -3375,6 +3304,7 @@ CREATE TABLE maplayer.bundle (
 );
 
 
+
 --
 -- Name: model_gevelscan; Type: TABLE; Schema: public; Owner: -
 --
@@ -3400,6 +3330,7 @@ CREATE TABLE public.risk_table_priority (
     settlement_speed report.rotation_type,
     priority character varying(50)
 );
+
 
 
 --
@@ -3815,14 +3746,6 @@ ALTER TABLE ONLY application.auth_key
 
 
 --
--- Name: auth_logs auth_logs_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_logs
-    ADD CONSTRAINT auth_logs_pkey PRIMARY KEY (log_id);
-
-
---
 -- Name: auth_refresh_token auth_refresh_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -3980,14 +3903,6 @@ ALTER TABLE ONLY application.organization_user
 
 ALTER TABLE ONLY application.portal
     ADD CONSTRAINT portal_pkey PRIMARY KEY (id);
-
-
---
--- Name: reset_key reset_key_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.reset_key
-    ADD CONSTRAINT reset_key_pkey PRIMARY KEY (key);
 
 
 --
@@ -4337,13 +4252,6 @@ CREATE INDEX auth_key_user_id_idx ON application.auth_key USING btree (user_id);
 
 
 --
--- Name: auth_logs_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_logs_user_id_idx ON application.auth_logs USING btree (user_id);
-
-
---
 -- Name: auth_refresh_token_application_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -4509,13 +4417,6 @@ CREATE INDEX product_tracker_mismatch_organization_id_idx ON application.product
 --
 
 CREATE INDEX product_tracker_org_prod_id_date_idx ON application.product_tracker USING btree (organization_id, product, identifier, create_date);
-
-
---
--- Name: reset_key_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX reset_key_user_id_idx ON application.reset_key USING btree (user_id);
 
 
 --
@@ -5133,14 +5034,6 @@ ALTER TABLE ONLY application.auth_key
 
 
 --
--- Name: auth_logs auth_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_logs
-    ADD CONSTRAINT auth_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
-
-
---
 -- Name: auth_refresh_token auth_refresh_token_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5298,14 +5191,6 @@ ALTER TABLE ONLY application.product_tracker_mismatch
 
 ALTER TABLE ONLY application.product_tracker
     ADD CONSTRAINT product_tracker_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: reset_key reset_key_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.reset_key
-    ADD CONSTRAINT reset_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -5504,5 +5389,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict H4Q2hixzOPxjl83oNbJxPMf3cgeZN99OErBuL7WPfmibxNa2YnHwsmdJMtAcy7w
+\unrestrict GRpL0Gg5OrQjPF8YPV050r20VLemZAt7bMh0SvLHbwDSWr8csCcqL0eV4r4ibNX
 
