@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GRpL0Gg5OrQjPF8YPV050r20VLemZAt7bMh0SvLHbwDSWr8csCcqL0eV4r4ibNX
+\restrict Of0rHvACSTwe77oBfoXx0SzalElLBeWr1u3UnonpmXzfUCUth3V6QMjgGtc74Kh
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -2706,6 +2706,29 @@ CREATE TABLE data.building_subsidence_history (
 
 
 --
+-- Name: model_gevelscan; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_gevelscan (
+    skewed_parallel report.rotation_type,
+    facade_type report.crack_type,
+    skewed_perpendicular report.rotation_type,
+    risk data.foundation_risk_indication
+);
+
+
+--
+-- Name: risk_table_priority; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.risk_table_priority (
+    risk data.foundation_risk_indication,
+    settlement_speed report.rotation_type,
+    priority character varying(50)
+);
+
+
+--
 -- Name: address; Type: TABLE; Schema: geocoder; Owner: -
 --
 
@@ -3304,35 +3327,6 @@ CREATE TABLE maplayer.bundle (
 );
 
 
-
---
--- Name: model_gevelscan; Type: TABLE; Schema: public; Owner: -
---
--- TODO: relocate to a FunderMaps schema (likely 'data') and update the
--- maplayer.facade_scan view. Lives in 'public' for historical reasons.
-
-CREATE TABLE public.model_gevelscan (
-    skewed_parallel report.rotation_type,
-    facade_type report.crack_type,
-    skewed_perpendicular report.rotation_type,
-    risk data.foundation_risk_indication
-);
-
-
---
--- Name: risk_table_priority; Type: TABLE; Schema: public; Owner: -
---
--- TODO: relocate to a FunderMaps schema (likely 'data') and update the
--- maplayer.facade_scan view. Lives in 'public' for historical reasons.
-
-CREATE TABLE public.risk_table_priority (
-    risk data.foundation_risk_indication,
-    settlement_speed report.rotation_type,
-    priority character varying(50)
-);
-
-
-
 --
 -- Name: facade_scan; Type: VIEW; Schema: maplayer; Owner: -
 --
@@ -3424,8 +3418,8 @@ CREATE VIEW maplayer.facade_scan AS
              JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
           WHERE ((is2.skewed_parallel IS NOT NULL) AND (is2.skewed_perpendicular IS NOT NULL) AND ((is2.crack_facade_front_type IS NOT NULL) OR (is2.crack_facade_front_size IS NOT NULL) OR (is2.crack_facade_back_type IS NOT NULL) OR (is2.crack_facade_back_size IS NOT NULL) OR (is2.crack_facade_left_type IS NOT NULL) OR (is2.crack_facade_left_size IS NOT NULL) OR (is2.crack_facade_right_type IS NOT NULL) OR (is2.crack_facade_right_size IS NOT NULL)))
           ORDER BY ba.external_id, is2.create_date DESC) inputz
-     JOIN public.model_gevelscan mg ON (((mg.skewed_parallel = inputz.skewed_parallel_facade) AND (mg.skewed_perpendicular = inputz.skewed_perpendicular_facade) AND (mg.facade_type = inputz.facade_type))))
-     LEFT JOIN public.risk_table_priority rtp ON (((rtp.risk = mg.risk) AND (rtp.settlement_speed = inputz.settlement_speed))));
+     JOIN data.model_gevelscan mg ON (((mg.skewed_parallel = inputz.skewed_parallel_facade) AND (mg.skewed_perpendicular = inputz.skewed_perpendicular_facade) AND (mg.facade_type = inputz.facade_type))))
+     LEFT JOIN data.risk_table_priority rtp ON (((rtp.risk = mg.risk) AND (rtp.settlement_speed = inputz.settlement_speed))));
 
 
 --
@@ -5389,5 +5383,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GRpL0Gg5OrQjPF8YPV050r20VLemZAt7bMh0SvLHbwDSWr8csCcqL0eV4r4ibNX
+\unrestrict Of0rHvACSTwe77oBfoXx0SzalElLBeWr1u3UnonpmXzfUCUth3V6QMjgGtc74Kh
 
