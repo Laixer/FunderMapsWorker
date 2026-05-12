@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict nOjItseYvab86JGRcS0oJpgaLiEGHvT64DdizLyaP7pLvBPilR6O2wNrjQOhEAp
+\restrict J44gPvV9fz46BwTr7aOGPnwJD3xlp6KdJc779crb662kLv34lAhN5nM6QidKgtK
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1372,6 +1372,36 @@ CREATE TABLE application.account (
     password text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: apikey; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.apikey (
+    id text NOT NULL,
+    config_id text DEFAULT 'default'::text NOT NULL,
+    name text,
+    start text,
+    reference_id uuid NOT NULL,
+    prefix text,
+    key text NOT NULL,
+    refill_interval integer,
+    refill_amount integer,
+    last_refill_at timestamp with time zone,
+    enabled boolean DEFAULT true,
+    rate_limit_enabled boolean DEFAULT true,
+    rate_limit_time_window integer,
+    rate_limit_max integer,
+    request_count integer DEFAULT 0,
+    remaining integer,
+    last_request timestamp with time zone,
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    permissions text,
+    metadata text
 );
 
 
@@ -3685,6 +3715,14 @@ ALTER TABLE ONLY application.account
 
 
 --
+-- Name: apikey apikey_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.apikey
+    ADD CONSTRAINT apikey_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: application application_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -4138,6 +4176,27 @@ ALTER TABLE ONLY report.recovery
 
 ALTER TABLE ONLY report.recovery_sample
     ADD CONSTRAINT recovery_sample_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: apikey_config_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX apikey_config_id_idx ON application.apikey USING btree (config_id);
+
+
+--
+-- Name: apikey_key_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX apikey_key_idx ON application.apikey USING btree (key);
+
+
+--
+-- Name: apikey_reference_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX apikey_reference_id_idx ON application.apikey USING btree (reference_id);
 
 
 --
@@ -4933,6 +4992,14 @@ ALTER TABLE ONLY application.account
 
 
 --
+-- Name: apikey apikey_reference_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.apikey
+    ADD CONSTRAINT apikey_reference_id_fkey FOREIGN KEY (reference_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: application_user application_user_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5384,5 +5451,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict nOjItseYvab86JGRcS0oJpgaLiEGHvT64DdizLyaP7pLvBPilR6O2wNrjQOhEAp
+\unrestrict J44gPvV9fz46BwTr7aOGPnwJD3xlp6KdJc779crb662kLv34lAhN5nM6QidKgtK
 
