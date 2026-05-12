@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict h1c3m7u5iR0IoNKsw6QvRURDIoVY8je7yZPbwrhfaPYiYZUlNWnlho2YFUiMqbC
+\restrict nOjItseYvab86JGRcS0oJpgaLiEGHvT64DdizLyaP7pLvBPilR6O2wNrjQOhEAp
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -1837,7 +1837,8 @@ CREATE TABLE application.session (
     ip_address text,
     user_agent text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    impersonated_by uuid
 );
 
 
@@ -1858,7 +1859,10 @@ CREATE TABLE application."user" (
     name text,
     email_verified boolean DEFAULT false NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    banned boolean,
+    ban_reason text,
+    ban_expires timestamp without time zone
 );
 
 
@@ -5177,6 +5181,14 @@ ALTER TABLE ONLY application.product_tracker
 
 
 --
+-- Name: session session_impersonated_by_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.session
+    ADD CONSTRAINT session_impersonated_by_fkey FOREIGN KEY (impersonated_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
 -- Name: session session_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5372,5 +5384,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict h1c3m7u5iR0IoNKsw6QvRURDIoVY8je7yZPbwrhfaPYiYZUlNWnlho2YFUiMqbC
+\unrestrict nOjItseYvab86JGRcS0oJpgaLiEGHvT64DdizLyaP7pLvBPilR6O2wNrjQOhEAp
 
