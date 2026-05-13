@@ -24,7 +24,7 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 
 ### Layers
 
-- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types: `process-mapset`, `export-product`, `load-dataset`, `generate-pdf`, `cleanup-storage`, `send-mail`, `export-samples`.
+- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types (canonical underscore form stored in `application.worker_jobs.job_type` and emitted by `data.refresh_all`): `process_mapset`, `export_product`, `load_dataset`, `generate_pdf`, `cleanup_storage`, `send_mail`, `export_samples`. (Dispatch normalizes `-` → `_`, so the dashed file-name form also resolves.)
 - **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, PDF.co.
 - **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
 - **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
@@ -40,7 +40,7 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 
 ## System Dependencies (for local dev)
 
-The `process-mapset` and `load-dataset` commands require `ogr2ogr` (GDAL ≥3.0) and `tippecanoe` installed on the system. See `Containerfile` for the full build setup.
+The `process_mapset` and `load_dataset` commands require `ogr2ogr` (GDAL ≥3.0) and `tippecanoe` installed on the system. See `Containerfile` for the full build setup.
 
 ## Container Build
 

@@ -53,8 +53,8 @@ if [[ ! -f "${GRANTS_FILE}" ]]; then
     exit 1
 fi
 
-if [[ ! -f "${PUBLIC_MODEL_DATA}" ]]; then
-    echo "error: ${PUBLIC_MODEL_DATA} not found" >&2
+if [[ ! -f "${MODEL_LOOKUP_SEED}" ]]; then
+    echo "error: ${MODEL_LOOKUP_SEED} not found" >&2
     exit 1
 fi
 
