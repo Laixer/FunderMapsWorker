@@ -173,7 +173,10 @@ async function safeDbUpdate(
 // -- Job dispatch -------------------------------------------------------------
 
 async function processJob(job: Job): Promise<boolean> {
-  const jobType = job.job_type as JobType;
+  // Canonical form is underscore (e.g. `process_mapset`) — that's what
+  // data.refresh_all and schema.sql emit. The command files and docs use
+  // dashes, so accept dashes too rather than silently failing.
+  const jobType = job.job_type.replace(/-/g, "_") as JobType;
   const handler = handlers[jobType];
   const schema = payloadSchemas[jobType];
 
