@@ -25,12 +25,21 @@ export async function uploadFile(
   extraArgs?: Record<string, string>
 ): Promise<void> {
   const body = await Bun.file(filePath).arrayBuffer();
+  await uploadBytes(new Uint8Array(body), key, bucket, extraArgs);
+}
+
+export async function uploadBytes(
+  body: Uint8Array,
+  key: string,
+  bucket?: string,
+  extraArgs?: Record<string, string>
+): Promise<void> {
   await withRetry(async () => {
     await client.send(
       new PutObjectCommand({
         Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
         Key: key,
-        Body: new Uint8Array(body),
+        Body: body,
         ...extraArgs,
       })
     );

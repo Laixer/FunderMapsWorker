@@ -1,50 +1,44 @@
 import { env } from "../config.ts";
 
-const BASE_URL = "https://api.pdf.co/v1";
-
-export interface PdfResult {
-  url: string;
-  error: boolean;
-  message?: string;
-}
-
+// Gotenberg's Chromium module renders a URL to PDF and returns the bytes
+// inline (no async job, no CDN hop). Replaces the prior pdf.co provider.
+//
+// `waitForExpression` blocks Chromium until the report front-end signals it's
+// done rendering — pairs with FunderMapsReport setting
+// `<html data-pdf-ready="true">` after Highcharts/Leaflet etc. settle. Without
+// it, chart-heavy reports rasterize while still skeleton-painted.
 export async function generatePdf(
   url: string,
-  name: string,
-  paperSize = "A4",
-  orientation = "Portrait",
+  orientation: "Portrait" | "Landscape" = "Portrait",
   margins = "10mm"
-): Promise<PdfResult> {
-  if (!env.FUNDERMAPS_PDF_API_KEY) {
-    throw new Error("PDF.co API key not configured");
+): Promise<Uint8Array> {
+  if (!env.FUNDERMAPS_GOTENBERG_URL) {
+    throw new Error("Gotenberg URL not configured (FUNDERMAPS_GOTENBERG_URL)");
   }
 
-  const body = new URLSearchParams({
-    url: url.trim(),
-    name: name.trim(),
-    paperSize,
-    orientation,
-    margins,
-    async: "false",
-  });
+  const form = new FormData();
+  form.append("url", url.trim());
+  form.append("paperWidth", "8.27");
+  form.append("paperHeight", "11.69");
+  form.append("landscape", orientation === "Landscape" ? "true" : "false");
+  form.append("marginTop", margins);
+  form.append("marginBottom", margins);
+  form.append("marginLeft", margins);
+  form.append("marginRight", margins);
+  form.append(
+    "waitForExpression",
+    "document.documentElement.getAttribute('data-pdf-ready') === 'true'"
+  );
 
-  const response = await fetch(`${BASE_URL}/pdf/convert/from/url`, {
-    method: "POST",
-    headers: {
-      "x-api-key": env.FUNDERMAPS_PDF_API_KEY,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: body.toString(),
-  });
+  const response = await fetch(
+    `${env.FUNDERMAPS_GOTENBERG_URL}/forms/chromium/convert/url`,
+    { method: "POST", body: form }
+  );
 
   if (!response.ok) {
-    throw new Error(`PDF.co API error: HTTP ${response.status}`);
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Gotenberg error: HTTP ${response.status} ${detail}`);
   }
 
-  const result = (await response.json()) as PdfResult;
-  if (result.error) {
-    throw new Error(`PDF.co API error: ${result.message}`);
-  }
-
-  return result;
+  return new Uint8Array(await response.arrayBuffer());
 }

@@ -1,8 +1,6 @@
 import { log, ACCENT, RESET, formatDuration } from "../lib/log.ts";
 import { generatePdf } from "../providers/pdf.ts";
 import * as s3 from "../providers/s3.ts";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
 
 export async function generatePdfCommand(payload: {
   url: string;
@@ -28,31 +26,17 @@ export async function generatePdfCommand(payload: {
   log.step(`Generating PDF from ${ACCENT.muted}${url}${RESET}`);
 
   try {
-    const result = await generatePdf(url, outputName);
-
-    if (!result.url) {
-      log.error("PDF generation returned no URL");
-      return false;
-    }
-
-    const pdfDir = "./pdfs";
-    await mkdir(pdfDir, { recursive: true });
-    const pdfPath = join(pdfDir, `${outputName}.pdf`);
-
-    log.step("Downloading generated PDF");
-    const response = await fetch(result.url);
-    if (!response.ok) {
-      throw new Error(`Failed to download PDF: HTTP ${response.status}`);
-    }
-    await Bun.write(pdfPath, response);
+    const bytes = await generatePdf(url);
 
     log.step("Uploading to S3");
-    const s3Path = `artifacts/report-pdf/${outputName}.pdf`;
-    await s3.uploadFile(pdfPath, s3Path, "fundermaps");
+    const s3Key = `artifacts/report-pdf/${outputName}.pdf`;
+    await s3.uploadBytes(bytes, s3Key, "fundermaps", {
+      ContentType: "application/pdf",
+    });
 
     const elapsed = performance.now() - start;
     log.info(
-      `${ACCENT.ok}✓${RESET} PDF generated in ${ACCENT.time}${formatDuration(elapsed)}${RESET}`
+      `${ACCENT.ok}✓${RESET} PDF generated in ${ACCENT.time}${formatDuration(elapsed)}${RESET} (${bytes.byteLength} bytes)`
     );
     return true;
   } catch (e) {
