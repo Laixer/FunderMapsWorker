@@ -1729,7 +1729,8 @@ CREATE TABLE application.oauth_application (
     disabled boolean DEFAULT false,
     user_id uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    skip_consent boolean DEFAULT false NOT NULL
 );
 
 
