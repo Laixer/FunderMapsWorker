@@ -40,6 +40,9 @@ export async function uploadBytes(
         Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
         Key: key,
         Body: body,
+        // Defense in depth on top of provider-side at-rest encryption.
+        // Covers bucket-ACL misconfig and snapshot-export scenarios.
+        ServerSideEncryption: "AES256",
         ...extraArgs,
       })
     );
