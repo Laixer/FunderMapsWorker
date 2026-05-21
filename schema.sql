@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict J44gPvV9fz46BwTr7aOGPnwJD3xlp6KdJc779crb662kLv34lAhN5nM6QidKgtK
+\restrict T9vJdEbx8lu9XGmFuc6PPXvfq8IBoUja0ubp7KobJiVCOUCUcvdvZk5Zo6bZCTZ
 
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 18.3
@@ -18,6 +18,27 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
+
+-- *not* creating schema, since initdb creates it
+
+
+--
+-- Name: timescaledb; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS timescaledb WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION timescaledb; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION timescaledb IS 'Enables scalable inserts and complex queries for time-series data (Apache 2 Edition)';
+
 
 --
 -- Name: application; Type: SCHEMA; Schema: -; Owner: -
@@ -52,6 +73,34 @@ CREATE SCHEMA maplayer;
 --
 
 CREATE SCHEMA report;
+
+
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION postgis; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types and functions';
 
 
 --
@@ -239,6 +288,18 @@ CREATE TYPE geocoder.zone_function AS ENUM (
     'medical',
     'other',
     'prison'
+);
+
+
+--
+-- Name: resource_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.resource_status AS ENUM (
+    'uploaded',
+    'processing',
+    'active',
+    'archived'
 );
 
 
@@ -1345,6 +1406,466 @@ COMMENT ON COLUMN application.product_tracker_mismatch.create_date IS 'Timestamp
 
 
 --
+-- Name: _hyper_1_10_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_10_chunk (
+    CONSTRAINT constraint_10 CHECK (((create_date >= '2023-01-23 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-02-22 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_11_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_11_chunk (
+    CONSTRAINT constraint_11 CHECK (((create_date >= '2024-08-15 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-09-14 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_12_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_12_chunk (
+    CONSTRAINT constraint_12 CHECK (((create_date >= '2024-12-13 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-01-12 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_132_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_132_chunk (
+    CONSTRAINT constraint_132 CHECK (((create_date >= '2026-04-07 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-05-07 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_134_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_134_chunk (
+    CONSTRAINT constraint_134 CHECK (((create_date >= '2026-05-07 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-06-06 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_13_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_13_chunk (
+    CONSTRAINT constraint_13 CHECK (((create_date >= '2025-01-12 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-02-11 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_14_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_14_chunk (
+    CONSTRAINT constraint_14 CHECK (((create_date >= '2023-02-22 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-03-24 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_15_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_15_chunk (
+    CONSTRAINT constraint_15 CHECK (((create_date >= '2023-03-24 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-04-23 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_16_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_16_chunk (
+    CONSTRAINT constraint_16 CHECK (((create_date >= '2023-04-23 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-05-23 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_17_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_17_chunk (
+    CONSTRAINT constraint_17 CHECK (((create_date >= '2025-03-13 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-04-12 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_18_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_18_chunk (
+    CONSTRAINT constraint_18 CHECK (((create_date >= '2023-05-23 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-06-22 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_19_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_19_chunk (
+    CONSTRAINT constraint_19 CHECK (((create_date >= '2023-06-22 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-07-22 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_1_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_1_chunk (
+    CONSTRAINT constraint_1 CHECK (((create_date >= '2022-08-26 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-09-25 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_20_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_20_chunk (
+    CONSTRAINT constraint_20 CHECK (((create_date >= '2023-07-22 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-08-21 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_21_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_21_chunk (
+    CONSTRAINT constraint_21 CHECK (((create_date >= '2023-08-21 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-09-20 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_22_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_22_chunk (
+    CONSTRAINT constraint_22 CHECK (((create_date >= '2023-09-20 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-10-20 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_23_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_23_chunk (
+    CONSTRAINT constraint_23 CHECK (((create_date >= '2023-10-20 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-11-19 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_24_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_24_chunk (
+    CONSTRAINT constraint_24 CHECK (((create_date >= '2024-01-18 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-02-17 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_25_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_25_chunk (
+    CONSTRAINT constraint_25 CHECK (((create_date >= '2024-02-17 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-03-18 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_26_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_26_chunk (
+    CONSTRAINT constraint_26 CHECK (((create_date >= '2024-03-18 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-04-17 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_27_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_27_chunk (
+    CONSTRAINT constraint_27 CHECK (((create_date >= '2024-05-17 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-06-16 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_28_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_28_chunk (
+    CONSTRAINT constraint_28 CHECK (((create_date >= '2024-06-16 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-07-16 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_29_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_29_chunk (
+    CONSTRAINT constraint_29 CHECK (((create_date >= '2024-07-16 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-08-15 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_2_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_2_chunk (
+    CONSTRAINT constraint_2 CHECK (((create_date >= '2025-02-11 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-03-13 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_30_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_30_chunk (
+    CONSTRAINT constraint_30 CHECK (((create_date >= '2024-09-14 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-10-14 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_31_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_31_chunk (
+    CONSTRAINT constraint_31 CHECK (((create_date >= '2024-10-14 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-11-13 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_32_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_32_chunk (
+    CONSTRAINT constraint_32 CHECK (((create_date >= '2024-11-13 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-12-13 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_33_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_33_chunk (
+    CONSTRAINT constraint_33 CHECK (((create_date >= '2025-04-12 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-05-12 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_34_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_34_chunk (
+    CONSTRAINT constraint_34 CHECK (((create_date >= '2025-05-12 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-06-11 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_35_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_35_chunk (
+    CONSTRAINT constraint_35 CHECK (((create_date >= '2025-06-11 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-07-11 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_36_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_36_chunk (
+    CONSTRAINT constraint_36 CHECK (((create_date >= '2025-07-11 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-08-10 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_37_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_37_chunk (
+    CONSTRAINT constraint_37 CHECK (((create_date >= '2025-08-10 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-09-09 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_38_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_38_chunk (
+    CONSTRAINT constraint_38 CHECK (((create_date >= '2025-09-09 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-10-09 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_39_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_39_chunk (
+    CONSTRAINT constraint_39 CHECK (((create_date >= '2025-10-09 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-11-08 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_3_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_3_chunk (
+    CONSTRAINT constraint_3 CHECK (((create_date >= '2022-09-25 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-10-25 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_40_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_40_chunk (
+    CONSTRAINT constraint_40 CHECK (((create_date >= '2025-11-08 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-12-08 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_41_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_41_chunk (
+    CONSTRAINT constraint_41 CHECK (((create_date >= '2025-12-08 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-01-07 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_42_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_42_chunk (
+    CONSTRAINT constraint_42 CHECK (((create_date >= '2026-01-07 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-02-06 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_43_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_43_chunk (
+    CONSTRAINT constraint_43 CHECK (((create_date >= '2026-02-06 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-03-08 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_4_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_4_chunk (
+    CONSTRAINT constraint_4 CHECK (((create_date >= '2022-10-25 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-11-24 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_5_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_5_chunk (
+    CONSTRAINT constraint_5 CHECK (((create_date >= '2022-11-24 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-12-24 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_6_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_6_chunk (
+    CONSTRAINT constraint_6 CHECK (((create_date >= '2022-12-24 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-01-23 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_7_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_7_chunk (
+    CONSTRAINT constraint_7 CHECK (((create_date >= '2023-11-19 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-12-19 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_8_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_8_chunk (
+    CONSTRAINT constraint_8 CHECK (((create_date >= '2023-12-19 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-01-18 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_98_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_98_chunk (
+    CONSTRAINT constraint_98 CHECK (((create_date >= '2026-03-08 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-04-07 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_9_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_9_chunk (
+    CONSTRAINT constraint_9 CHECK (((create_date >= '2024-04-17 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-05-17 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
 -- Name: product_tracker; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -1355,6 +1876,566 @@ CREATE TABLE application.product_tracker (
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     identifier text NOT NULL
 );
+
+
+--
+-- Name: _hyper_2_131_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_131_chunk (
+    CONSTRAINT constraint_131 CHECK (((create_date >= '2026-04-07 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-05-07 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_133_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_133_chunk (
+    CONSTRAINT constraint_133 CHECK (((create_date >= '2026-05-07 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-06-06 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_44_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_44_chunk (
+    CONSTRAINT constraint_44 CHECK (((create_date >= '2021-10-30 00:00:00+00'::timestamp with time zone) AND (create_date < '2021-11-29 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_45_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_45_chunk (
+    CONSTRAINT constraint_45 CHECK (((create_date >= '2021-11-29 00:00:00+00'::timestamp with time zone) AND (create_date < '2021-12-29 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_46_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_46_chunk (
+    CONSTRAINT constraint_46 CHECK (((create_date >= '2021-12-29 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-01-28 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_47_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_47_chunk (
+    CONSTRAINT constraint_47 CHECK (((create_date >= '2022-11-24 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-12-24 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_48_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_48_chunk (
+    CONSTRAINT constraint_48 CHECK (((create_date >= '2022-12-24 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-01-23 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_49_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_49_chunk (
+    CONSTRAINT constraint_49 CHECK (((create_date >= '2022-04-28 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-05-28 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_50_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_50_chunk (
+    CONSTRAINT constraint_50 CHECK (((create_date >= '2022-05-28 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-06-27 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_51_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_51_chunk (
+    CONSTRAINT constraint_51 CHECK (((create_date >= '2022-06-27 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-07-27 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_52_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_52_chunk (
+    CONSTRAINT constraint_52 CHECK (((create_date >= '2022-07-27 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-08-26 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_53_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_53_chunk (
+    CONSTRAINT constraint_53 CHECK (((create_date >= '2022-08-26 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-09-25 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_54_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_54_chunk (
+    CONSTRAINT constraint_54 CHECK (((create_date >= '2022-09-25 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-10-25 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_55_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_55_chunk (
+    CONSTRAINT constraint_55 CHECK (((create_date >= '2022-10-25 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-11-24 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_56_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_56_chunk (
+    CONSTRAINT constraint_56 CHECK (((create_date >= '2022-01-28 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-02-27 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_57_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_57_chunk (
+    CONSTRAINT constraint_57 CHECK (((create_date >= '2022-02-27 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-03-29 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_58_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_58_chunk (
+    CONSTRAINT constraint_58 CHECK (((create_date >= '2022-03-29 00:00:00+00'::timestamp with time zone) AND (create_date < '2022-04-28 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_59_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_59_chunk (
+    CONSTRAINT constraint_59 CHECK (((create_date >= '2023-07-22 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-08-21 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_60_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_60_chunk (
+    CONSTRAINT constraint_60 CHECK (((create_date >= '2023-10-20 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-11-19 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_61_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_61_chunk (
+    CONSTRAINT constraint_61 CHECK (((create_date >= '2023-01-23 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-02-22 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_62_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_62_chunk (
+    CONSTRAINT constraint_62 CHECK (((create_date >= '2023-02-22 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-03-24 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_63_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_63_chunk (
+    CONSTRAINT constraint_63 CHECK (((create_date >= '2023-03-24 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-04-23 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_64_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_64_chunk (
+    CONSTRAINT constraint_64 CHECK (((create_date >= '2023-04-23 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-05-23 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_65_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_65_chunk (
+    CONSTRAINT constraint_65 CHECK (((create_date >= '2023-05-23 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-06-22 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_66_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_66_chunk (
+    CONSTRAINT constraint_66 CHECK (((create_date >= '2023-06-22 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-07-22 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_67_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_67_chunk (
+    CONSTRAINT constraint_67 CHECK (((create_date >= '2023-08-21 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-09-20 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_68_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_68_chunk (
+    CONSTRAINT constraint_68 CHECK (((create_date >= '2023-09-20 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-10-20 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_69_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_69_chunk (
+    CONSTRAINT constraint_69 CHECK (((create_date >= '2023-11-19 00:00:00+00'::timestamp with time zone) AND (create_date < '2023-12-19 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_70_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_70_chunk (
+    CONSTRAINT constraint_70 CHECK (((create_date >= '2023-12-19 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-01-18 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_71_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_71_chunk (
+    CONSTRAINT constraint_71 CHECK (((create_date >= '2024-03-18 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-04-17 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_72_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_72_chunk (
+    CONSTRAINT constraint_72 CHECK (((create_date >= '2024-04-17 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-05-17 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_73_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_73_chunk (
+    CONSTRAINT constraint_73 CHECK (((create_date >= '2024-05-17 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-06-16 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_74_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_74_chunk (
+    CONSTRAINT constraint_74 CHECK (((create_date >= '2024-06-16 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-07-16 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_75_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_75_chunk (
+    CONSTRAINT constraint_75 CHECK (((create_date >= '2024-07-16 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-08-15 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_76_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_76_chunk (
+    CONSTRAINT constraint_76 CHECK (((create_date >= '2024-08-15 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-09-14 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_77_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_77_chunk (
+    CONSTRAINT constraint_77 CHECK (((create_date >= '2024-09-14 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-10-14 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_78_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_78_chunk (
+    CONSTRAINT constraint_78 CHECK (((create_date >= '2024-10-14 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-11-13 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_79_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_79_chunk (
+    CONSTRAINT constraint_79 CHECK (((create_date >= '2024-11-13 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-12-13 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_80_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_80_chunk (
+    CONSTRAINT constraint_80 CHECK (((create_date >= '2024-12-13 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-01-12 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_81_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_81_chunk (
+    CONSTRAINT constraint_81 CHECK (((create_date >= '2024-02-17 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-03-18 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_82_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_82_chunk (
+    CONSTRAINT constraint_82 CHECK (((create_date >= '2024-01-18 00:00:00+00'::timestamp with time zone) AND (create_date < '2024-02-17 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_83_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_83_chunk (
+    CONSTRAINT constraint_83 CHECK (((create_date >= '2025-01-12 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-02-11 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_84_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_84_chunk (
+    CONSTRAINT constraint_84 CHECK (((create_date >= '2025-02-11 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-03-13 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_85_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_85_chunk (
+    CONSTRAINT constraint_85 CHECK (((create_date >= '2025-03-13 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-04-12 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_86_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_86_chunk (
+    CONSTRAINT constraint_86 CHECK (((create_date >= '2025-04-12 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-05-12 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_87_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_87_chunk (
+    CONSTRAINT constraint_87 CHECK (((create_date >= '2025-05-12 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-06-11 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_88_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_88_chunk (
+    CONSTRAINT constraint_88 CHECK (((create_date >= '2025-06-11 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-07-11 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_89_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_89_chunk (
+    CONSTRAINT constraint_89 CHECK (((create_date >= '2025-10-09 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-11-08 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_90_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_90_chunk (
+    CONSTRAINT constraint_90 CHECK (((create_date >= '2025-08-10 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-09-09 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_91_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_91_chunk (
+    CONSTRAINT constraint_91 CHECK (((create_date >= '2025-09-09 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-10-09 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_92_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_92_chunk (
+    CONSTRAINT constraint_92 CHECK (((create_date >= '2025-07-11 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-08-10 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_93_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_93_chunk (
+    CONSTRAINT constraint_93 CHECK (((create_date >= '2025-11-08 00:00:00+00'::timestamp with time zone) AND (create_date < '2025-12-08 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_94_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_94_chunk (
+    CONSTRAINT constraint_94 CHECK (((create_date >= '2025-12-08 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-01-07 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_95_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_95_chunk (
+    CONSTRAINT constraint_95 CHECK (((create_date >= '2026-02-06 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-03-08 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_96_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_96_chunk (
+    CONSTRAINT constraint_96 CHECK (((create_date >= '2026-01-07 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-02-06 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_97_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_97_chunk (
+    CONSTRAINT constraint_97 CHECK (((create_date >= '2026-03-08 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-04-07 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
 
 
 --
@@ -1727,7 +2808,7 @@ CREATE TABLE application.oauth_application (
     metadata jsonb,
     client_id text NOT NULL,
     client_secret text,
-    type text,
+    type text NOT NULL,
     disabled boolean DEFAULT false,
     user_id uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
@@ -1740,7 +2821,7 @@ CREATE TABLE application.oauth_application (
     response_types text[],
     contacts text[],
     require_pkce boolean,
-    "public" boolean,
+    public boolean,
     enable_end_session boolean,
     subject_type text,
     uri text,
@@ -3555,6 +4636,15 @@ CREATE VIEW maplayer.statistics_foundation_risk AS
 
 
 --
+-- Name: model_supply; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.model_supply (
+    building_id text NOT NULL
+);
+
+
+--
 -- Name: incident_id_seq; Type: SEQUENCE; Schema: report; Owner: -
 --
 
@@ -3695,6 +4785,720 @@ CREATE SEQUENCE report.recovery_sample_id_seq
 --
 
 ALTER SEQUENCE report.recovery_sample_id_seq OWNED BY report.recovery_sample.id;
+
+
+--
+-- Name: _hyper_1_10_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_10_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_11_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_11_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_12_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_12_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_132_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_132_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_134_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_134_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_13_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_13_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_14_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_14_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_15_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_15_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_16_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_16_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_17_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_17_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_18_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_18_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_19_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_19_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_1_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_1_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_20_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_20_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_21_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_21_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_22_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_22_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_23_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_23_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_24_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_24_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_25_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_25_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_26_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_26_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_27_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_27_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_28_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_28_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_29_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_29_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_2_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_2_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_30_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_30_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_31_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_31_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_32_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_32_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_33_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_33_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_34_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_34_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_35_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_35_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_36_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_36_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_37_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_37_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_38_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_38_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_39_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_39_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_3_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_3_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_40_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_40_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_41_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_41_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_42_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_42_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_43_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_43_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_4_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_4_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_5_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_5_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_6_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_6_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_7_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_7_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_8_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_8_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_98_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_98_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_9_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_9_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_131_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_131_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_133_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_133_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_44_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_44_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_45_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_45_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_46_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_46_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_47_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_47_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_48_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_48_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_49_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_49_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_50_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_50_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_51_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_51_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_52_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_52_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_53_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_53_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_54_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_54_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_55_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_55_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_56_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_56_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_57_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_57_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_58_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_58_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_59_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_59_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_60_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_60_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_61_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_61_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_62_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_62_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_63_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_63_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_64_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_64_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_65_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_65_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_66_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_66_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_67_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_67_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_68_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_68_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_69_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_69_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_70_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_70_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_71_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_71_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_72_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_72_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_73_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_73_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_74_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_74_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_75_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_75_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_76_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_76_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_77_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_77_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_78_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_78_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_79_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_79_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_80_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_80_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_81_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_81_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_82_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_82_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_83_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_83_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_84_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_84_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_85_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_85_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_86_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_86_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_87_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_87_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_88_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_88_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_89_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_89_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_90_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_90_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_91_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_91_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_92_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_92_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_93_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_93_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_94_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_94_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_95_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_95_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_96_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_96_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_97_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_97_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
 
 
 --
@@ -3867,35 +5671,19 @@ ALTER TABLE ONLY application.mapset
 
 
 --
+-- Name: oauth_access_token oauth_access_token_access_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_access_token_key UNIQUE (token);
+
+
+--
 -- Name: oauth_access_token oauth_access_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.oauth_access_token
     ADD CONSTRAINT oauth_access_token_pkey PRIMARY KEY (id);
-
-
---
--- Name: oauth_access_token oauth_access_token_token_key; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.oauth_access_token
-    ADD CONSTRAINT oauth_access_token_token_key UNIQUE (token);
-
-
---
--- Name: oauth_refresh_token oauth_refresh_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.oauth_refresh_token
-    ADD CONSTRAINT oauth_refresh_token_pkey PRIMARY KEY (id);
-
-
---
--- Name: oauth_refresh_token oauth_refresh_token_token_key; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.oauth_refresh_token
-    ADD CONSTRAINT oauth_refresh_token_token_key UNIQUE (token);
 
 
 --
@@ -3920,6 +5708,22 @@ ALTER TABLE ONLY application.oauth_application
 
 ALTER TABLE ONLY application.oauth_consent
     ADD CONSTRAINT oauth_consent_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_token_key UNIQUE (token);
 
 
 --
@@ -4187,6 +5991,14 @@ ALTER TABLE ONLY maplayer.bundle
 
 
 --
+-- Name: model_supply model_supply_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.model_supply
+    ADD CONSTRAINT model_supply_pkey PRIMARY KEY (building_id);
+
+
+--
 -- Name: incident incident_pkey; Type: CONSTRAINT; Schema: report; Owner: -
 --
 
@@ -4224,6 +6036,1826 @@ ALTER TABLE ONLY report.recovery
 
 ALTER TABLE ONLY report.recovery_sample
     ADD CONSTRAINT recovery_sample_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: _hyper_1_10_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_10_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_10_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_10_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_10_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_10_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_11_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_11_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_11_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_11_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_11_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_11_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_12_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_12_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_12_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_12_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_12_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_12_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_132_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_132_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_132_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_132_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_132_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_132_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_134_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_134_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_134_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_134_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_134_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_134_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_13_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_13_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_13_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_13_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_13_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_13_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_14_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_14_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_14_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_14_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_14_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_14_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_15_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_15_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_15_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_15_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_15_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_15_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_16_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_16_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_16_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_16_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_16_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_16_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_17_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_17_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_17_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_17_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_17_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_17_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_18_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_18_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_18_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_18_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_18_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_18_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_19_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_19_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_19_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_19_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_19_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_19_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_1_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_1_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_1_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_1_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_1_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_1_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_20_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_20_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_20_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_20_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_20_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_20_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_21_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_21_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_21_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_21_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_21_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_21_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_22_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_22_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_22_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_22_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_22_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_22_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_23_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_23_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_23_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_23_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_23_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_23_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_24_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_24_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_24_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_24_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_24_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_24_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_25_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_25_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_25_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_25_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_25_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_25_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_26_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_26_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_26_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_26_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_26_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_26_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_27_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_27_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_27_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_27_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_27_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_27_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_28_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_28_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_28_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_28_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_28_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_28_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_29_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_29_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_29_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_29_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_29_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_29_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_2_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_2_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_2_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_2_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_2_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_2_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_30_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_30_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_30_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_30_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_30_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_30_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_31_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_31_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_31_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_31_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_31_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_31_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_32_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_32_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_32_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_32_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_32_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_32_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_33_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_33_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_33_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_33_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_33_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_33_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_34_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_34_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_34_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_34_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_34_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_34_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_35_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_35_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_35_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_35_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_35_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_35_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_36_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_36_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_36_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_36_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_36_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_36_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_37_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_37_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_37_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_37_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_37_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_37_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_38_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_38_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_38_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_38_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_38_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_38_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_39_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_39_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_39_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_39_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_39_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_39_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_3_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_3_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_3_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_3_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_3_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_3_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_40_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_40_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_40_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_40_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_40_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_40_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_41_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_41_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_41_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_41_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_41_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_41_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_42_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_42_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_42_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_42_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_42_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_42_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_43_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_43_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_43_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_43_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_43_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_43_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_4_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_4_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_4_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_4_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_4_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_4_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_5_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_5_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_5_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_5_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_5_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_5_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_6_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_6_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_6_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_6_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_6_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_6_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_7_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_7_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_7_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_7_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_7_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_7_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_8_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_8_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_8_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_8_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_8_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_8_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_98_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_98_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_98_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_98_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_98_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_98_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_9_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_9_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_9_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_9_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_9_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_9_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_2_131_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_131_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_131_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_131_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_131_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_131_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_131_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_131_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_131_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_133_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_133_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_133_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_133_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_133_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_133_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_133_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_133_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_133_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_44_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_44_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_44_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_44_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_44_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_44_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_44_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_44_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_44_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_45_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_45_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_45_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_45_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_45_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_45_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_45_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_45_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_45_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_46_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_46_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_46_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_46_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_46_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_46_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_46_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_46_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_46_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_47_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_47_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_47_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_47_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_47_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_47_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_47_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_47_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_47_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_48_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_48_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_48_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_48_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_48_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_48_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_48_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_48_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_48_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_49_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_49_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_49_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_49_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_49_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_49_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_49_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_49_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_49_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_50_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_50_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_50_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_50_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_50_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_50_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_50_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_50_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_50_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_51_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_51_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_51_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_51_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_51_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_51_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_51_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_51_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_51_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_52_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_52_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_52_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_52_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_52_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_52_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_52_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_52_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_52_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_53_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_53_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_53_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_53_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_53_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_53_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_53_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_53_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_53_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_54_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_54_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_54_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_54_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_54_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_54_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_54_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_54_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_54_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_55_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_55_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_55_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_55_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_55_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_55_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_55_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_55_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_55_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_56_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_56_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_56_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_56_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_56_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_56_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_56_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_56_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_56_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_57_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_57_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_57_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_57_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_57_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_57_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_57_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_57_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_57_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_58_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_58_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_58_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_58_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_58_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_58_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_58_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_58_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_58_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_59_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_59_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_59_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_59_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_59_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_59_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_59_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_59_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_59_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_60_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_60_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_60_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_60_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_60_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_60_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_60_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_60_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_60_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_61_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_61_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_61_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_61_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_61_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_61_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_61_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_61_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_61_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_62_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_62_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_62_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_62_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_62_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_62_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_62_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_62_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_62_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_63_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_63_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_63_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_63_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_63_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_63_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_63_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_63_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_63_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_64_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_64_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_64_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_64_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_64_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_64_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_64_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_64_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_64_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_65_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_65_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_65_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_65_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_65_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_65_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_65_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_65_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_65_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_66_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_66_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_66_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_66_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_66_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_66_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_66_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_66_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_66_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_67_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_67_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_67_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_67_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_67_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_67_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_67_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_67_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_67_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_68_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_68_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_68_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_68_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_68_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_68_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_68_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_68_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_68_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_69_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_69_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_69_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_69_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_69_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_69_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_69_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_69_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_69_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_70_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_70_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_70_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_70_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_70_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_70_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_70_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_70_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_70_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_71_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_71_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_71_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_71_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_71_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_71_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_71_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_71_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_71_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_72_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_72_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_72_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_72_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_72_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_72_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_72_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_72_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_72_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_73_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_73_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_73_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_73_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_73_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_73_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_73_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_73_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_73_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_74_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_74_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_74_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_74_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_74_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_74_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_74_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_74_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_74_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_75_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_75_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_75_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_75_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_75_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_75_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_75_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_75_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_75_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_76_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_76_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_76_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_76_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_76_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_76_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_76_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_76_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_76_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_77_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_77_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_77_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_77_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_77_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_77_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_77_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_77_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_77_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_78_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_78_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_78_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_78_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_78_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_78_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_78_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_78_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_78_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_79_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_79_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_79_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_79_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_79_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_79_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_79_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_79_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_79_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_80_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_80_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_80_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_80_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_80_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_80_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_80_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_80_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_80_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_81_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_81_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_81_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_81_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_81_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_81_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_81_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_81_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_81_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_82_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_82_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_82_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_82_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_82_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_82_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_82_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_82_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_82_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_83_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_83_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_83_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_83_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_83_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_83_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_83_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_83_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_83_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_84_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_84_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_84_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_84_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_84_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_84_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_84_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_84_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_84_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_85_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_85_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_85_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_85_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_85_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_85_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_85_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_85_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_85_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_86_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_86_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_86_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_86_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_86_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_86_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_86_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_86_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_86_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_87_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_87_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_87_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_87_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_87_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_87_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_87_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_87_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_87_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_88_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_88_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_88_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_88_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_88_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_88_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_88_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_88_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_88_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_89_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_89_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_89_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_89_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_89_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_89_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_89_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_89_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_89_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_90_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_90_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_90_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_90_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_90_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_90_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_90_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_90_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_90_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_91_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_91_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_91_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_91_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_91_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_91_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_91_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_91_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_91_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_92_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_92_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_92_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_92_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_92_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_92_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_92_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_92_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_92_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_93_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_93_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_93_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_93_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_93_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_93_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_93_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_93_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_93_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_94_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_94_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_94_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_94_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_94_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_94_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_94_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_94_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_94_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_95_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_95_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_95_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_95_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_95_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_95_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_95_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_95_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_95_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_96_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_96_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_96_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_96_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_96_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_96_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_96_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_96_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_96_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_97_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_97_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_97_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_97_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_97_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_97_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_97_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_97_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_97_chunk USING btree (organization_id, product, identifier, create_date);
 
 
 --
@@ -4402,6 +8034,20 @@ CREATE INDEX idx_oauth_access_token_client_id ON application.oauth_access_token 
 
 
 --
+-- Name: idx_oauth_access_token_refresh_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_access_token_refresh_id ON application.oauth_access_token USING btree (refresh_id);
+
+
+--
+-- Name: idx_oauth_access_token_session_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_access_token_session_id ON application.oauth_access_token USING btree (session_id);
+
+
+--
 -- Name: idx_oauth_access_token_user_id; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -4427,20 +8073,6 @@ CREATE INDEX idx_oauth_consent_client_id ON application.oauth_consent USING btre
 --
 
 CREATE INDEX idx_oauth_consent_user_id ON application.oauth_consent USING btree (user_id);
-
-
---
--- Name: idx_oauth_access_token_refresh_id; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX idx_oauth_access_token_refresh_id ON application.oauth_access_token USING btree (refresh_id);
-
-
---
--- Name: idx_oauth_access_token_session_id; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX idx_oauth_access_token_session_id ON application.oauth_access_token USING btree (session_id);
 
 
 --
@@ -5067,6 +8699,1270 @@ CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery_sample FOR EA
 
 
 --
+-- Name: _hyper_1_10_chunk 10_10_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_10_chunk
+    ADD CONSTRAINT "10_10_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_11_chunk 11_11_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_11_chunk
+    ADD CONSTRAINT "11_11_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_12_chunk 12_12_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_12_chunk
+    ADD CONSTRAINT "12_12_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_131_chunk 131_291_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_131_chunk
+    ADD CONSTRAINT "131_291_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_131_chunk 131_292_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_131_chunk
+    ADD CONSTRAINT "131_292_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_132_chunk 132_293_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_132_chunk
+    ADD CONSTRAINT "132_293_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_133_chunk 133_294_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_133_chunk
+    ADD CONSTRAINT "133_294_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_133_chunk 133_295_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_133_chunk
+    ADD CONSTRAINT "133_295_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_134_chunk 134_296_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_134_chunk
+    ADD CONSTRAINT "134_296_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_13_chunk 13_13_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_13_chunk
+    ADD CONSTRAINT "13_13_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_14_chunk 14_14_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_14_chunk
+    ADD CONSTRAINT "14_14_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_15_chunk 15_15_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_15_chunk
+    ADD CONSTRAINT "15_15_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_16_chunk 16_16_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_16_chunk
+    ADD CONSTRAINT "16_16_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_17_chunk 17_17_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_17_chunk
+    ADD CONSTRAINT "17_17_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_18_chunk 18_18_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_18_chunk
+    ADD CONSTRAINT "18_18_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_19_chunk 19_19_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_19_chunk
+    ADD CONSTRAINT "19_19_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_1_chunk 1_1_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_1_chunk
+    ADD CONSTRAINT "1_1_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_20_chunk 20_20_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_20_chunk
+    ADD CONSTRAINT "20_20_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_21_chunk 21_21_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_21_chunk
+    ADD CONSTRAINT "21_21_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_22_chunk 22_22_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_22_chunk
+    ADD CONSTRAINT "22_22_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_23_chunk 23_23_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_23_chunk
+    ADD CONSTRAINT "23_23_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_24_chunk 24_24_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_24_chunk
+    ADD CONSTRAINT "24_24_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_25_chunk 25_25_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_25_chunk
+    ADD CONSTRAINT "25_25_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_26_chunk 26_26_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_26_chunk
+    ADD CONSTRAINT "26_26_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_27_chunk 27_27_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_27_chunk
+    ADD CONSTRAINT "27_27_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_28_chunk 28_28_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_28_chunk
+    ADD CONSTRAINT "28_28_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_29_chunk 29_29_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_29_chunk
+    ADD CONSTRAINT "29_29_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_2_chunk 2_2_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_2_chunk
+    ADD CONSTRAINT "2_2_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_30_chunk 30_30_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_30_chunk
+    ADD CONSTRAINT "30_30_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_31_chunk 31_31_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_31_chunk
+    ADD CONSTRAINT "31_31_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_32_chunk 32_32_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_32_chunk
+    ADD CONSTRAINT "32_32_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_33_chunk 33_33_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_33_chunk
+    ADD CONSTRAINT "33_33_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_34_chunk 34_34_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_34_chunk
+    ADD CONSTRAINT "34_34_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_35_chunk 35_35_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_35_chunk
+    ADD CONSTRAINT "35_35_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_36_chunk 36_36_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_36_chunk
+    ADD CONSTRAINT "36_36_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_37_chunk 37_37_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_37_chunk
+    ADD CONSTRAINT "37_37_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_38_chunk 38_38_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_38_chunk
+    ADD CONSTRAINT "38_38_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_39_chunk 39_39_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_39_chunk
+    ADD CONSTRAINT "39_39_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_3_chunk 3_3_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_3_chunk
+    ADD CONSTRAINT "3_3_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_40_chunk 40_40_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_40_chunk
+    ADD CONSTRAINT "40_40_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_41_chunk 41_41_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_41_chunk
+    ADD CONSTRAINT "41_41_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_42_chunk 42_42_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_42_chunk
+    ADD CONSTRAINT "42_42_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_43_chunk 43_43_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_43_chunk
+    ADD CONSTRAINT "43_43_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_44_chunk 44_150_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_44_chunk
+    ADD CONSTRAINT "44_150_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_44_chunk 44_203_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_44_chunk
+    ADD CONSTRAINT "44_203_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_45_chunk 45_151_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_45_chunk
+    ADD CONSTRAINT "45_151_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_45_chunk 45_204_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_45_chunk
+    ADD CONSTRAINT "45_204_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_46_chunk 46_152_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_46_chunk
+    ADD CONSTRAINT "46_152_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_46_chunk 46_205_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_46_chunk
+    ADD CONSTRAINT "46_205_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_47_chunk 47_153_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_47_chunk
+    ADD CONSTRAINT "47_153_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_47_chunk 47_206_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_47_chunk
+    ADD CONSTRAINT "47_206_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_48_chunk 48_154_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_48_chunk
+    ADD CONSTRAINT "48_154_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_48_chunk 48_207_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_48_chunk
+    ADD CONSTRAINT "48_207_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_49_chunk 49_155_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_49_chunk
+    ADD CONSTRAINT "49_155_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_49_chunk 49_208_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_49_chunk
+    ADD CONSTRAINT "49_208_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_4_chunk 4_4_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_4_chunk
+    ADD CONSTRAINT "4_4_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_50_chunk 50_156_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_50_chunk
+    ADD CONSTRAINT "50_156_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_50_chunk 50_209_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_50_chunk
+    ADD CONSTRAINT "50_209_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_51_chunk 51_157_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_51_chunk
+    ADD CONSTRAINT "51_157_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_51_chunk 51_210_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_51_chunk
+    ADD CONSTRAINT "51_210_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_52_chunk 52_158_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_52_chunk
+    ADD CONSTRAINT "52_158_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_52_chunk 52_211_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_52_chunk
+    ADD CONSTRAINT "52_211_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_53_chunk 53_159_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_53_chunk
+    ADD CONSTRAINT "53_159_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_53_chunk 53_212_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_53_chunk
+    ADD CONSTRAINT "53_212_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_54_chunk 54_160_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_54_chunk
+    ADD CONSTRAINT "54_160_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_54_chunk 54_213_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_54_chunk
+    ADD CONSTRAINT "54_213_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_55_chunk 55_161_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_55_chunk
+    ADD CONSTRAINT "55_161_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_55_chunk 55_214_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_55_chunk
+    ADD CONSTRAINT "55_214_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_56_chunk 56_162_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_56_chunk
+    ADD CONSTRAINT "56_162_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_56_chunk 56_215_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_56_chunk
+    ADD CONSTRAINT "56_215_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_57_chunk 57_163_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_57_chunk
+    ADD CONSTRAINT "57_163_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_57_chunk 57_216_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_57_chunk
+    ADD CONSTRAINT "57_216_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_58_chunk 58_164_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_58_chunk
+    ADD CONSTRAINT "58_164_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_58_chunk 58_217_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_58_chunk
+    ADD CONSTRAINT "58_217_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_59_chunk 59_165_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_59_chunk
+    ADD CONSTRAINT "59_165_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_59_chunk 59_218_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_59_chunk
+    ADD CONSTRAINT "59_218_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_5_chunk 5_5_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_5_chunk
+    ADD CONSTRAINT "5_5_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_60_chunk 60_166_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_60_chunk
+    ADD CONSTRAINT "60_166_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_60_chunk 60_219_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_60_chunk
+    ADD CONSTRAINT "60_219_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_61_chunk 61_167_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_61_chunk
+    ADD CONSTRAINT "61_167_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_61_chunk 61_220_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_61_chunk
+    ADD CONSTRAINT "61_220_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_62_chunk 62_168_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_62_chunk
+    ADD CONSTRAINT "62_168_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_62_chunk 62_221_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_62_chunk
+    ADD CONSTRAINT "62_221_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_63_chunk 63_169_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_63_chunk
+    ADD CONSTRAINT "63_169_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_63_chunk 63_222_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_63_chunk
+    ADD CONSTRAINT "63_222_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_64_chunk 64_170_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_64_chunk
+    ADD CONSTRAINT "64_170_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_64_chunk 64_223_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_64_chunk
+    ADD CONSTRAINT "64_223_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_65_chunk 65_171_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_65_chunk
+    ADD CONSTRAINT "65_171_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_65_chunk 65_224_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_65_chunk
+    ADD CONSTRAINT "65_224_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_66_chunk 66_172_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_66_chunk
+    ADD CONSTRAINT "66_172_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_66_chunk 66_225_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_66_chunk
+    ADD CONSTRAINT "66_225_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_67_chunk 67_173_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_67_chunk
+    ADD CONSTRAINT "67_173_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_67_chunk 67_226_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_67_chunk
+    ADD CONSTRAINT "67_226_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_68_chunk 68_174_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_68_chunk
+    ADD CONSTRAINT "68_174_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_68_chunk 68_227_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_68_chunk
+    ADD CONSTRAINT "68_227_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_69_chunk 69_175_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_69_chunk
+    ADD CONSTRAINT "69_175_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_69_chunk 69_228_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_69_chunk
+    ADD CONSTRAINT "69_228_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_6_chunk 6_6_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_6_chunk
+    ADD CONSTRAINT "6_6_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_70_chunk 70_176_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_70_chunk
+    ADD CONSTRAINT "70_176_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_70_chunk 70_229_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_70_chunk
+    ADD CONSTRAINT "70_229_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_71_chunk 71_177_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_71_chunk
+    ADD CONSTRAINT "71_177_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_71_chunk 71_230_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_71_chunk
+    ADD CONSTRAINT "71_230_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_72_chunk 72_178_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_72_chunk
+    ADD CONSTRAINT "72_178_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_72_chunk 72_231_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_72_chunk
+    ADD CONSTRAINT "72_231_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_73_chunk 73_179_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_73_chunk
+    ADD CONSTRAINT "73_179_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_73_chunk 73_232_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_73_chunk
+    ADD CONSTRAINT "73_232_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_74_chunk 74_180_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_74_chunk
+    ADD CONSTRAINT "74_180_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_74_chunk 74_233_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_74_chunk
+    ADD CONSTRAINT "74_233_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_75_chunk 75_181_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_75_chunk
+    ADD CONSTRAINT "75_181_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_75_chunk 75_234_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_75_chunk
+    ADD CONSTRAINT "75_234_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_76_chunk 76_182_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_76_chunk
+    ADD CONSTRAINT "76_182_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_76_chunk 76_235_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_76_chunk
+    ADD CONSTRAINT "76_235_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_77_chunk 77_183_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_77_chunk
+    ADD CONSTRAINT "77_183_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_77_chunk 77_236_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_77_chunk
+    ADD CONSTRAINT "77_236_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_78_chunk 78_184_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_78_chunk
+    ADD CONSTRAINT "78_184_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_78_chunk 78_237_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_78_chunk
+    ADD CONSTRAINT "78_237_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_79_chunk 79_185_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_79_chunk
+    ADD CONSTRAINT "79_185_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_79_chunk 79_238_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_79_chunk
+    ADD CONSTRAINT "79_238_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_7_chunk 7_7_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_7_chunk
+    ADD CONSTRAINT "7_7_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_80_chunk 80_186_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_80_chunk
+    ADD CONSTRAINT "80_186_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_80_chunk 80_239_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_80_chunk
+    ADD CONSTRAINT "80_239_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_81_chunk 81_187_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_81_chunk
+    ADD CONSTRAINT "81_187_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_81_chunk 81_240_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_81_chunk
+    ADD CONSTRAINT "81_240_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_82_chunk 82_188_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_82_chunk
+    ADD CONSTRAINT "82_188_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_82_chunk 82_241_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_82_chunk
+    ADD CONSTRAINT "82_241_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_83_chunk 83_189_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_83_chunk
+    ADD CONSTRAINT "83_189_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_83_chunk 83_242_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_83_chunk
+    ADD CONSTRAINT "83_242_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_84_chunk 84_190_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_84_chunk
+    ADD CONSTRAINT "84_190_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_84_chunk 84_243_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_84_chunk
+    ADD CONSTRAINT "84_243_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_85_chunk 85_191_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_85_chunk
+    ADD CONSTRAINT "85_191_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_85_chunk 85_244_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_85_chunk
+    ADD CONSTRAINT "85_244_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_86_chunk 86_192_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_86_chunk
+    ADD CONSTRAINT "86_192_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_86_chunk 86_245_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_86_chunk
+    ADD CONSTRAINT "86_245_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_87_chunk 87_193_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_87_chunk
+    ADD CONSTRAINT "87_193_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_87_chunk 87_246_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_87_chunk
+    ADD CONSTRAINT "87_246_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_88_chunk 88_194_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_88_chunk
+    ADD CONSTRAINT "88_194_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_88_chunk 88_247_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_88_chunk
+    ADD CONSTRAINT "88_247_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_89_chunk 89_195_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_89_chunk
+    ADD CONSTRAINT "89_195_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_89_chunk 89_248_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_89_chunk
+    ADD CONSTRAINT "89_248_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_8_chunk 8_8_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_8_chunk
+    ADD CONSTRAINT "8_8_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_90_chunk 90_196_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_90_chunk
+    ADD CONSTRAINT "90_196_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_90_chunk 90_249_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_90_chunk
+    ADD CONSTRAINT "90_249_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_91_chunk 91_197_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_91_chunk
+    ADD CONSTRAINT "91_197_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_91_chunk 91_250_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_91_chunk
+    ADD CONSTRAINT "91_250_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_92_chunk 92_198_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_92_chunk
+    ADD CONSTRAINT "92_198_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_92_chunk 92_251_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_92_chunk
+    ADD CONSTRAINT "92_251_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_93_chunk 93_199_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_93_chunk
+    ADD CONSTRAINT "93_199_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_93_chunk 93_252_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_93_chunk
+    ADD CONSTRAINT "93_252_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_94_chunk 94_200_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_94_chunk
+    ADD CONSTRAINT "94_200_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_94_chunk 94_253_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_94_chunk
+    ADD CONSTRAINT "94_253_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_95_chunk 95_201_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_95_chunk
+    ADD CONSTRAINT "95_201_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_95_chunk 95_254_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_95_chunk
+    ADD CONSTRAINT "95_254_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_96_chunk 96_202_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_96_chunk
+    ADD CONSTRAINT "96_202_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_96_chunk 96_255_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_96_chunk
+    ADD CONSTRAINT "96_255_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_97_chunk 97_256_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_97_chunk
+    ADD CONSTRAINT "97_256_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_97_chunk 97_257_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_97_chunk
+    ADD CONSTRAINT "97_257_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_98_chunk 98_258_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_98_chunk
+    ADD CONSTRAINT "98_258_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_9_chunk 9_9_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_9_chunk
+    ADD CONSTRAINT "9_9_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: account account_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5195,6 +10091,22 @@ ALTER TABLE ONLY application.oauth_access_token
 
 
 --
+-- Name: oauth_access_token oauth_access_token_refresh_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_refresh_id_fkey FOREIGN KEY (refresh_id) REFERENCES application.oauth_refresh_token(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_access_token oauth_access_token_session_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_session_id_fkey FOREIGN KEY (session_id) REFERENCES application.session(id) ON DELETE SET NULL;
+
+
+--
 -- Name: oauth_access_token oauth_access_token_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5224,22 +10136,6 @@ ALTER TABLE ONLY application.oauth_consent
 
 ALTER TABLE ONLY application.oauth_consent
     ADD CONSTRAINT oauth_consent_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
-
-
---
--- Name: oauth_access_token oauth_access_token_session_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.oauth_access_token
-    ADD CONSTRAINT oauth_access_token_session_id_fkey FOREIGN KEY (session_id) REFERENCES application.session(id) ON DELETE SET NULL;
-
-
---
--- Name: oauth_access_token oauth_access_token_refresh_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.oauth_access_token
-    ADD CONSTRAINT oauth_access_token_refresh_id_fkey FOREIGN KEY (refresh_id) REFERENCES application.oauth_refresh_token(id) ON DELETE CASCADE;
 
 
 --
@@ -5574,5 +10470,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict J44gPvV9fz46BwTr7aOGPnwJD3xlp6KdJc779crb662kLv34lAhN5nM6QidKgtK
+\unrestrict T9vJdEbx8lu9XGmFuc6PPXvfq8IBoUja0ubp7KobJiVCOUCUcvdvZk5Zo6bZCTZ
 
