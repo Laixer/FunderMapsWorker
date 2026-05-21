@@ -692,9 +692,12 @@ BEGIN
     RAISE NOTICE 'Deleted % expired Better Auth verifications.', FOUND::TEXT;
 
     DELETE FROM application.oauth_access_token
-    WHERE access_token_expires_at < NOW()
-      AND refresh_token_expires_at < NOW();
-    RAISE NOTICE 'Deleted % fully-expired OAuth access tokens.', FOUND::TEXT;
+    WHERE expires_at < NOW();
+    RAISE NOTICE 'Deleted % expired OAuth access tokens.', FOUND::TEXT;
+
+    DELETE FROM application.oauth_refresh_token
+    WHERE expires_at < NOW();
+    RAISE NOTICE 'Deleted % expired OAuth refresh tokens.', FOUND::TEXT;
 
     RAISE NOTICE 'Authentication data cleanup finished';
 END;
@@ -1701,15 +1704,15 @@ CREATE VIEW application.mapset_collection AS
 
 CREATE TABLE application.oauth_access_token (
     id text NOT NULL,
-    access_token text NOT NULL,
-    refresh_token text NOT NULL,
-    access_token_expires_at timestamp without time zone NOT NULL,
-    refresh_token_expires_at timestamp without time zone NOT NULL,
+    token text NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
     client_id text NOT NULL,
     user_id uuid,
-    scopes text NOT NULL,
+    scopes text[] NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    session_id text,
+    reference_id text,
+    refresh_id text
 );
 
 
@@ -1721,16 +1724,33 @@ CREATE TABLE application.oauth_application (
     id text NOT NULL,
     name text NOT NULL,
     icon text,
-    metadata text,
+    metadata jsonb,
     client_id text NOT NULL,
     client_secret text,
-    redirect_urls text NOT NULL,
-    type text NOT NULL,
+    type text,
     disabled boolean DEFAULT false,
     user_id uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    skip_consent boolean DEFAULT false NOT NULL
+    skip_consent boolean DEFAULT false NOT NULL,
+    redirect_uris text[] NOT NULL,
+    post_logout_redirect_uris text[],
+    scopes text[],
+    grant_types text[],
+    response_types text[],
+    contacts text[],
+    require_pkce boolean,
+    "public" boolean,
+    enable_end_session boolean,
+    subject_type text,
+    uri text,
+    tos text,
+    policy text,
+    software_id text,
+    software_version text,
+    software_statement text,
+    token_endpoint_auth_method text,
+    reference_id text
 );
 
 
@@ -1741,11 +1761,30 @@ CREATE TABLE application.oauth_application (
 CREATE TABLE application.oauth_consent (
     id text NOT NULL,
     client_id text NOT NULL,
-    user_id uuid NOT NULL,
-    scopes text NOT NULL,
-    consent_given boolean NOT NULL,
+    user_id uuid,
+    scopes text[] NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    reference_id text
+);
+
+
+--
+-- Name: oauth_refresh_token; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_refresh_token (
+    id text NOT NULL,
+    token text NOT NULL,
+    client_id text NOT NULL,
+    session_id text,
+    user_id uuid NOT NULL,
+    reference_id text,
+    expires_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    revoked timestamp without time zone,
+    auth_time timestamp without time zone,
+    scopes text[] NOT NULL
 );
 
 
@@ -3828,14 +3867,6 @@ ALTER TABLE ONLY application.mapset
 
 
 --
--- Name: oauth_access_token oauth_access_token_access_token_key; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.oauth_access_token
-    ADD CONSTRAINT oauth_access_token_access_token_key UNIQUE (access_token);
-
-
---
 -- Name: oauth_access_token oauth_access_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -3844,11 +3875,27 @@ ALTER TABLE ONLY application.oauth_access_token
 
 
 --
--- Name: oauth_access_token oauth_access_token_refresh_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+-- Name: oauth_access_token oauth_access_token_token_key; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.oauth_access_token
-    ADD CONSTRAINT oauth_access_token_refresh_token_key UNIQUE (refresh_token);
+    ADD CONSTRAINT oauth_access_token_token_key UNIQUE (token);
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_token_key UNIQUE (token);
 
 
 --
@@ -4380,6 +4427,41 @@ CREATE INDEX idx_oauth_consent_client_id ON application.oauth_consent USING btre
 --
 
 CREATE INDEX idx_oauth_consent_user_id ON application.oauth_consent USING btree (user_id);
+
+
+--
+-- Name: idx_oauth_access_token_refresh_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_access_token_refresh_id ON application.oauth_access_token USING btree (refresh_id);
+
+
+--
+-- Name: idx_oauth_access_token_session_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_access_token_session_id ON application.oauth_access_token USING btree (session_id);
+
+
+--
+-- Name: idx_oauth_refresh_token_client_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_refresh_token_client_id ON application.oauth_refresh_token USING btree (client_id);
+
+
+--
+-- Name: idx_oauth_refresh_token_session_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_refresh_token_session_id ON application.oauth_refresh_token USING btree (session_id);
+
+
+--
+-- Name: idx_oauth_refresh_token_user_id; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_refresh_token_user_id ON application.oauth_refresh_token USING btree (user_id);
 
 
 --
@@ -5142,6 +5224,46 @@ ALTER TABLE ONLY application.oauth_consent
 
 ALTER TABLE ONLY application.oauth_consent
     ADD CONSTRAINT oauth_consent_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_access_token oauth_access_token_session_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_session_id_fkey FOREIGN KEY (session_id) REFERENCES application.session(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oauth_access_token oauth_access_token_refresh_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_access_token
+    ADD CONSTRAINT oauth_access_token_refresh_id_fkey FOREIGN KEY (refresh_id) REFERENCES application.oauth_refresh_token(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_client_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_client_id_fkey FOREIGN KEY (client_id) REFERENCES application.oauth_application(client_id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_session_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_session_id_fkey FOREIGN KEY (session_id) REFERENCES application.session(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oauth_refresh_token oauth_refresh_token_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_refresh_token
+    ADD CONSTRAINT oauth_refresh_token_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
 
 
 --
