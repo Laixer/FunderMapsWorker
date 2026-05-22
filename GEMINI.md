@@ -20,12 +20,12 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 
 **Main loop** (`src/index.ts`): recover stale jobs → poll pending jobs → process up to `MAX_CONCURRENT` (default 3) in parallel → sleep `POLL_INTERVAL` (default 30s) → repeat.
 
-**Job lifecycle**: pending → processing → completed/failed. Failed jobs retry with exponential backoff (capped at 5 attempts).
+**Job lifecycle**: pending → processing → completed/failed. Failed jobs reschedule to `pending` with exponential backoff (`30 * 2^(n-1)` seconds: 30s, 60s, 120s, …). The cap is per-row `worker_jobs.max_retries` (schema default **3**; `0` means infinite); when it's exhausted the status flips to `failed`.
 
 ### Layers
 
-- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types: `process-mapset`, `refresh-models`, `export-product`, `load-dataset`, `generate-pdf`, `cleanup-storage`, `send-mail`.
-- **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, PDF.co.
+- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking the job `payload`. Job types: `process-mapset`, `export-product`, `export-samples`, `load-dataset`, `generate-pdf`, `cleanup-storage`, `send-mail`.
+- **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, Gotenberg (self-hosted PDF rendering).
 - **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
 - **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
 - **`src/db.ts`** — PostgreSQL connection pool (uses `postgres` library with SSL prefer mode).
