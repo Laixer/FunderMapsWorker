@@ -27,7 +27,7 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 ### Layers
 
 - **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types (canonical underscore form stored in `application.worker_jobs.job_type` and emitted by `data.refresh_all`): `process_mapset`, `export_product`, `load_dataset`, `generate_pdf`, `cleanup_storage`, `send_mail`, `export_samples`. (Dispatch normalizes `-` → `_`, so the dashed file-name form also resolves.)
-- **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, PDF.co. PDF.co is being replaced by self-hosted Gotenberg (see `project_pdf_gotenberg.md` in the auto-memory); the swap hasn't shipped yet, so `providers/pdf.ts` still talks to `api.pdf.co`.
+- **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, Gotenberg. PDF rendering is self-hosted Gotenberg (`providers/pdf.ts` → `${FUNDERMAPS_GOTENBERG_URL}/forms/chromium/convert/url`); it replaced the prior pdf.co provider.
 - **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
 - **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
 - **`src/db.ts`** — PostgreSQL connection pool (uses `postgres` library with SSL prefer mode).
