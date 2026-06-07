@@ -15,23 +15,6 @@ const envSchema = z.object({
   FUNDERMAPS_S3_ACCESS_KEY: z.string(),
   FUNDERMAPS_S3_SECRET_KEY: z.string(),
 
-  // Gotenberg (self-hosted PDF renderer; replaces pdf.co). Base URL of the
-  // HTTP API, e.g. http://127.0.0.1:3001 for local dev or the in-cluster
-  // service URL in prod. Optional so the worker boots without it; required
-  // at runtime when a generate_pdf job runs.
-  FUNDERMAPS_GOTENBERG_URL: z.url().optional(),
-
-  // Mailgun
-  FUNDERMAPS_MAIL_API_KEY: z.string().optional(),
-  FUNDERMAPS_MAIL_DOMAIN: z.string().default("fundermaps.com"),
-  FUNDERMAPS_MAIL_BASE_URL: z
-    .string()
-    .default("https://api.eu.mailgun.net/v3"),
-  FUNDERMAPS_MAIL_SENDER_NAME: z.string().default("FunderMaps"),
-  FUNDERMAPS_MAIL_SENDER_ADDRESS: z
-    .string()
-    .default("noreply@fundermaps.com"),
-
   // Worker
   POLL_INTERVAL: z.coerce.number().default(30),
   MAX_CONCURRENT: z.coerce.number().default(3),

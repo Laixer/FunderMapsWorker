@@ -26,8 +26,8 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 
 ### Layers
 
-- **`src/commands/`** — Job handlers, one per job type. Each exports a function taking `(sql, jobId, payload)`. Job types (canonical underscore form stored in `application.worker_jobs.job_type` and emitted by `data.refresh_all`): `process_mapset`, `export_product`, `load_dataset`, `generate_pdf`, `cleanup_storage`, `send_mail`, `export_samples`. (Dispatch normalizes `-` → `_`, so the dashed file-name form also resolves.)
-- **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe, Mailgun, Gotenberg. PDF rendering is self-hosted Gotenberg (`providers/pdf.ts` → `${FUNDERMAPS_GOTENBERG_URL}/forms/chromium/convert/url`); it replaced the prior pdf.co provider.
+- **`src/commands/`** — Job handlers. **`process_mapset`** is the only job type still dispatched through the queue (canonical underscore form stored in `application.worker_jobs.job_type`, emitted by `data.refresh_all` and submitted by Windmill; dispatch normalizes `-` → `_`). The former export/pdf/mail/cleanup jobs moved to **Windmill**, which runs its own implementations directly and no longer inserts into `worker_jobs`. **`load_dataset`** (BAG / 3DBAG / subsidence ingest) is no longer queued either — it runs as a direct CLI call: `bun run load-dataset <dataset_input> [layer ...] [--delete-after] [--tmp-dir=PATH]` (`commands/load-dataset.ts` keeps an `import.meta.main` entrypoint).
+- **`src/providers/`** — External service wrappers for the surviving paths: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe. The Mailgun and Gotenberg providers were removed along with the `send_mail` and `generate_pdf` jobs (mail/PDF now live in the API + Windmill).
 - **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
 - **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
 - **`src/db.ts`** — PostgreSQL connection pool (uses `postgres` library with SSL prefer mode).

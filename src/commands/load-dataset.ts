@@ -75,3 +75,36 @@ export async function loadDataset(payload: {
     }
   }
 }
+
+// -- CLI entrypoint -----------------------------------------------------------
+// `load_dataset` is no longer dispatched through the worker queue — BAG / 3DBAG
+// / subsidence ingest runs as a direct CLI invocation:
+//
+//   bun run load-dataset <dataset_input> [layer ...] [--delete-after] [--tmp-dir=PATH]
+//
+// `dataset_input` is a local path, an `https://` URL, or an `s3://` key. Extra
+// positional args are passed through to ogr2ogr as layer names.
+if (import.meta.main) {
+  const args = Bun.argv.slice(2);
+  const positionals: string[] = [];
+  let delete_after = false;
+  let tmp_dir: string | undefined;
+
+  for (const arg of args) {
+    if (arg === "--delete-after") delete_after = true;
+    else if (arg.startsWith("--tmp-dir=")) tmp_dir = arg.slice("--tmp-dir=".length);
+    else positionals.push(arg);
+  }
+
+  const [dataset_input, ...layer] = positionals;
+
+  if (!dataset_input) {
+    log.error(
+      "Usage: bun run load-dataset <dataset_input> [layer ...] [--delete-after] [--tmp-dir=PATH]"
+    );
+    process.exit(2);
+  }
+
+  const ok = await loadDataset({ dataset_input, layer, delete_after, tmp_dir });
+  process.exit(ok ? 0 : 1);
+}
