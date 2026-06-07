@@ -4,12 +4,6 @@ import { env } from "./config.ts";
 import { log, ACCENT, RESET } from "./lib/log.ts";
 import { concurrentMap } from "./lib/queue.ts";
 import { processMapset } from "./commands/process-mapset.ts";
-import { exportProduct } from "./commands/export-product.ts";
-import { loadDataset } from "./commands/load-dataset.ts";
-import { generatePdfCommand } from "./commands/generate-pdf.ts";
-import { cleanupStorage } from "./commands/cleanup-storage.ts";
-import { sendMail } from "./commands/send-mail.ts";
-import { exportSamples } from "./commands/export-samples.ts";
 
 // -- Job types ----------------------------------------------------------------
 
@@ -24,32 +18,15 @@ interface Job {
 
 // -- Payload schemas ----------------------------------------------------------
 
+// `process_mapset` is the only job type still driven through the queue.
+// Tile rendering (GDAL/tippecanoe) is the worker's remaining responsibility;
+// Windmill submits these jobs and runs everything else (product/sample
+// exports, etc.) directly. BAG ingest (`load_dataset`) is now a direct CLI
+// call — see `commands/load-dataset.ts` / `bun run load-dataset`.
 const payloadSchemas = {
   process_mapset: z.object({
     tileset: z.union([z.string(), z.array(z.string())]).optional(),
     max_workers: z.number().optional(),
-  }),
-  export_product: z.object({
-    date: z.string().optional(),
-  }),
-  load_dataset: z.object({
-    dataset_input: z.string(),
-    layer: z.array(z.string()).optional(),
-    delete_after: z.boolean().optional(),
-    tmp_dir: z.string().optional(),
-  }),
-  generate_pdf: z.object({
-    url: z.string(),
-    output_name: z.string().optional(),
-  }),
-  cleanup_storage: z.object({}).passthrough(),
-  send_mail: z.object({
-    to: z.string(),
-    subject: z.string(),
-    text: z.string(),
-  }),
-  export_samples: z.object({
-    date: z.string().optional(),
   }),
 } as const;
 
@@ -57,12 +34,6 @@ type JobType = keyof typeof payloadSchemas;
 
 const handlers: Record<JobType, (payload: unknown) => Promise<boolean>> = {
   process_mapset: (p) => processMapset(p as z.infer<typeof payloadSchemas.process_mapset>),
-  export_product: (p) => exportProduct(p as z.infer<typeof payloadSchemas.export_product>),
-  load_dataset: (p) => loadDataset(p as z.infer<typeof payloadSchemas.load_dataset>),
-  generate_pdf: (p) => generatePdfCommand(p as z.infer<typeof payloadSchemas.generate_pdf>),
-  cleanup_storage: () => cleanupStorage(),
-  send_mail: (p) => sendMail(p as z.infer<typeof payloadSchemas.send_mail>),
-  export_samples: (p) => exportSamples(p as z.infer<typeof payloadSchemas.export_samples>),
 };
 
 // -- DB helpers ---------------------------------------------------------------
