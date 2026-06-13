@@ -13,8 +13,9 @@ DO UPDATE
     SET building_number = excluded.building_number,
     postal_code = excluded.postal_code,
     street = excluded.street,
-    city = excluded.city;
-    
+    city = excluded.city,
+    building_id = excluded.building_id;
+
 INSERT INTO geocoder.address(building_number, postal_code, street, external_id, city, building_id)
 SELECT
     concat(l.huisnummer, l.huisletter, l.toevoeging),
@@ -30,7 +31,8 @@ DO UPDATE
     SET building_number = excluded.building_number,
     postal_code = excluded.postal_code,
     street = excluded.street,
-    city = excluded.city;
+    city = excluded.city,
+    building_id = excluded.building_id;
 
 INSERT INTO geocoder.address(building_number, postal_code, street, external_id, city, building_id)
 SELECT
@@ -47,4 +49,5 @@ DO UPDATE
     SET building_number = excluded.building_number,
     postal_code = excluded.postal_code,
     street = excluded.street,
-    city = excluded.city;
+    city = excluded.city,
+    building_id = excluded.building_id;
