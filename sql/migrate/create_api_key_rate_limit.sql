@@ -37,4 +37,14 @@ COMMENT ON COLUMN application.api_key_rate_limit.period IS
 COMMENT ON COLUMN application.api_key_rate_limit.limit_count IS
   'Max billable events allowed within one period. Absent row = unlimited.';
 
+-- Grants. Mirrors the role model in sql/init/grants.sql so this migration is
+-- self-contained: fresh test DBs inherit these via ALTER DEFAULT PRIVILEGES,
+-- but manually-migrated environments (e.g. prod, which doesn't run init_db.sh)
+-- need them stated explicitly. Idempotent — safe to re-run.
+--   fundermaps_webapp     — TS API admin CRUD on rate-limit config
+--   fundermaps_webservice — Webservice reads config per request (read-only)
+--   grafana               — dashboards / overage monitoring (read-only)
+GRANT SELECT, INSERT, UPDATE, DELETE ON application.api_key_rate_limit TO fundermaps_webapp;
+GRANT SELECT ON application.api_key_rate_limit TO fundermaps_webservice, grafana;
+
 COMMIT;
