@@ -55,6 +55,12 @@ ALTER TABLE application.organization_user
 CREATE UNIQUE INDEX IF NOT EXISTS organization_user_id_idx
   ON application.organization_user (id);
 
+-- ── session: BA org plugin tracks the active organization per session ─────
+
+ALTER TABLE application.session
+  ADD COLUMN IF NOT EXISTS active_organization_id application.organization_id
+    REFERENCES application.organization (id) ON DELETE SET NULL;
+
 -- ── invitation: new (BA-managed org invites) ──────────────────────────────
 
 CREATE TABLE IF NOT EXISTS application.invitation (
