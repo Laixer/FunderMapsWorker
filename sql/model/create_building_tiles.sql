@@ -184,3 +184,17 @@ BEGIN
             TO fundermaps_tileserver;
     END IF;
 END $$;
+
+-- The nightly rebuild runs from the Windmill flow
+-- f/fundermaps/data/refresh_data_model as fundermaps_windmill
+-- (data.refresh_all() also calls it, but that procedure is not scheduled
+-- anywhere today — the Windmill flow is the live nightly path).
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
+        GRANT USAGE ON SCHEMA maplayer TO fundermaps_windmill;
+        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN
+            ON maplayer.building_tiles TO fundermaps_windmill;
+        GRANT SELECT ON data.building_geo_hierarchy TO fundermaps_windmill;
+    END IF;
+END $$;
