@@ -1211,6 +1211,8 @@ BEGIN
     COMMIT;
     REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_data_collected;
     COMMIT;
+    CALL maplayer.refresh_building_tiles();
+    COMMIT;
     INSERT INTO application.worker_jobs (job_type, status, max_retries) VALUES ('process_mapset', 'pending', 0);
 END;
 $$;
@@ -1344,6 +1346,130 @@ CREATE FUNCTION geocoder.geocoder_generate_id() RETURNS text
 --
 
 COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder id.';
+
+
+--
+-- Name: buildings(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
+--
+
+CREATE FUNCTION maplayer.buildings(z integer, x integer, y integer) RETURNS bytea
+    LANGUAGE plpgsql STABLE PARALLEL SAFE
+    AS $$
+DECLARE
+    env geometry := ST_TileEnvelope(z, x, y);
+    mvt bytea;
+BEGIN
+    -- Below the building tilesets' minzoom: empty tile, no table hit.
+    IF z < 12 THEN
+        RETURN ''::bytea;
+    END IF;
+
+    IF z >= 14 THEN
+        SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                building_id, neighborhood_id, district_id, municipality_id,
+                address_count, construction_year, construction_year_reliability,
+                foundation_type, foundation_type_reliability, restoration_costs,
+                drystand, drystand_risk, drystand_risk_reliability,
+                bio_infection_risk, bio_infection_risk_reliability,
+                dewatering_depth, dewatering_depth_risk,
+                dewatering_depth_risk_reliability, unclassified_risk,
+                height, velocity, owner, inquiry_type, damage_cause,
+                enforcement_term, overall_quality, recovery_type,
+                ST_AsMVTGeom(geom, env, 4096, 64, true) AS geom
+            FROM maplayer.building_tiles
+            WHERE geom && env
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    ELSE
+        SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                building_id, neighborhood_id, district_id, municipality_id,
+                address_count, construction_year, construction_year_reliability,
+                foundation_type, foundation_type_reliability, restoration_costs,
+                drystand, drystand_risk, drystand_risk_reliability,
+                bio_infection_risk, bio_infection_risk_reliability,
+                dewatering_depth, dewatering_depth_risk,
+                dewatering_depth_risk_reliability, unclassified_risk,
+                height, velocity, owner, inquiry_type, damage_cause,
+                enforcement_term, overall_quality, recovery_type,
+                ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
+            FROM maplayer.building_tiles
+            WHERE geom_simple && env
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    END IF;
+
+    RETURN coalesce(mvt, ''::bytea);
+END;
+$$;
+
+
+--
+-- Name: FUNCTION buildings(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16}]}';
+
+
+--
+-- Name: refresh_building_tiles(); Type: PROCEDURE; Schema: maplayer; Owner: -
+--
+
+CREATE PROCEDURE maplayer.refresh_building_tiles()
+    LANGUAGE sql
+    AS $$
+    TRUNCATE maplayer.building_tiles;
+
+    INSERT INTO maplayer.building_tiles (
+        building_id, neighborhood_id, district_id, municipality_id,
+        address_count, construction_year, construction_year_reliability,
+        foundation_type, foundation_type_reliability, restoration_costs,
+        drystand, drystand_risk, drystand_risk_reliability,
+        bio_infection_risk, bio_infection_risk_reliability,
+        dewatering_depth, dewatering_depth_risk,
+        dewatering_depth_risk_reliability, unclassified_risk,
+        height, velocity, owner, inquiry_type, damage_cause,
+        enforcement_term, overall_quality, recovery_type,
+        geom, geom_simple
+    )
+    SELECT
+        building_id,
+        ext_neighborhood_id,
+        ext_district_id,
+        ext_municipality_id,
+        address_count,
+        construction_year,
+        construction_year_reliability::text,
+        foundation_type::text,
+        foundation_type_reliability::text,
+        restoration_costs,
+        drystand,
+        drystand_risk::text,
+        drystand_risk_reliability::text,
+        bio_infection_risk::text,
+        bio_infection_risk_reliability::text,
+        dewatering_depth,
+        dewatering_depth_risk::text,
+        dewatering_depth_risk_reliability::text,
+        unclassified_risk::text,
+        height::double precision,
+        velocity::double precision,
+        owner,
+        inquiry_type::text,
+        damage_cause::text,
+        enforcement_term,
+        overall_quality::text,
+        recovery_type::text,
+        ST_Transform(geom, 3857),
+        ST_SimplifyPreserveTopology(ST_Transform(geom, 3857), 5.0)
+    FROM data.building_geo_hierarchy
+    WHERE geom IS NOT NULL;
+
+    ANALYZE maplayer.building_tiles;
+$$;
 
 
 --
@@ -4477,6 +4603,43 @@ CREATE VIEW maplayer.building_supercluster AS
 
 
 --
+-- Name: building_tiles; Type: TABLE; Schema: maplayer; Owner: -
+--
+
+CREATE TABLE maplayer.building_tiles (
+    building_id text NOT NULL,
+    neighborhood_id text,
+    district_id text,
+    municipality_id text,
+    address_count integer,
+    construction_year integer,
+    construction_year_reliability text,
+    foundation_type text,
+    foundation_type_reliability text,
+    restoration_costs integer,
+    drystand double precision,
+    drystand_risk text,
+    drystand_risk_reliability text,
+    bio_infection_risk text,
+    bio_infection_risk_reliability text,
+    dewatering_depth double precision,
+    dewatering_depth_risk text,
+    dewatering_depth_risk_reliability text,
+    unclassified_risk text,
+    height double precision,
+    velocity double precision,
+    owner text,
+    inquiry_type text,
+    damage_cause text,
+    enforcement_term double precision,
+    overall_quality text,
+    recovery_type text,
+    geom public.geometry(MultiPolygon,3857),
+    geom_simple public.geometry(MultiPolygon,3857)
+);
+
+
+--
 -- Name: bundle; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -6014,6 +6177,14 @@ ALTER TABLE ONLY geocoder.residence
 
 ALTER TABLE ONLY geocoder.state
     ADD CONSTRAINT state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: building_tiles building_tiles_pkey; Type: CONSTRAINT; Schema: maplayer; Owner: -
+--
+
+ALTER TABLE ONLY maplayer.building_tiles
+    ADD CONSTRAINT building_tiles_pkey PRIMARY KEY (building_id);
 
 
 --
@@ -8625,6 +8796,20 @@ CREATE INDEX state_geom_idx ON geocoder.state USING gist (geom);
 --
 
 CREATE INDEX state_name_idx ON geocoder.state USING btree (name);
+
+
+--
+-- Name: building_tiles_geom_idx; Type: INDEX; Schema: maplayer; Owner: -
+--
+
+CREATE INDEX building_tiles_geom_idx ON maplayer.building_tiles USING gist (geom);
+
+
+--
+-- Name: building_tiles_geom_simple_idx; Type: INDEX; Schema: maplayer; Owner: -
+--
+
+CREATE INDEX building_tiles_geom_simple_idx ON maplayer.building_tiles USING gist (geom_simple);
 
 
 --
