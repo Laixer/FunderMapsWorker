@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS maplayer.building_tiles (
     enforcement_term double precision,
     overall_quality text,
     recovery_type text,
+    -- drop-filter only, never exposed in tiles: at z12 a pixel is ~38 m,
+    -- so small buildings are sub-pixel and tippecanoe used to drop them too
+    surface_area double precision,
     geom geometry(MultiPolygon, 3857),
     geom_simple geometry(MultiPolygon, 3857)
 );
@@ -73,7 +76,7 @@ AS $$
         dewatering_depth_risk_reliability, unclassified_risk,
         height, velocity, owner, inquiry_type, damage_cause,
         enforcement_term, overall_quality, recovery_type,
-        geom, geom_simple
+        surface_area, geom, geom_simple
     )
     SELECT
         building_id,
@@ -103,6 +106,7 @@ AS $$
         enforcement_term,
         overall_quality::text,
         recovery_type::text,
+        surface_area::double precision,
         ST_Transform(geom, 3857),
         -- 5.0 Mercator units ≈ 3 m at NL latitude: invisible at z12–13,
         -- collapses a 40-vertex floor plan to a handful of points.
@@ -146,21 +150,26 @@ BEGIN
         ) tile
         WHERE tile.geom IS NOT NULL;
     ELSE
+        -- z12–13: overview zooms. Slim tiles three ways (measured on the
+        -- densest tile in the country, Amsterdam z12/2103/1346):
+        --   * simplified geometry            (7.4 MB → 4.6 MB)
+        --   * style attributes only, no ids  (unique building_id strings
+        --     alone double a tile)           (4.6 MB → ~1.3 MB)
+        --   * sub-pixel buildings dropped    (~1.3 MB → ~0.3 MB,
+        --     ≈ today's static tippecanoe tile which drop-densest'd
+        --     to ~0.15 MB)
+        -- Click-to-select needs building_id → works from z14 up.
         SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
         FROM (
             SELECT
-                building_id, neighborhood_id, district_id, municipality_id,
-                address_count, construction_year, construction_year_reliability,
-                foundation_type, foundation_type_reliability, restoration_costs,
-                drystand, drystand_risk, drystand_risk_reliability,
-                bio_infection_risk, bio_infection_risk_reliability,
-                dewatering_depth, dewatering_depth_risk,
-                dewatering_depth_risk_reliability, unclassified_risk,
-                height, velocity, owner, inquiry_type, damage_cause,
-                enforcement_term, overall_quality, recovery_type,
+                construction_year, foundation_type, foundation_type_reliability,
+                drystand_risk, bio_infection_risk, dewatering_depth_risk,
+                unclassified_risk, recovery_type, velocity, damage_cause,
+                inquiry_type,
                 ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom_simple && env
+              AND surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
         ) tile
         WHERE tile.geom IS NOT NULL;
     END IF;

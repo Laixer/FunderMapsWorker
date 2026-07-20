@@ -1386,18 +1386,14 @@ BEGIN
         SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
         FROM (
             SELECT
-                building_id, neighborhood_id, district_id, municipality_id,
-                address_count, construction_year, construction_year_reliability,
-                foundation_type, foundation_type_reliability, restoration_costs,
-                drystand, drystand_risk, drystand_risk_reliability,
-                bio_infection_risk, bio_infection_risk_reliability,
-                dewatering_depth, dewatering_depth_risk,
-                dewatering_depth_risk_reliability, unclassified_risk,
-                height, velocity, owner, inquiry_type, damage_cause,
-                enforcement_term, overall_quality, recovery_type,
+                construction_year, foundation_type, foundation_type_reliability,
+                drystand_risk, bio_infection_risk, dewatering_depth_risk,
+                unclassified_risk, recovery_type, velocity, damage_cause,
+                inquiry_type,
                 ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom_simple && env
+              AND surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
         ) tile
         WHERE tile.geom IS NOT NULL;
     END IF;
@@ -1433,7 +1429,7 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
         dewatering_depth_risk_reliability, unclassified_risk,
         height, velocity, owner, inquiry_type, damage_cause,
         enforcement_term, overall_quality, recovery_type,
-        geom, geom_simple
+        surface_area, geom, geom_simple
     )
     SELECT
         building_id,
@@ -1463,6 +1459,7 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
         enforcement_term,
         overall_quality::text,
         recovery_type::text,
+        surface_area::double precision,
         ST_Transform(geom, 3857),
         ST_SimplifyPreserveTopology(ST_Transform(geom, 3857), 5.0)
     FROM data.building_geo_hierarchy
@@ -4634,6 +4631,7 @@ CREATE TABLE maplayer.building_tiles (
     enforcement_term double precision,
     overall_quality text,
     recovery_type text,
+    surface_area double precision,
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857)
 );
