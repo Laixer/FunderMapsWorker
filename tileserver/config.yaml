@@ -23,3 +23,9 @@ postgres:
     buildings:
       schema: maplayer
       function: buildings
+      # Martin does not read TileJSON metadata from the function COMMENT
+      # for explicitly configured sources — declare it here so clients
+      # stop requesting z<12 and overzoom past 16 instead of fetching.
+      minzoom: 12
+      maxzoom: 16
+      bounds: [3.2, 50.7, 7.3, 53.6]

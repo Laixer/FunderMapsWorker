@@ -1356,13 +1356,14 @@ CREATE FUNCTION maplayer.buildings(z integer, x integer, y integer) RETURNS byte
     LANGUAGE plpgsql STABLE PARALLEL SAFE
     AS $$
 DECLARE
-    env geometry := ST_TileEnvelope(z, x, y);
+    env geometry;
     mvt bytea;
 BEGIN
-    -- Below the building tilesets' minzoom: empty tile, no table hit.
-    IF z < 12 THEN
+    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
         RETURN ''::bytea;
     END IF;
+
+    env := ST_TileEnvelope(z, x, y);
 
     IF z >= 14 THEN
         SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
