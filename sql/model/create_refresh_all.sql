@@ -7,7 +7,8 @@
 --   1. Refresh sample matviews (building, cluster, supercluster)
 --   2. Refresh model_risk_static matview (was INSERT ON CONFLICT, now matview)
 --   3. Refresh all 12 statistics matviews
---   4. Submit process_mapset job to worker queue (tile generation)
+--   4. Rebuild maplayer.building_tiles (dynamic tileserver source)
+--   5. Submit process_mapset job to worker queue (tile generation)
 --
 -- Each step COMMITs independently so locks are released between steps.
 
@@ -53,7 +54,13 @@ BEGIN
     REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_data_collected;
     COMMIT;
 
-    -- Step 4: Submit process_mapset job to worker queue
+    -- Step 4: Rebuild the flat tile-source table for the Martin tileserver
+    -- (sql/model/create_building_tiles.sql). Runs after model_risk_static so
+    -- dynamic tiles pick up tonight's model output.
+    CALL maplayer.refresh_building_tiles();
+    COMMIT;
+
+    -- Step 5: Submit process_mapset job to worker queue
     INSERT INTO application.worker_jobs (job_type, status, max_retries) VALUES ('process_mapset', 'pending', 0);
 END;
 $$;
