@@ -1,4 +1,4 @@
-FROM ghcr.io/maplibre/martin:v1.12.0
+FROM ghcr.io/maplibre/martin:1.12.0
 
 COPY config.yaml /config.yaml
 
