@@ -1,0 +1,25 @@
+# Martin tileserver — FunderMaps dynamic vector tiles.
+#
+# Serves GET /buildings/{z}/{x}/{y} from the maplayer.buildings(z,x,y)
+# function source (FunderMapsWorker sql/model/create_building_tiles.sql),
+# which reads the nightly-rebuilt flat table maplayer.building_tiles.
+#
+# DATABASE_URL is injected as an App Platform secret and connects as the
+# fundermaps_tileserver role: read-only, CONNECTION LIMIT 5,
+# statement_timeout 15s — a tile stampede can never starve the billable
+# webservice. pool_size must stay below the role's connection limit.
+
+listen_addresses: '0.0.0.0:3000'
+
+# In-memory tile cache. Data changes once a night, so hit rates are high;
+# tiles are served from here in ~1ms after first render.
+cache_size_mb: 512
+
+postgres:
+  connection_string: '${DATABASE_URL}'
+  pool_size: 4
+  auto_publish: false
+  functions:
+    buildings:
+      schema: maplayer
+      function: buildings
