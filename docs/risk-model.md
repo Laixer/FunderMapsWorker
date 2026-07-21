@@ -551,7 +551,7 @@ The `recovery` LATERAL picks the most recent `recovery_sample` per building. `ha
 | `bio_infection_risk` (+ reliability) | `COALESCE(compute_damage_risk × 2, compute_indicative_bio_risk)`           | — |
 | `dewatering_depth`                  | see §8.3                                                                  | est > clu > indicative gwl |
 | `dewatering_depth_risk` (+ reliability) | `COALESCE(compute_damage_risk × 2, compute_indicative_dewatering_risk)`  | — |
-| `unclassified_risk`                 | see §8.4                                                                  | est > clu |
+| `unclassified_risk`                 | see §8.4 (incl. construction-year fallback, #1002)                        | est > clu > year-fallback |
 | `height`                            | `bp.height::numeric(10,2)`                                                 | — |
 | `velocity`                          | `round(bs.velocity::numeric, 2)`                                          | — |
 | `ground_water_level`                | `round(gwl.level::numeric, 2)`                                            | — |
@@ -618,6 +618,18 @@ COALESCE(
 ```
 
 The asymmetric mapping (`a/e` for established, `e/d` for cluster) captures the fact that a recovery flag is only fully trustworthy at the building level; cluster recoveries indicate the area is being treated, not necessarily this building.
+
+#### Construction-year fallback (Issue [Laixer/FunderMaps#1002](https://github.com/Laixer/FunderMaps/issues/1002))
+
+Every building must carry at least one risk indication. When all three component risks **and** the report-derived `unclassified_risk` above are NULL (~45k buildings: missing groundwater model coverage — e.g. the Waddeneilanden — plus `other`/`combined` foundation types and `no_pile_bearing_floor`), `unclassified_risk` falls back to a construction-year heuristic:
+
+| `construction_year` | fallback |
+|---|---|
+| `< 1970` | `'d'` |
+| `>= 1970` | `'b'` |
+| NULL | stays NULL (1 building nationally) |
+
+The view wraps its base query in an outer `SELECT ... FROM (...) base` solely so this gate can reference the computed risk columns. The fallback is deliberately gated on the other risks being NULL — ungated it would stamp a class on every report-less building in the country and skew the neighborhood statistics. These rows are always `indicative` reliability (no sample joins matched). Domain rule by Don; consumed by the Webservice `/light` endpoint as a fourth `computeOverallRisk` component.
 
 ### 8.5 Reliability columns
 
