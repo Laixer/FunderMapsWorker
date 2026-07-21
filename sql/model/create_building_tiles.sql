@@ -7,7 +7,7 @@
 -- detail for z14+ and a simplified copy for z12–13 (a building is only a
 -- few pixels there; without simplification a dense-city z12 tile is ~7 MB).
 --
--- Rebuilt nightly by data.refresh_all() right after model_risk_static
+-- Rebuilt nightly right after model_risk_static
 -- refreshes (attributes change nightly; geometry only on BAG reload —
 -- a future optimization is trigger-based partial refresh, see the
 -- tileserver plan).
@@ -198,9 +198,7 @@ BEGIN
 END $$;
 
 -- The nightly rebuild runs from the Windmill flow
--- f/fundermaps/data/refresh_data_model as fundermaps_windmill
--- (data.refresh_all() also calls it, but that procedure is not scheduled
--- anywhere today — the Windmill flow is the live nightly path).
+-- f/fundermaps/data/refresh_data_model as fundermaps_windmill.
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
