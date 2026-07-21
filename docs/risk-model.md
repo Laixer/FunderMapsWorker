@@ -16,7 +16,7 @@ For every active "house"-type BAG building in the Netherlands (≈ 11.2M rows), 
 - A **foundation type** prediction (`report.foundation_type` enum, 18 values).
 - Three **damage-mode risks** — `drystand_risk`, `dewatering_depth_risk`, `bio_infection_risk` — each on the `data.foundation_risk_indication` ENUM `('a','b','c','d','e')` where `a` = safe and `e` = critical.
 - A catch-all `unclassified_risk`.
-- For each risk and the foundation type, a **reliability tier** (`data.reliability` ENUM: `indicative` < `cluster` < `supercluster` < `established`).
+- For each risk and the foundation type, a **reliability tier** (`data.reliability` ENUM: `indicative` < `cluster` < `supercluster` < `established`). Since Issue #1005, the `supercluster` tier applies **only to `foundation_type`** (a structural characteristic); all risk values and other inquiry-derived signal inherit at most from the `cluster` tier.
 - Numeric features used to derive the risks (`drystand`, `dewatering_depth`, `velocity`, `ground_water_level`, `ground_level`, `height`, `surface_area`).
 - A **restoration cost estimate** (€).
 - The "best" inquiry referenced (`inquiry_id`, `inquiry_type`, `document_date`-derived `enforcement_term` years remaining, `damage_cause`, `overall_quality`).
@@ -113,6 +113,8 @@ CREATE TYPE data.reliability AS ENUM (
 );
 -- Note: precedence is established > cluster > supercluster > indicative
 -- (despite the order in which the enum was declared).
+-- Issue #1005: 'supercluster' can only appear on foundation_type_reliability;
+-- risk values never inherit past the cluster tier anymore.
 
 CREATE TYPE report.foundation_type AS ENUM (
     'wood','concrete','no_pile','wood_charger','weighted_pile','combined',
@@ -321,7 +323,7 @@ Decision tree (in evaluation order — first match wins):
 
 ### 6.5 Damage-cause risk: `data.compute_damage_risk(...)`
 
-Used at **established / cluster / supercluster** tiers to map `(damage_cause, enforcement_term, overall_quality, recovery_advised)` to a letter.
+Used at **established / cluster** tiers to map `(damage_cause, enforcement_term, overall_quality, recovery_advised)` to a letter. (Until Issue #1005 it was also applied at the supercluster tier; risk no longer propagates that far.)
 
 ```sql
 SELECT CASE
@@ -352,7 +354,7 @@ If the sample's `damage_cause` is not in the array, the function returns NULL an
 
 ### 6.6 `data.compute_unclassified_risk(...)`
 
-Catch-all when `damage_cause` doesn't match any of the three specific causes. Tier-parameterised: **established** uses `recovery_risk='a', urgent_risk='e'`; **cluster** uses `'e','d'`; **supercluster** uses `'e','d'` with `has_recovery=false`.
+Catch-all when `damage_cause` doesn't match any of the three specific causes. Tier-parameterised: **established** uses `recovery_risk='a', urgent_risk='e'`; **cluster** uses `'e','d'`.
 
 ```sql
 SELECT CASE
@@ -540,16 +542,16 @@ The `recovery` LATERAL picks the most recent `recovery_sample` per building. `ha
 | `neighborhood_id`                   | `bp.neighborhood_id`                                                      | — |
 | `construction_year`                 | `COALESCE(established.built_year, bp.construction_year_bag)`              | established or BAG |
 | `construction_year_reliability`     | `'established'` if `established.built_year IS NOT NULL` else `'indicative'` | — |
-| `foundation_type`                   | `foundation_type.ft` (LATERAL)                                            | est > clu > sup > ind |
+| `foundation_type`                   | `foundation_type.ft` (LATERAL)                                            | est > clu > sup > ind (only column still using the supercluster tier) |
 | `foundation_type_reliability`       | first non-NULL `foundation_type` in {est, clu, sup}, else `'indicative'`  | — |
 | `restoration_costs`                 | `data.compute_restoration_costs(foundation_type.ft, bp.surface_area)`     | — |
-| `drystand`                          | see §8.3                                                                  | est > clu > sup > indicative gwl |
-| `drystand_risk`                     | `COALESCE(compute_damage_risk × 3 tiers, compute_indicative_drystand_risk)` | — |
+| `drystand`                          | see §8.3                                                                  | est > clu > indicative gwl |
+| `drystand_risk`                     | `COALESCE(compute_damage_risk × 2 tiers, compute_indicative_drystand_risk)` | — |
 | `drystand_risk_reliability`         | first tier with non-NULL inquiry id; `'indicative'` otherwise              | — |
-| `bio_infection_risk` (+ reliability) | `COALESCE(compute_damage_risk × 3, compute_indicative_bio_risk)`           | — |
-| `dewatering_depth`                  | see §8.3                                                                  | est > clu > sup > indicative gwl |
-| `dewatering_depth_risk` (+ reliability) | `COALESCE(compute_damage_risk × 3, compute_indicative_dewatering_risk)`  | — |
-| `unclassified_risk`                 | see §8.4                                                                  | est > clu > sup |
+| `bio_infection_risk` (+ reliability) | `COALESCE(compute_damage_risk × 2, compute_indicative_bio_risk)`           | — |
+| `dewatering_depth`                  | see §8.3                                                                  | est > clu > indicative gwl |
+| `dewatering_depth_risk` (+ reliability) | `COALESCE(compute_damage_risk × 2, compute_indicative_dewatering_risk)`  | — |
+| `unclassified_risk`                 | see §8.4                                                                  | est > clu |
 | `height`                            | `bp.height::numeric(10,2)`                                                 | — |
 | `velocity`                          | `round(bs.velocity::numeric, 2)`                                          | — |
 | `ground_water_level`                | `round(gwl.level::numeric, 2)`                                            | — |
@@ -557,11 +559,11 @@ The `recovery` LATERAL picks the most recent `recovery_sample` per building. `ha
 | `soil`                              | `gr.code`                                                                 | — |
 | `surface_area`                      | `bp.surface_area`                                                         | — |
 | `owner`                             | `bo.owner`                                                                | — |
-| `inquiry_id`                        | `COALESCE(established.id, cluster.id, supercluster.id)`                   | — |
-| `inquiry_type`                      | first non-NULL inquiry_type across tiers                                  | — |
-| `damage_cause`                      | first non-NULL damage_cause across tiers                                  | — |
+| `inquiry_id`                        | `established.id` — **established only** (Issue #1005)                     | — |
+| `inquiry_type`                      | `established.inquiry_type` — **established only** (Issue #1005)           | — |
+| `damage_cause`                      | `COALESCE(established, cluster)` damage_cause                             | — |
 | `enforcement_term`                  | `date_part('years', age((doc_date + enforcement_term_years(...))::tstz, CURRENT_TIMESTAMP))` — **years remaining (negative if elapsed)** | — |
-| `overall_quality`                   | first non-NULL overall_quality across tiers                               | — |
+| `overall_quality`                   | `COALESCE(established, cluster)` overall_quality                          | — |
 | `recovery_type`                     | `recovery.type`                                                            | — |
 
 ### 8.3 Numeric outputs `drystand` and `dewatering_depth`
@@ -576,8 +578,6 @@ CASE
         THEN (established.wood_level - established.groundwater_level)::double precision
     WHEN cluster.wood_level    IS NOT NULL AND cluster.groundwater_level    IS NOT NULL
         THEN ...
-    WHEN supercluster.wood_level IS NOT NULL AND supercluster.groundwater_level IS NOT NULL
-        THEN ...
     WHEN foundation_type.ft = 'wood_charger'    THEN gwl.level - 2.5
     WHEN data.is_wood_pile(foundation_type.ft)  THEN gwl.level - 1.5
     ELSE NULL
@@ -589,8 +589,6 @@ CASE
     WHEN established.foundation_depth IS NOT NULL AND established.groundwater_level IS NOT NULL
         THEN (established.foundation_depth - established.groundwater_level - 0.6)::double precision
     WHEN cluster.foundation_depth    IS NOT NULL AND cluster.groundwater_level    IS NOT NULL
-        THEN ...
-    WHEN supercluster.foundation_depth IS NOT NULL AND supercluster.groundwater_level IS NOT NULL
         THEN ...
     WHEN data.is_no_pile_family(foundation_type.ft) THEN gwl.level - 0.6
     ELSE NULL
@@ -615,19 +613,15 @@ COALESCE(
     compute_unclassified_risk(
         cluster_recovery_sample.type IS NOT NULL, 'e', 'd',  -- cluster: cluster_recovery → e, urgent → d
         cluster.enforcement_term, cluster.overall_quality,
-        cluster.recovery_advised, cluster.damage_cause),
-    compute_unclassified_risk(
-        false, 'e', 'd',  -- supercluster: no recovery signal at this tier
-        supercluster.enforcement_term, supercluster.overall_quality,
-        supercluster.recovery_advised, supercluster.damage_cause)
+        cluster.recovery_advised, cluster.damage_cause)
 )
 ```
 
-The asymmetric mapping (`a/e` for established, `e/d` for cluster/supercluster) captures the fact that a recovery flag is only fully trustworthy at the building level; cluster recoveries indicate the area is being treated, not necessarily this building.
+The asymmetric mapping (`a/e` for established, `e/d` for cluster) captures the fact that a recovery flag is only fully trustworthy at the building level; cluster recoveries indicate the area is being treated, not necessarily this building.
 
 ### 8.5 Reliability columns
 
-There are four reliability columns: `construction_year_reliability`, `foundation_type_reliability`, `drystand_risk_reliability`, `bio_infection_risk_reliability`, `dewatering_depth_risk_reliability`. They are recomputed per output by checking which tier (established/cluster/supercluster) supplied a non-NULL `id` (or `built_year` / `foundation_type` for the corresponding fields). The `restoration_costs`, `drystand`, `dewatering_depth` numeric columns themselves do not carry an explicit reliability — they inherit from `foundation_type_reliability` via the foundation type they use.
+There are four reliability columns: `construction_year_reliability`, `foundation_type_reliability`, `drystand_risk_reliability`, `bio_infection_risk_reliability`, `dewatering_depth_risk_reliability`. They are recomputed per output by checking which tier supplied a non-NULL `id` (or `built_year` / `foundation_type` for the corresponding fields). Since Issue #1005 the risk reliabilities can only be established/cluster/indicative; `supercluster` still occurs on `foundation_type_reliability` only. The `restoration_costs`, `drystand`, `dewatering_depth` numeric columns themselves do not carry an explicit reliability — they inherit from `foundation_type_reliability` via the foundation type they use.
 
 ---
 

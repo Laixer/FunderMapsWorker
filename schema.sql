@@ -3733,43 +3733,38 @@ CREATE VIEW data.model_risk_dynamic_all AS
         CASE
             WHEN ((established.wood_level IS NOT NULL) AND (established.groundwater_level IS NOT NULL)) THEN (((established.wood_level)::numeric - (established.groundwater_level)::numeric))::double precision
             WHEN ((cluster.wood_level IS NOT NULL) AND (cluster.groundwater_level IS NOT NULL)) THEN (((cluster.wood_level)::numeric - (cluster.groundwater_level)::numeric))::double precision
-            WHEN ((supercluster.wood_level IS NOT NULL) AND (supercluster.groundwater_level IS NOT NULL)) THEN (((supercluster.wood_level)::numeric - (supercluster.groundwater_level)::numeric))::double precision
             WHEN (foundation_type.ft = 'wood_charger'::report.foundation_type) THEN (gwl.level - (2.5)::double precision)
             WHEN data.is_wood_pile(foundation_type.ft) THEN (gwl.level - (1.5)::double precision)
             ELSE NULL::double precision
         END AS drystand,
-    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_drystand_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS drystand_risk,
+    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_indicative_drystand_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS drystand_risk,
         CASE
             WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
             WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
             WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
             ELSE 'indicative'::data.reliability
         END AS drystand_risk_reliability,
-    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_bio_risk(foundation_type.ft, pile_length.pile_length, bs.velocity, (recovery.type IS NOT NULL))) AS bio_infection_risk,
+    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_indicative_bio_risk(foundation_type.ft, pile_length.pile_length, bs.velocity, (recovery.type IS NOT NULL))) AS bio_infection_risk,
         CASE
             WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
             WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
             WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
             ELSE 'indicative'::data.reliability
         END AS bio_infection_risk_reliability,
         CASE
             WHEN ((established.foundation_depth IS NOT NULL) AND (established.groundwater_level IS NOT NULL)) THEN ((((established.foundation_depth)::numeric - (established.groundwater_level)::numeric) - 0.6))::double precision
             WHEN ((cluster.foundation_depth IS NOT NULL) AND (cluster.groundwater_level IS NOT NULL)) THEN ((((cluster.foundation_depth)::numeric - (cluster.groundwater_level)::numeric) - 0.6))::double precision
-            WHEN ((supercluster.foundation_depth IS NOT NULL) AND (supercluster.groundwater_level IS NOT NULL)) THEN ((((supercluster.foundation_depth)::numeric - (supercluster.groundwater_level)::numeric) - 0.6))::double precision
             WHEN data.is_no_pile_family(foundation_type.ft) THEN (gwl.level - (0.6)::double precision)
             ELSE NULL::double precision
         END AS dewatering_depth,
-    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_dewatering_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS dewatering_depth_risk,
+    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_indicative_dewatering_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS dewatering_depth_risk,
         CASE
             WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
             WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
             WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
             ELSE 'indicative'::data.reliability
         END AS dewatering_depth_risk_reliability,
-    COALESCE(data.compute_unclassified_risk((recovery.type IS NOT NULL), 'a'::data.foundation_risk_indication, 'e'::data.foundation_risk_indication, established.enforcement_term, established.overall_quality, established.recovery_advised, established.damage_cause), data.compute_unclassified_risk((cluster_recovery_sample.type IS NOT NULL), 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised, cluster.damage_cause), data.compute_unclassified_risk(false, 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised, supercluster.damage_cause)) AS unclassified_risk,
+    COALESCE(data.compute_unclassified_risk((recovery.type IS NOT NULL), 'a'::data.foundation_risk_indication, 'e'::data.foundation_risk_indication, established.enforcement_term, established.overall_quality, established.recovery_advised, established.damage_cause), data.compute_unclassified_risk((cluster_recovery_sample.type IS NOT NULL), 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised, cluster.damage_cause)) AS unclassified_risk,
     (bp.height)::numeric(10,2) AS height,
     round((bs.velocity)::numeric, 2) AS velocity,
     round((gwl.level)::numeric, 2) AS ground_water_level,
@@ -3777,11 +3772,11 @@ CREATE VIEW data.model_risk_dynamic_all AS
     gr.code AS soil,
     bp.surface_area,
     bo.owner,
-    COALESCE(established.id, cluster.id, supercluster.id) AS inquiry_id,
-    COALESCE(established.inquiry_type, cluster.inquiry_type, supercluster.inquiry_type) AS inquiry_type,
-    COALESCE(established.damage_cause, cluster.damage_cause, supercluster.damage_cause) AS damage_cause,
-    date_part('years'::text, age(((COALESCE(established.document_date, cluster.document_date, supercluster.document_date) + data.enforcement_term_years(COALESCE(established.enforcement_term, cluster.enforcement_term, supercluster.enforcement_term))))::timestamp with time zone, CURRENT_TIMESTAMP)) AS enforcement_term,
-    COALESCE(established.overall_quality, cluster.overall_quality, supercluster.overall_quality) AS overall_quality,
+    established.id AS inquiry_id,
+    established.inquiry_type AS inquiry_type,
+    COALESCE(established.damage_cause, cluster.damage_cause) AS damage_cause,
+    date_part('years'::text, age(((COALESCE(established.document_date, cluster.document_date) + data.enforcement_term_years(COALESCE(established.enforcement_term, cluster.enforcement_term))))::timestamp with time zone, CURRENT_TIMESTAMP)) AS enforcement_term,
+    COALESCE(established.overall_quality, cluster.overall_quality) AS overall_quality,
     recovery.type AS recovery_type
    FROM ((((((((((((data.building_precomputed bp
      LEFT JOIN data.building_geographic_region gr ON ((gr.building_id = bp.building_id)))
