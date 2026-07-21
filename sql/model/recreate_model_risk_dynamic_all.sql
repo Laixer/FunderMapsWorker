@@ -20,8 +20,69 @@
 -- CLUSTER tier; the supercluster tier only supplies foundation_type (structural
 -- characteristic, not risk). inquiry_id/inquiry_type are established-only —
 -- never borrowed from a cluster or supercluster peer.
+--
+-- Construction-year fallback (issue Laixer/FunderMaps#1002):
+--   Every building must carry at least one risk indication. When all three
+--   component risks AND the report-derived unclassified_risk are null (~45k
+--   rows: missing groundwater model coverage, 'other'/'combined' foundation
+--   types, no_pile_bearing_floor), unclassified_risk falls back to a
+--   construction-year heuristic: built before 1970 → 'd', 1970 or later →
+--   'b'. Reliability of these rows is 'indicative' by construction (no
+--   sample joins matched). The fallback is deliberately GATED on the other
+--   risks being null — ungated it would stamp a class on every report-less
+--   building in the country and skew the neighborhood statistics.
+--   The outer query wrapper exists only to reference the computed risk
+--   columns in that gate.
 
 CREATE OR REPLACE VIEW data.model_risk_dynamic_all AS
+SELECT
+    base.building_id,
+    base.address_count,
+    base.neighborhood_id,
+    base.construction_year,
+    base.construction_year_reliability,
+    base.foundation_type,
+    base.foundation_type_reliability,
+    base.restoration_costs,
+    base.drystand,
+    base.drystand_risk,
+    base.drystand_risk_reliability,
+    base.bio_infection_risk,
+    base.bio_infection_risk_reliability,
+    base.dewatering_depth,
+    base.dewatering_depth_risk,
+    base.dewatering_depth_risk_reliability,
+    COALESCE(
+        base.unclassified_risk,
+        CASE
+            WHEN base.drystand_risk IS NULL
+             AND base.bio_infection_risk IS NULL
+             AND base.dewatering_depth_risk IS NULL
+            THEN CASE
+                WHEN base.construction_year < 1970
+                    THEN 'd'::data.foundation_risk_indication
+                WHEN base.construction_year >= 1970
+                    THEN 'b'::data.foundation_risk_indication
+                -- construction_year unknown: stays null
+                ELSE NULL
+            END
+            ELSE NULL
+        END
+    ) AS unclassified_risk,
+    base.height,
+    base.velocity,
+    base.ground_water_level,
+    base.ground_level,
+    base.soil,
+    base.surface_area,
+    base.owner,
+    base.inquiry_id,
+    base.inquiry_type,
+    base.damage_cause,
+    base.enforcement_term,
+    base.overall_quality,
+    base.recovery_type
+FROM (
 SELECT
     bp.building_id,
     bp.address_count,
@@ -228,4 +289,5 @@ FROM data.building_precomputed bp
             gr.code,
             bp.address_count
         )
-    )) AS foundation_type(ft);
+    )) AS foundation_type(ft)
+) base;
