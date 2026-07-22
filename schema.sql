@@ -4312,25 +4312,6 @@ CREATE VIEW geocoder.building_geocoder AS
 
 
 --
--- Name: country; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.country (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    external_id text NOT NULL,
-    name text NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL
-);
-
-
---
--- Name: TABLE country; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.country IS 'Contains all countries in our own format.';
-
-
---
 -- Name: analysis_building; Type: VIEW; Schema: maplayer; Owner: -
 --
 
@@ -4484,19 +4465,6 @@ CREATE VIEW maplayer.building_cluster AS
    FROM (data.building_cluster bc
      JOIN geocoder.building_active ba ON ((ba.external_id = bc.building_id)))
   GROUP BY bc.cluster_id;
-
-
---
--- Name: building_supercluster; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.building_supercluster AS
- SELECT s.supercluster_id,
-    public.st_union(ba.geom) AS geom
-   FROM ((data.supercluster s
-     JOIN data.building_cluster bc ON ((bc.cluster_id = s.cluster_id)))
-     JOIN geocoder.building_active ba ON ((ba.external_id = bc.building_id)))
-  GROUP BY s.supercluster_id;
 
 
 --
@@ -4701,15 +4669,6 @@ CREATE VIEW maplayer.incident_neighborhood AS
      JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
   GROUP BY n.id, n.geom;
-
-
---
--- Name: model_supply; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.model_supply (
-    building_id text NOT NULL
-);
 
 
 --
@@ -6001,14 +5960,6 @@ ALTER TABLE ONLY geocoder.building
 
 
 --
--- Name: country country_pkey; Type: CONSTRAINT; Schema: geocoder; Owner: -
---
-
-ALTER TABLE ONLY geocoder.country
-    ADD CONSTRAINT country_pkey PRIMARY KEY (id);
-
-
---
 -- Name: district district_pkey; Type: CONSTRAINT; Schema: geocoder; Owner: -
 --
 
@@ -6062,14 +6013,6 @@ ALTER TABLE ONLY maplayer.building_tiles
 
 ALTER TABLE ONLY maplayer.bundle
     ADD CONSTRAINT bundle_pkey PRIMARY KEY (tileset);
-
-
---
--- Name: model_supply model_supply_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.model_supply
-    ADD CONSTRAINT model_supply_pkey PRIMARY KEY (building_id);
 
 
 --
@@ -8500,27 +8443,6 @@ CREATE INDEX building_neighborhood_idx ON geocoder.building USING btree (neighbo
 
 
 --
--- Name: country_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE UNIQUE INDEX country_external_id_idx ON geocoder.country USING btree (external_id);
-
-
---
--- Name: country_geom_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX country_geom_idx ON geocoder.country USING gist (geom);
-
-
---
--- Name: country_name_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX country_name_idx ON geocoder.country USING btree (name);
-
-
---
 -- Name: district_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
@@ -10525,14 +10447,6 @@ ALTER TABLE ONLY geocoder.residence
 
 ALTER TABLE ONLY geocoder.residence
     ADD CONSTRAINT residence_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: state state_country_id_fkey; Type: FK CONSTRAINT; Schema: geocoder; Owner: -
---
-
-ALTER TABLE ONLY geocoder.state
-    ADD CONSTRAINT state_country_id_fkey FOREIGN KEY (country_id) REFERENCES geocoder.country(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
