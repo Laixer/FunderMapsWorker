@@ -4475,33 +4475,6 @@ CREATE VIEW maplayer.analysis_risk AS
 
 
 --
--- Name: boundary_district; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.boundary_district AS
- SELECT geom
-   FROM geocoder.district d;
-
-
---
--- Name: boundary_municipality; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.boundary_municipality AS
- SELECT geom
-   FROM geocoder.municipality m;
-
-
---
--- Name: boundary_neighborhood; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.boundary_neighborhood AS
- SELECT geom
-   FROM geocoder.neighborhood n;
-
-
---
 -- Name: building_cluster; Type: VIEW; Schema: maplayer; Owner: -
 --
 
