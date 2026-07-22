@@ -450,9 +450,6 @@ REFRESH MATERIALIZED VIEW data.statistics_product_foundation_risk;
 REFRESH MATERIALIZED VIEW data.statistics_product_data_collected;
 REFRESH MATERIALIZED VIEW data.statistics_product_construction_years;
 REFRESH MATERIALIZED VIEW data.statistics_product_buildings_restored;
-REFRESH MATERIALIZED VIEW data.statistics_postal_code_foundation_type;
-REFRESH MATERIALIZED VIEW data.statistics_postal_code_foundation_risk;
-REFRESH MATERIALIZED VIEW data.statistics_postal_code_data_collected;
 `);
 
   console.log("Closing output...");
