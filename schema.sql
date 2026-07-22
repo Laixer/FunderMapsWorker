@@ -4799,19 +4799,6 @@ CREATE VIEW maplayer.incident_neighborhood AS
 
 
 --
--- Name: statistics_foundation_risk; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.statistics_foundation_risk AS
- SELECT spfr.neighborhood_id,
-    spfr.foundation_risk,
-    spfr.percentage,
-    n.geom
-   FROM (data.statistics_product_foundation_risk spfr
-     JOIN geocoder.neighborhood n ON (((n.id)::text = spfr.neighborhood_id)));
-
-
---
 -- Name: model_supply; Type: TABLE; Schema: public; Owner: -
 --
 
