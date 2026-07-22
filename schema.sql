@@ -4034,19 +4034,6 @@ COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, 
 
 
 --
--- Name: statistics_postal_code_data_collected; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.statistics_postal_code_data_collected AS
- SELECT a.postal_code,
-    (((count(a.id) FILTER (WHERE (i.id IS NOT NULL)))::double precision / (count(a.id))::double precision) * (100)::double precision) AS percentage
-   FROM (geocoder.address a
-     LEFT JOIN report.inquiry_sample i ON (((i.building_id)::text = (a.building_id)::text)))
-  GROUP BY a.postal_code
-  WITH NO DATA;
-
-
---
 -- Name: address_building; Type: VIEW; Schema: geocoder; Owner: -
 --
 
@@ -4056,41 +4043,6 @@ CREATE VIEW geocoder.address_building AS
     ba.geom
    FROM (geocoder.address addr
      JOIN geocoder.building_active ba ON (((addr.building_id)::text = ba.external_id)));
-
-
---
--- Name: statistics_postal_code_foundation_risk; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.statistics_postal_code_foundation_risk AS
- SELECT postal_code,
-    risk AS foundation_risk,
-    (((count(risk))::numeric / sum(count(risk)) OVER (PARTITION BY postal_code)) * (100)::numeric) AS percentage
-   FROM ( SELECT a.postal_code,
-            ( SELECT unnest(ARRAY[mrs.drystand_risk, mrs.bio_infection_risk, mrs.dewatering_depth_risk, mrs.unclassified_risk]) AS risk
-                  ORDER BY (unnest(ARRAY[mrs.drystand_risk, mrs.bio_infection_risk, mrs.dewatering_depth_risk, mrs.unclassified_risk]))
-                 LIMIT 1) AS risk
-           FROM ((data.model_risk_static mrs
-             JOIN geocoder.address_building ab ON ((ab.building_id = mrs.building_id)))
-             JOIN geocoder.address a ON (((a.id)::text = (ab.address_id)::text)))) acr
-  WHERE (risk IS NOT NULL)
-  GROUP BY postal_code, risk
-  WITH NO DATA;
-
-
---
--- Name: statistics_postal_code_foundation_type; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.statistics_postal_code_foundation_type AS
- SELECT a.postal_code,
-    mrs.foundation_type,
-    (((count(mrs.foundation_type))::numeric / sum(count(mrs.foundation_type)) OVER (PARTITION BY a.postal_code)) * (100)::numeric) AS percentage
-   FROM ((data.model_risk_static mrs
-     JOIN geocoder.address_building ab ON ((ab.building_id = mrs.building_id)))
-     JOIN geocoder.address a ON (((a.id)::text = (ab.address_id)::text)))
-  GROUP BY a.postal_code, mrs.foundation_type
-  WITH NO DATA;
 
 
 --
@@ -8464,27 +8416,6 @@ CREATE INDEX model_risk_static_neighborhood_id_idx ON data.model_risk_static USI
 --
 
 CREATE UNIQUE INDEX model_risk_static_pkey ON data.model_risk_static USING btree (building_id);
-
-
---
--- Name: statistics_postal_code_data_collected_postal_code_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX statistics_postal_code_data_collected_postal_code_idx ON data.statistics_postal_code_data_collected USING btree (postal_code);
-
-
---
--- Name: statistics_postal_code_foundation_risk_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX statistics_postal_code_foundation_risk_idx ON data.statistics_postal_code_foundation_risk USING btree (postal_code, foundation_risk);
-
-
---
--- Name: statistics_postal_code_foundation_type_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX statistics_postal_code_foundation_type_idx ON data.statistics_postal_code_foundation_type USING btree (postal_code, foundation_type);
 
 
 --
