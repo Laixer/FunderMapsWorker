@@ -10,7 +10,8 @@
 --   - building_id (unique BAG ID, required for CONCURRENTLY)
 --   - neighborhood_id (used by statistics aggregation)
 --
--- Refreshed daily at 18:00 UTC by data.refresh_all() via pg_cron.
+-- Refreshed daily at 18:00 UTC by the Windmill flow
+-- f/fundermaps/data/refresh_data_model.
 
 CREATE MATERIALIZED VIEW data.model_risk_static AS
 SELECT

@@ -7,7 +7,7 @@
 -- detail for z14+ and a simplified copy for z12–13 (a building is only a
 -- few pixels there; without simplification a dense-city z12 tile is ~7 MB).
 --
--- Rebuilt nightly by data.refresh_all() right after model_risk_static
+-- Rebuilt nightly right after model_risk_static
 -- refreshes (attributes change nightly; geometry only on BAG reload —
 -- a future optimization is trigger-based partial refresh, see the
 -- tileserver plan).
@@ -169,6 +169,13 @@ BEGIN
                 drystand_risk, bio_infection_risk, dewatering_depth_risk,
                 unclassified_risk, recovery_type, velocity, damage_cause,
                 inquiry_type,
+                -- WebFront paints with these even at z12–13: every layer
+                -- extrudes on height; owner/restoration-cost/enforcement-term/
+                -- overall-quality layers and address_count filters break
+                -- without them. All low-cardinality → MVT dictionary-encodes
+                -- them cheaply (building_id stays z14+, it's the size killer).
+                address_count, height, owner, restoration_costs,
+                enforcement_term, overall_quality,
                 ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom_simple && env
@@ -198,9 +205,7 @@ BEGIN
 END $$;
 
 -- The nightly rebuild runs from the Windmill flow
--- f/fundermaps/data/refresh_data_model as fundermaps_windmill
--- (data.refresh_all() also calls it, but that procedure is not scheduled
--- anywhere today — the Windmill flow is the live nightly path).
+-- f/fundermaps/data/refresh_data_model as fundermaps_windmill.
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN

@@ -1172,53 +1172,6 @@ $$;
 
 
 --
--- Name: refresh_all(); Type: PROCEDURE; Schema: data; Owner: -
---
-
-CREATE PROCEDURE data.refresh_all()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.building_sample;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.cluster_sample;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.supercluster_sample;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.model_risk_static;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_inquiries;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_inquiry_municipality;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_incidents;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_incident_municipality;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_foundation_type;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_foundation_risk;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_data_collected;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_construction_years;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_buildings_restored;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_foundation_type;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_foundation_risk;
-    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_data_collected;
-    COMMIT;
-    CALL maplayer.refresh_building_tiles();
-    COMMIT;
-    INSERT INTO application.worker_jobs (job_type, status, max_retries) VALUES ('process_mapset', 'pending', 0);
-END;
-$$;
-
-
---
 -- Name: refresh_building_precomputed(); Type: PROCEDURE; Schema: data; Owner: -
 --
 
@@ -1391,6 +1344,13 @@ BEGIN
                 drystand_risk, bio_infection_risk, dewatering_depth_risk,
                 unclassified_risk, recovery_type, velocity, damage_cause,
                 inquiry_type,
+                -- WebFront paints with these even at z12–13: every layer
+                -- extrudes on height; owner/restoration-cost/enforcement-term/
+                -- overall-quality layers and address_count filters break
+                -- without them. All low-cardinality → MVT dictionary-encodes
+                -- them cheaply (building_id stays z14+, it's the size killer).
+                address_count, height, owner, restoration_costs,
+                enforcement_term, overall_quality,
                 ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom_simple && env
@@ -3111,16 +3071,6 @@ COMMENT ON TABLE application.organization_user IS 'Linking table between organiz
 
 
 --
--- Name: portal; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.portal (
-    id integer NOT NULL,
-    name text
-);
-
-
---
 -- Name: session; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -3714,94 +3664,128 @@ COMMENT ON COLUMN report.recovery_sample.delete_date IS 'Timestamp of soft delet
 --
 
 CREATE VIEW data.model_risk_dynamic_all AS
- SELECT bp.building_id,
-    bp.address_count,
-    bp.neighborhood_id,
-    COALESCE(established.built_year, bp.construction_year_bag) AS construction_year,
+ SELECT building_id,
+    address_count,
+    neighborhood_id,
+    construction_year,
+    construction_year_reliability,
+    foundation_type,
+    foundation_type_reliability,
+    restoration_costs,
+    drystand,
+    drystand_risk,
+    drystand_risk_reliability,
+    bio_infection_risk,
+    bio_infection_risk_reliability,
+    dewatering_depth,
+    dewatering_depth_risk,
+    dewatering_depth_risk_reliability,
+    COALESCE(unclassified_risk,
         CASE
-            WHEN (established.built_year IS NOT NULL) THEN 'established'::data.reliability
-            ELSE 'indicative'::data.reliability
-        END AS construction_year_reliability,
-    foundation_type.ft AS foundation_type,
-        CASE
-            WHEN (established.foundation_type IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (cluster.foundation_type IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.foundation_type IS NOT NULL) THEN 'supercluster'::data.reliability
-            ELSE 'indicative'::data.reliability
-        END AS foundation_type_reliability,
-    data.compute_restoration_costs(foundation_type.ft, bp.surface_area) AS restoration_costs,
-        CASE
-            WHEN ((established.wood_level IS NOT NULL) AND (established.groundwater_level IS NOT NULL)) THEN (((established.wood_level)::numeric - (established.groundwater_level)::numeric))::double precision
-            WHEN ((cluster.wood_level IS NOT NULL) AND (cluster.groundwater_level IS NOT NULL)) THEN (((cluster.wood_level)::numeric - (cluster.groundwater_level)::numeric))::double precision
-            WHEN ((supercluster.wood_level IS NOT NULL) AND (supercluster.groundwater_level IS NOT NULL)) THEN (((supercluster.wood_level)::numeric - (supercluster.groundwater_level)::numeric))::double precision
-            WHEN (foundation_type.ft = 'wood_charger'::report.foundation_type) THEN (gwl.level - (2.5)::double precision)
-            WHEN data.is_wood_pile(foundation_type.ft) THEN (gwl.level - (1.5)::double precision)
-            ELSE NULL::double precision
-        END AS drystand,
-    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_drystand_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS drystand_risk,
-        CASE
-            WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
-            ELSE 'indicative'::data.reliability
-        END AS drystand_risk_reliability,
-    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_bio_risk(foundation_type.ft, pile_length.pile_length, bs.velocity, (recovery.type IS NOT NULL))) AS bio_infection_risk,
-        CASE
-            WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
-            ELSE 'indicative'::data.reliability
-        END AS bio_infection_risk_reliability,
-        CASE
-            WHEN ((established.foundation_depth IS NOT NULL) AND (established.groundwater_level IS NOT NULL)) THEN ((((established.foundation_depth)::numeric - (established.groundwater_level)::numeric) - 0.6))::double precision
-            WHEN ((cluster.foundation_depth IS NOT NULL) AND (cluster.groundwater_level IS NOT NULL)) THEN ((((cluster.foundation_depth)::numeric - (cluster.groundwater_level)::numeric) - 0.6))::double precision
-            WHEN ((supercluster.foundation_depth IS NOT NULL) AND (supercluster.groundwater_level IS NOT NULL)) THEN ((((supercluster.foundation_depth)::numeric - (supercluster.groundwater_level)::numeric) - 0.6))::double precision
-            WHEN data.is_no_pile_family(foundation_type.ft) THEN (gwl.level - (0.6)::double precision)
-            ELSE NULL::double precision
-        END AS dewatering_depth,
-    COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_damage_risk(false, supercluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised), data.compute_indicative_dewatering_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS dewatering_depth_risk,
-        CASE
-            WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
-            WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
-            WHEN (supercluster.id IS NOT NULL) THEN 'supercluster'::data.reliability
-            ELSE 'indicative'::data.reliability
-        END AS dewatering_depth_risk_reliability,
-    COALESCE(data.compute_unclassified_risk((recovery.type IS NOT NULL), 'a'::data.foundation_risk_indication, 'e'::data.foundation_risk_indication, established.enforcement_term, established.overall_quality, established.recovery_advised, established.damage_cause), data.compute_unclassified_risk((cluster_recovery_sample.type IS NOT NULL), 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised, cluster.damage_cause), data.compute_unclassified_risk(false, 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised, supercluster.damage_cause)) AS unclassified_risk,
-    (bp.height)::numeric(10,2) AS height,
-    round((bs.velocity)::numeric, 2) AS velocity,
-    round((gwl.level)::numeric, 2) AS ground_water_level,
-    bp.ground_level,
-    gr.code AS soil,
-    bp.surface_area,
-    bo.owner,
-    COALESCE(established.id, cluster.id, supercluster.id) AS inquiry_id,
-    COALESCE(established.inquiry_type, cluster.inquiry_type, supercluster.inquiry_type) AS inquiry_type,
-    COALESCE(established.damage_cause, cluster.damage_cause, supercluster.damage_cause) AS damage_cause,
-    date_part('years'::text, age(((COALESCE(established.document_date, cluster.document_date, supercluster.document_date) + data.enforcement_term_years(COALESCE(established.enforcement_term, cluster.enforcement_term, supercluster.enforcement_term))))::timestamp with time zone, CURRENT_TIMESTAMP)) AS enforcement_term,
-    COALESCE(established.overall_quality, cluster.overall_quality, supercluster.overall_quality) AS overall_quality,
-    recovery.type AS recovery_type
-   FROM ((((((((((((data.building_precomputed bp
-     LEFT JOIN data.building_geographic_region gr ON ((gr.building_id = bp.building_id)))
-     LEFT JOIN data.building_groundwater_level gwl ON ((gwl.building_id = bp.building_id)))
-     LEFT JOIN data.building_subsidence bs ON ((bs.building_id = bp.building_id)))
-     LEFT JOIN data.building_ownership bo ON ((bo.building_id = bp.building_id)))
-     LEFT JOIN data.building_pleistocene bpl ON ((bpl.building_id = bp.building_id)))
-     LEFT JOIN data.building_cluster bc ON ((bc.building_id = bp.building_id)))
-     LEFT JOIN data.supercluster bsc ON ((bsc.cluster_id = bc.cluster_id)))
-     LEFT JOIN data.building_sample established ON ((established.building_id = bp.building_id)))
-     LEFT JOIN data.cluster_sample cluster ON ((cluster.cluster_id = bc.cluster_id)))
-     LEFT JOIN data.supercluster_sample supercluster ON ((supercluster.supercluster_id = bsc.supercluster_id)))
-     LEFT JOIN LATERAL ( SELECT DISTINCT ON (rs.building_id) rs.building_id,
-            rs.type
-           FROM report.recovery_sample rs
-          WHERE (rs.building_id = bp.building_id)
-          ORDER BY rs.building_id, rs.create_date DESC) recovery ON (true))
-     LEFT JOIN data.cluster_recovery_sample ON ((cluster_recovery_sample.cluster_id = bc.cluster_id))),
-    LATERAL ( SELECT round((((bp.ground_level)::double precision - bpl.depth))::numeric, 2) AS round) pile_length(pile_length),
-    LATERAL ( SELECT COALESCE(established.foundation_type, cluster.foundation_type, supercluster.foundation_type, data.indicative_foundation_type(COALESCE(established.built_year, bp.construction_year_bag), bp.height, gr.code, bp.address_count)) AS "coalesce") foundation_type(ft);
+            WHEN ((drystand_risk IS NULL) AND (bio_infection_risk IS NULL) AND (dewatering_depth_risk IS NULL)) THEN
+            CASE
+                WHEN (construction_year < 1970) THEN 'd'::data.foundation_risk_indication
+                WHEN (construction_year >= 1970) THEN 'b'::data.foundation_risk_indication
+                ELSE NULL::data.foundation_risk_indication
+            END
+            ELSE NULL::data.foundation_risk_indication
+        END) AS unclassified_risk,
+    height,
+    velocity,
+    ground_water_level,
+    ground_level,
+    soil,
+    surface_area,
+    owner,
+    inquiry_id,
+    inquiry_type,
+    damage_cause,
+    enforcement_term,
+    overall_quality,
+    recovery_type
+   FROM ( SELECT bp.building_id,
+            bp.address_count,
+            bp.neighborhood_id,
+            COALESCE(established.built_year, bp.construction_year_bag) AS construction_year,
+                CASE
+                    WHEN (established.built_year IS NOT NULL) THEN 'established'::data.reliability
+                    ELSE 'indicative'::data.reliability
+                END AS construction_year_reliability,
+            foundation_type.ft AS foundation_type,
+                CASE
+                    WHEN (established.foundation_type IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (cluster.foundation_type IS NOT NULL) THEN 'cluster'::data.reliability
+                    WHEN (supercluster.foundation_type IS NOT NULL) THEN 'supercluster'::data.reliability
+                    ELSE 'indicative'::data.reliability
+                END AS foundation_type_reliability,
+            data.compute_restoration_costs(foundation_type.ft, bp.surface_area) AS restoration_costs,
+                CASE
+                    WHEN ((established.wood_level IS NOT NULL) AND (established.groundwater_level IS NOT NULL)) THEN (((established.wood_level)::numeric - (established.groundwater_level)::numeric))::double precision
+                    WHEN ((cluster.wood_level IS NOT NULL) AND (cluster.groundwater_level IS NOT NULL)) THEN (((cluster.wood_level)::numeric - (cluster.groundwater_level)::numeric))::double precision
+                    WHEN (foundation_type.ft = 'wood_charger'::report.foundation_type) THEN (gwl.level - (2.5)::double precision)
+                    WHEN data.is_wood_pile(foundation_type.ft) THEN (gwl.level - (1.5)::double precision)
+                    ELSE NULL::double precision
+                END AS drystand,
+            COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drystand'::report.foundation_damage_cause, 'fungus_infection'::report.foundation_damage_cause, 'bio_fungus_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_indicative_drystand_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS drystand_risk,
+                CASE
+                    WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
+                    ELSE 'indicative'::data.reliability
+                END AS drystand_risk_reliability,
+            COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['bio_infection'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_indicative_bio_risk(foundation_type.ft, pile_length.pile_length, bs.velocity, (recovery.type IS NOT NULL))) AS bio_infection_risk,
+                CASE
+                    WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
+                    ELSE 'indicative'::data.reliability
+                END AS bio_infection_risk_reliability,
+                CASE
+                    WHEN ((established.foundation_depth IS NOT NULL) AND (established.groundwater_level IS NOT NULL)) THEN ((((established.foundation_depth)::numeric - (established.groundwater_level)::numeric) - 0.6))::double precision
+                    WHEN ((cluster.foundation_depth IS NOT NULL) AND (cluster.groundwater_level IS NOT NULL)) THEN ((((cluster.foundation_depth)::numeric - (cluster.groundwater_level)::numeric) - 0.6))::double precision
+                    WHEN data.is_no_pile_family(foundation_type.ft) THEN (gwl.level - (0.6)::double precision)
+                    ELSE NULL::double precision
+                END AS dewatering_depth,
+            COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_damage_risk((recovery.type IS NOT NULL), established.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], established.enforcement_term, established.overall_quality, established.recovery_advised), data.compute_damage_risk(false, cluster.damage_cause, ARRAY['drainage'::report.foundation_damage_cause], cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised), data.compute_indicative_dewatering_risk(foundation_type.ft, bs.velocity, gwl.level, (recovery.type IS NOT NULL))) AS dewatering_depth_risk,
+                CASE
+                    WHEN (established.facade_scan_risk IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (established.id IS NOT NULL) THEN 'established'::data.reliability
+                    WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
+                    ELSE 'indicative'::data.reliability
+                END AS dewatering_depth_risk_reliability,
+            COALESCE(data.compute_unclassified_risk((recovery.type IS NOT NULL), 'a'::data.foundation_risk_indication, 'e'::data.foundation_risk_indication, established.enforcement_term, established.overall_quality, established.recovery_advised, established.damage_cause), data.compute_unclassified_risk((cluster_recovery_sample.type IS NOT NULL), 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised, cluster.damage_cause)) AS unclassified_risk,
+            (bp.height)::numeric(10,2) AS height,
+            round((bs.velocity)::numeric, 2) AS velocity,
+            round((gwl.level)::numeric, 2) AS ground_water_level,
+            bp.ground_level,
+            gr.code AS soil,
+            bp.surface_area,
+            bo.owner,
+            established.id AS inquiry_id,
+            established.inquiry_type,
+            COALESCE(established.damage_cause, cluster.damage_cause) AS damage_cause,
+            date_part('years'::text, age(((COALESCE(established.document_date, cluster.document_date) + data.enforcement_term_years(COALESCE(established.enforcement_term, cluster.enforcement_term))))::timestamp with time zone, CURRENT_TIMESTAMP)) AS enforcement_term,
+            COALESCE(established.overall_quality, cluster.overall_quality) AS overall_quality,
+            recovery.type AS recovery_type
+           FROM ((((((((((((data.building_precomputed bp
+             LEFT JOIN data.building_geographic_region gr ON ((gr.building_id = bp.building_id)))
+             LEFT JOIN data.building_groundwater_level gwl ON ((gwl.building_id = bp.building_id)))
+             LEFT JOIN data.building_subsidence bs ON ((bs.building_id = bp.building_id)))
+             LEFT JOIN data.building_ownership bo ON ((bo.building_id = bp.building_id)))
+             LEFT JOIN data.building_pleistocene bpl ON ((bpl.building_id = bp.building_id)))
+             LEFT JOIN data.building_cluster bc ON ((bc.building_id = bp.building_id)))
+             LEFT JOIN data.supercluster bsc ON ((bsc.cluster_id = bc.cluster_id)))
+             LEFT JOIN data.building_sample established ON ((established.building_id = bp.building_id)))
+             LEFT JOIN data.cluster_sample cluster ON ((cluster.cluster_id = bc.cluster_id)))
+             LEFT JOIN data.supercluster_sample supercluster ON ((supercluster.supercluster_id = bsc.supercluster_id)))
+             LEFT JOIN LATERAL ( SELECT DISTINCT ON (rs.building_id) rs.building_id,
+                    rs.type
+                   FROM report.recovery_sample rs
+                  WHERE (rs.building_id = bp.building_id)
+                  ORDER BY rs.building_id, rs.create_date DESC) recovery ON (true))
+             LEFT JOIN data.cluster_recovery_sample ON ((cluster_recovery_sample.cluster_id = bc.cluster_id))),
+            LATERAL ( SELECT round((((bp.ground_level)::double precision - bpl.depth))::numeric, 2) AS round) pile_length(pile_length),
+            LATERAL ( SELECT COALESCE(established.foundation_type, cluster.foundation_type, supercluster.foundation_type, data.indicative_foundation_type(COALESCE(established.built_year, bp.construction_year_bag), bp.height, gr.code, bp.address_count)) AS "coalesce") foundation_type(ft)) base;
 
 
 --
@@ -4050,19 +4034,6 @@ COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, 
 
 
 --
--- Name: statistics_postal_code_data_collected; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.statistics_postal_code_data_collected AS
- SELECT a.postal_code,
-    (((count(a.id) FILTER (WHERE (i.id IS NOT NULL)))::double precision / (count(a.id))::double precision) * (100)::double precision) AS percentage
-   FROM (geocoder.address a
-     LEFT JOIN report.inquiry_sample i ON (((i.building_id)::text = (a.building_id)::text)))
-  GROUP BY a.postal_code
-  WITH NO DATA;
-
-
---
 -- Name: address_building; Type: VIEW; Schema: geocoder; Owner: -
 --
 
@@ -4072,41 +4043,6 @@ CREATE VIEW geocoder.address_building AS
     ba.geom
    FROM (geocoder.address addr
      JOIN geocoder.building_active ba ON (((addr.building_id)::text = ba.external_id)));
-
-
---
--- Name: statistics_postal_code_foundation_risk; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.statistics_postal_code_foundation_risk AS
- SELECT postal_code,
-    risk AS foundation_risk,
-    (((count(risk))::numeric / sum(count(risk)) OVER (PARTITION BY postal_code)) * (100)::numeric) AS percentage
-   FROM ( SELECT a.postal_code,
-            ( SELECT unnest(ARRAY[mrs.drystand_risk, mrs.bio_infection_risk, mrs.dewatering_depth_risk, mrs.unclassified_risk]) AS risk
-                  ORDER BY (unnest(ARRAY[mrs.drystand_risk, mrs.bio_infection_risk, mrs.dewatering_depth_risk, mrs.unclassified_risk]))
-                 LIMIT 1) AS risk
-           FROM ((data.model_risk_static mrs
-             JOIN geocoder.address_building ab ON ((ab.building_id = mrs.building_id)))
-             JOIN geocoder.address a ON (((a.id)::text = (ab.address_id)::text)))) acr
-  WHERE (risk IS NOT NULL)
-  GROUP BY postal_code, risk
-  WITH NO DATA;
-
-
---
--- Name: statistics_postal_code_foundation_type; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.statistics_postal_code_foundation_type AS
- SELECT a.postal_code,
-    mrs.foundation_type,
-    (((count(mrs.foundation_type))::numeric / sum(count(mrs.foundation_type)) OVER (PARTITION BY a.postal_code)) * (100)::numeric) AS percentage
-   FROM ((data.model_risk_static mrs
-     JOIN geocoder.address_building ab ON ((ab.building_id = mrs.building_id)))
-     JOIN geocoder.address a ON (((a.id)::text = (ab.address_id)::text)))
-  GROUP BY a.postal_code, mrs.foundation_type
-  WITH NO DATA;
 
 
 --
@@ -4376,35 +4312,6 @@ CREATE VIEW geocoder.building_geocoder AS
 
 
 --
--- Name: country; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.country (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    external_id text NOT NULL,
-    name text NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL
-);
-
-
---
--- Name: TABLE country; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.country IS 'Contains all countries in our own format.';
-
-
---
--- Name: postal_code; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.postal_code (
-    postal_code character varying(6) NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL
-);
-
-
---
 -- Name: analysis_building; Type: VIEW; Schema: maplayer; Owner: -
 --
 
@@ -4549,33 +4456,6 @@ CREATE VIEW maplayer.analysis_risk AS
 
 
 --
--- Name: boundary_district; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.boundary_district AS
- SELECT geom
-   FROM geocoder.district d;
-
-
---
--- Name: boundary_municipality; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.boundary_municipality AS
- SELECT geom
-   FROM geocoder.municipality m;
-
-
---
--- Name: boundary_neighborhood; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.boundary_neighborhood AS
- SELECT geom
-   FROM geocoder.neighborhood n;
-
-
---
 -- Name: building_cluster; Type: VIEW; Schema: maplayer; Owner: -
 --
 
@@ -4585,19 +4465,6 @@ CREATE VIEW maplayer.building_cluster AS
    FROM (data.building_cluster bc
      JOIN geocoder.building_active ba ON ((ba.external_id = bc.building_id)))
   GROUP BY bc.cluster_id;
-
-
---
--- Name: building_supercluster; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.building_supercluster AS
- SELECT s.supercluster_id,
-    public.st_union(ba.geom) AS geom
-   FROM ((data.supercluster s
-     JOIN data.building_cluster bc ON ((bc.cluster_id = s.cluster_id)))
-     JOIN geocoder.building_active ba ON ((ba.external_id = bc.building_id)))
-  GROUP BY s.supercluster_id;
 
 
 --
@@ -4802,28 +4669,6 @@ CREATE VIEW maplayer.incident_neighborhood AS
      JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
   GROUP BY n.id, n.geom;
-
-
---
--- Name: statistics_foundation_risk; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.statistics_foundation_risk AS
- SELECT spfr.neighborhood_id,
-    spfr.foundation_risk,
-    spfr.percentage,
-    n.geom
-   FROM (data.statistics_product_foundation_risk spfr
-     JOIN geocoder.neighborhood n ON (((n.id)::text = spfr.neighborhood_id)));
-
-
---
--- Name: model_supply; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.model_supply (
-    building_id text NOT NULL
-);
 
 
 --
@@ -5971,14 +5816,6 @@ ALTER TABLE ONLY application.organization_user
 
 
 --
--- Name: portal portal_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.portal
-    ADD CONSTRAINT portal_pkey PRIMARY KEY (id);
-
-
---
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -6123,14 +5960,6 @@ ALTER TABLE ONLY geocoder.building
 
 
 --
--- Name: country country_pkey; Type: CONSTRAINT; Schema: geocoder; Owner: -
---
-
-ALTER TABLE ONLY geocoder.country
-    ADD CONSTRAINT country_pkey PRIMARY KEY (id);
-
-
---
 -- Name: district district_pkey; Type: CONSTRAINT; Schema: geocoder; Owner: -
 --
 
@@ -6152,14 +5981,6 @@ ALTER TABLE ONLY geocoder.municipality
 
 ALTER TABLE ONLY geocoder.neighborhood
     ADD CONSTRAINT neighborhood_pkey PRIMARY KEY (id);
-
-
---
--- Name: postal_code postal_code_pkey; Type: CONSTRAINT; Schema: geocoder; Owner: -
---
-
-ALTER TABLE ONLY geocoder.postal_code
-    ADD CONSTRAINT postal_code_pkey PRIMARY KEY (postal_code);
 
 
 --
@@ -6192,14 +6013,6 @@ ALTER TABLE ONLY maplayer.building_tiles
 
 ALTER TABLE ONLY maplayer.bundle
     ADD CONSTRAINT bundle_pkey PRIMARY KEY (tileset);
-
-
---
--- Name: model_supply model_supply_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.model_supply
-    ADD CONSTRAINT model_supply_pkey PRIMARY KEY (building_id);
 
 
 --
@@ -8504,27 +8317,6 @@ CREATE UNIQUE INDEX model_risk_static_pkey ON data.model_risk_static USING btree
 
 
 --
--- Name: statistics_postal_code_data_collected_postal_code_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX statistics_postal_code_data_collected_postal_code_idx ON data.statistics_postal_code_data_collected USING btree (postal_code);
-
-
---
--- Name: statistics_postal_code_foundation_risk_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX statistics_postal_code_foundation_risk_idx ON data.statistics_postal_code_foundation_risk USING btree (postal_code, foundation_risk);
-
-
---
--- Name: statistics_postal_code_foundation_type_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX statistics_postal_code_foundation_type_idx ON data.statistics_postal_code_foundation_type USING btree (postal_code, foundation_type);
-
-
---
 -- Name: statistics_product_buildings_restored_neighborhood_idx; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -8651,27 +8443,6 @@ CREATE INDEX building_neighborhood_idx ON geocoder.building USING btree (neighbo
 
 
 --
--- Name: country_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE UNIQUE INDEX country_external_id_idx ON geocoder.country USING btree (external_id);
-
-
---
--- Name: country_geom_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX country_geom_idx ON geocoder.country USING gist (geom);
-
-
---
--- Name: country_name_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX country_name_idx ON geocoder.country USING btree (name);
-
-
---
 -- Name: district_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
@@ -8746,13 +8517,6 @@ CREATE INDEX neighborhood_geom_idx ON geocoder.neighborhood USING gist (geom);
 --
 
 CREATE INDEX neighborhood_name_idx ON geocoder.neighborhood USING btree (name);
-
-
---
--- Name: postal_code_geom_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX postal_code_geom_idx ON geocoder.postal_code USING gist (geom);
 
 
 --
@@ -10683,14 +10447,6 @@ ALTER TABLE ONLY geocoder.residence
 
 ALTER TABLE ONLY geocoder.residence
     ADD CONSTRAINT residence_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: state state_country_id_fkey; Type: FK CONSTRAINT; Schema: geocoder; Owner: -
---
-
-ALTER TABLE ONLY geocoder.state
-    ADD CONSTRAINT state_country_id_fkey FOREIGN KEY (country_id) REFERENCES geocoder.country(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --

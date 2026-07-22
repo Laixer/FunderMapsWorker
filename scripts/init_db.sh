@@ -17,8 +17,8 @@
 #   - Load seed data. Run `psql -f sql/seed.sql` (Part B) afterwards.
 #   - Install timescaledb. Prod's product_tracker hypertable is irrelevant
 #     for testing; vanilla tables work fine.
-#   - Manage pg_cron jobs. Trigger refresh_all manually via the worker
-#     or psql when needed.
+#   - Schedule refreshes. The seed ends with a plain REFRESH block; after
+#     that, refresh matviews manually via psql when needed.
 #
 # Usage:
 #   DATABASE_URL=postgres://user:pass@host:5432/fundermaps ./scripts/init_db.sh

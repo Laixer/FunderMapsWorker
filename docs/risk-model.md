@@ -16,7 +16,7 @@ For every active "house"-type BAG building in the Netherlands (≈ 11.2M rows), 
 - A **foundation type** prediction (`report.foundation_type` enum, 18 values).
 - Three **damage-mode risks** — `drystand_risk`, `dewatering_depth_risk`, `bio_infection_risk` — each on the `data.foundation_risk_indication` ENUM `('a','b','c','d','e')` where `a` = safe and `e` = critical.
 - A catch-all `unclassified_risk`.
-- For each risk and the foundation type, a **reliability tier** (`data.reliability` ENUM: `indicative` < `cluster` < `supercluster` < `established`).
+- For each risk and the foundation type, a **reliability tier** (`data.reliability` ENUM: `indicative` < `cluster` < `supercluster` < `established`). Since Issue #1005, the `supercluster` tier applies **only to `foundation_type`** (a structural characteristic); all risk values and other inquiry-derived signal inherit at most from the `cluster` tier.
 - Numeric features used to derive the risks (`drystand`, `dewatering_depth`, `velocity`, `ground_water_level`, `ground_level`, `height`, `surface_area`).
 - A **restoration cost estimate** (€).
 - The "best" inquiry referenced (`inquiry_id`, `inquiry_type`, `document_date`-derived `enforcement_term` years remaining, `damage_cause`, `overall_quality`).
@@ -61,17 +61,17 @@ The matview is consumed by:
                               │
                               ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 2 — Daily (pg_cron Job 7, 18:00 UTC)                                  │
+│  STAGE 2 — Daily (Windmill flow f/fundermaps/data/refresh_data_model,       │
+│             scheduled 18:00 UTC)                                             │
 │                                                                              │
-│   CALL data.refresh_all();                                                   │
-│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.building_sample             │
-│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.cluster_sample              │
-│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.supercluster_sample         │
+│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.building_sample     ┐       │
+│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.cluster_sample      ├ par.  │
+│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.supercluster_sample ┘       │
 │   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.model_risk_static           │
 │   │      ← reads data.model_risk_dynamic_all (large view)                    │
-│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_* (12 of them)   │
-│   └─ INSERT INTO application.worker_jobs ('process_mapset','pending')        │
-│         → triggers the TS worker to regenerate vector tiles                  │
+│   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_* (12, parallel) │
+│   └─ sub-flow f/fundermaps/mapset/process_mapset                             │
+│         → enqueues worker_jobs row; TS worker regenerates vector tiles       │
 └──────────────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -113,6 +113,8 @@ CREATE TYPE data.reliability AS ENUM (
 );
 -- Note: precedence is established > cluster > supercluster > indicative
 -- (despite the order in which the enum was declared).
+-- Issue #1005: 'supercluster' can only appear on foundation_type_reliability;
+-- risk values never inherit past the cluster tier anymore.
 
 CREATE TYPE report.foundation_type AS ENUM (
     'wood','concrete','no_pile','wood_charger','weighted_pile','combined',
@@ -321,7 +323,7 @@ Decision tree (in evaluation order — first match wins):
 
 ### 6.5 Damage-cause risk: `data.compute_damage_risk(...)`
 
-Used at **established / cluster / supercluster** tiers to map `(damage_cause, enforcement_term, overall_quality, recovery_advised)` to a letter.
+Used at **established / cluster** tiers to map `(damage_cause, enforcement_term, overall_quality, recovery_advised)` to a letter. (Until Issue #1005 it was also applied at the supercluster tier; risk no longer propagates that far.)
 
 ```sql
 SELECT CASE
@@ -352,7 +354,7 @@ If the sample's `damage_cause` is not in the array, the function returns NULL an
 
 ### 6.6 `data.compute_unclassified_risk(...)`
 
-Catch-all when `damage_cause` doesn't match any of the three specific causes. Tier-parameterised: **established** uses `recovery_risk='a', urgent_risk='e'`; **cluster** uses `'e','d'`; **supercluster** uses `'e','d'` with `has_recovery=false`.
+Catch-all when `damage_cause` doesn't match any of the three specific causes. Tier-parameterised: **established** uses `recovery_risk='a', urgent_risk='e'`; **cluster** uses `'e','d'`.
 
 ```sql
 SELECT CASE
@@ -540,16 +542,16 @@ The `recovery` LATERAL picks the most recent `recovery_sample` per building. `ha
 | `neighborhood_id`                   | `bp.neighborhood_id`                                                      | — |
 | `construction_year`                 | `COALESCE(established.built_year, bp.construction_year_bag)`              | established or BAG |
 | `construction_year_reliability`     | `'established'` if `established.built_year IS NOT NULL` else `'indicative'` | — |
-| `foundation_type`                   | `foundation_type.ft` (LATERAL)                                            | est > clu > sup > ind |
+| `foundation_type`                   | `foundation_type.ft` (LATERAL)                                            | est > clu > sup > ind (only column still using the supercluster tier) |
 | `foundation_type_reliability`       | first non-NULL `foundation_type` in {est, clu, sup}, else `'indicative'`  | — |
 | `restoration_costs`                 | `data.compute_restoration_costs(foundation_type.ft, bp.surface_area)`     | — |
-| `drystand`                          | see §8.3                                                                  | est > clu > sup > indicative gwl |
-| `drystand_risk`                     | `COALESCE(compute_damage_risk × 3 tiers, compute_indicative_drystand_risk)` | — |
+| `drystand`                          | see §8.3                                                                  | est > clu > indicative gwl |
+| `drystand_risk`                     | `COALESCE(compute_damage_risk × 2 tiers, compute_indicative_drystand_risk)` | — |
 | `drystand_risk_reliability`         | first tier with non-NULL inquiry id; `'indicative'` otherwise              | — |
-| `bio_infection_risk` (+ reliability) | `COALESCE(compute_damage_risk × 3, compute_indicative_bio_risk)`           | — |
-| `dewatering_depth`                  | see §8.3                                                                  | est > clu > sup > indicative gwl |
-| `dewatering_depth_risk` (+ reliability) | `COALESCE(compute_damage_risk × 3, compute_indicative_dewatering_risk)`  | — |
-| `unclassified_risk`                 | see §8.4                                                                  | est > clu > sup |
+| `bio_infection_risk` (+ reliability) | `COALESCE(compute_damage_risk × 2, compute_indicative_bio_risk)`           | — |
+| `dewatering_depth`                  | see §8.3                                                                  | est > clu > indicative gwl |
+| `dewatering_depth_risk` (+ reliability) | `COALESCE(compute_damage_risk × 2, compute_indicative_dewatering_risk)`  | — |
+| `unclassified_risk`                 | see §8.4 (incl. construction-year fallback, #1002)                        | est > clu > year-fallback |
 | `height`                            | `bp.height::numeric(10,2)`                                                 | — |
 | `velocity`                          | `round(bs.velocity::numeric, 2)`                                          | — |
 | `ground_water_level`                | `round(gwl.level::numeric, 2)`                                            | — |
@@ -557,11 +559,11 @@ The `recovery` LATERAL picks the most recent `recovery_sample` per building. `ha
 | `soil`                              | `gr.code`                                                                 | — |
 | `surface_area`                      | `bp.surface_area`                                                         | — |
 | `owner`                             | `bo.owner`                                                                | — |
-| `inquiry_id`                        | `COALESCE(established.id, cluster.id, supercluster.id)`                   | — |
-| `inquiry_type`                      | first non-NULL inquiry_type across tiers                                  | — |
-| `damage_cause`                      | first non-NULL damage_cause across tiers                                  | — |
+| `inquiry_id`                        | `established.id` — **established only** (Issue #1005)                     | — |
+| `inquiry_type`                      | `established.inquiry_type` — **established only** (Issue #1005)           | — |
+| `damage_cause`                      | `COALESCE(established, cluster)` damage_cause                             | — |
 | `enforcement_term`                  | `date_part('years', age((doc_date + enforcement_term_years(...))::tstz, CURRENT_TIMESTAMP))` — **years remaining (negative if elapsed)** | — |
-| `overall_quality`                   | first non-NULL overall_quality across tiers                               | — |
+| `overall_quality`                   | `COALESCE(established, cluster)` overall_quality                          | — |
 | `recovery_type`                     | `recovery.type`                                                            | — |
 
 ### 8.3 Numeric outputs `drystand` and `dewatering_depth`
@@ -576,8 +578,6 @@ CASE
         THEN (established.wood_level - established.groundwater_level)::double precision
     WHEN cluster.wood_level    IS NOT NULL AND cluster.groundwater_level    IS NOT NULL
         THEN ...
-    WHEN supercluster.wood_level IS NOT NULL AND supercluster.groundwater_level IS NOT NULL
-        THEN ...
     WHEN foundation_type.ft = 'wood_charger'    THEN gwl.level - 2.5
     WHEN data.is_wood_pile(foundation_type.ft)  THEN gwl.level - 1.5
     ELSE NULL
@@ -589,8 +589,6 @@ CASE
     WHEN established.foundation_depth IS NOT NULL AND established.groundwater_level IS NOT NULL
         THEN (established.foundation_depth - established.groundwater_level - 0.6)::double precision
     WHEN cluster.foundation_depth    IS NOT NULL AND cluster.groundwater_level    IS NOT NULL
-        THEN ...
-    WHEN supercluster.foundation_depth IS NOT NULL AND supercluster.groundwater_level IS NOT NULL
         THEN ...
     WHEN data.is_no_pile_family(foundation_type.ft) THEN gwl.level - 0.6
     ELSE NULL
@@ -615,19 +613,27 @@ COALESCE(
     compute_unclassified_risk(
         cluster_recovery_sample.type IS NOT NULL, 'e', 'd',  -- cluster: cluster_recovery → e, urgent → d
         cluster.enforcement_term, cluster.overall_quality,
-        cluster.recovery_advised, cluster.damage_cause),
-    compute_unclassified_risk(
-        false, 'e', 'd',  -- supercluster: no recovery signal at this tier
-        supercluster.enforcement_term, supercluster.overall_quality,
-        supercluster.recovery_advised, supercluster.damage_cause)
+        cluster.recovery_advised, cluster.damage_cause)
 )
 ```
 
-The asymmetric mapping (`a/e` for established, `e/d` for cluster/supercluster) captures the fact that a recovery flag is only fully trustworthy at the building level; cluster recoveries indicate the area is being treated, not necessarily this building.
+The asymmetric mapping (`a/e` for established, `e/d` for cluster) captures the fact that a recovery flag is only fully trustworthy at the building level; cluster recoveries indicate the area is being treated, not necessarily this building.
+
+#### Construction-year fallback (Issue [Laixer/FunderMaps#1002](https://github.com/Laixer/FunderMaps/issues/1002))
+
+Every building must carry at least one risk indication. When all three component risks **and** the report-derived `unclassified_risk` above are NULL (~45k buildings: missing groundwater model coverage — e.g. the Waddeneilanden — plus `other`/`combined` foundation types and `no_pile_bearing_floor`), `unclassified_risk` falls back to a construction-year heuristic:
+
+| `construction_year` | fallback |
+|---|---|
+| `< 1970` | `'d'` |
+| `>= 1970` | `'b'` |
+| NULL | stays NULL (1 building nationally) |
+
+The view wraps its base query in an outer `SELECT ... FROM (...) base` solely so this gate can reference the computed risk columns. The fallback is deliberately gated on the other risks being NULL — ungated it would stamp a class on every report-less building in the country and skew the neighborhood statistics. These rows are always `indicative` reliability (no sample joins matched). Domain rule by Don; consumed by the Webservice `/light` endpoint as a fourth `computeOverallRisk` component.
 
 ### 8.5 Reliability columns
 
-There are four reliability columns: `construction_year_reliability`, `foundation_type_reliability`, `drystand_risk_reliability`, `bio_infection_risk_reliability`, `dewatering_depth_risk_reliability`. They are recomputed per output by checking which tier (established/cluster/supercluster) supplied a non-NULL `id` (or `built_year` / `foundation_type` for the corresponding fields). The `restoration_costs`, `drystand`, `dewatering_depth` numeric columns themselves do not carry an explicit reliability — they inherit from `foundation_type_reliability` via the foundation type they use.
+There are four reliability columns: `construction_year_reliability`, `foundation_type_reliability`, `drystand_risk_reliability`, `bio_infection_risk_reliability`, `dewatering_depth_risk_reliability`. They are recomputed per output by checking which tier supplied a non-NULL `id` (or `built_year` / `foundation_type` for the corresponding fields). Since Issue #1005 the risk reliabilities can only be established/cluster/indicative; `supercluster` still occurs on `foundation_type_reliability` only. The `restoration_costs`, `drystand`, `dewatering_depth` numeric columns themselves do not carry an explicit reliability — they inherit from `foundation_type_reliability` via the foundation type they use.
 
 ---
 
@@ -670,53 +676,40 @@ GRANT SELECT ON data.model_risk_static TO fundermaps_webservice;
 
 ---
 
-## 10. `data.refresh_all()` — the daily refresh procedure
+## 10. The daily refresh — Windmill flow `f/fundermaps/data/refresh_data_model`
 
-**Source:** `sql/model/create_refresh_all.sql`. Run from pg_cron Job 7 at 18:00 UTC daily.
+Scheduled in Windmill at 18:00 UTC daily. The flow runs one small SQL script
+per matview (each a single `REFRESH MATERIALIZED VIEW CONCURRENTLY`), in this
+order:
 
-```sql
-CREATE OR REPLACE PROCEDURE data.refresh_all()
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- Step 1: Refresh sample matviews (must precede the model)
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.building_sample;     COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.cluster_sample;      COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.supercluster_sample; COMMIT;
+1. **Sample matviews** (parallel branch): `refresh_building_sample`,
+   `refresh_cluster_sample`, `refresh_supercluster_sample`.
+2. **Model**: `refresh_risk_model` → `data.model_risk_static`.
+3. **Statistics** (parallel branch): the 12 `refresh_statistics_*` scripts.
+4. **Tiles**: sub-flow `f/fundermaps/mapset/process_mapset` inserts a
+   `process_mapset` row into `application.worker_jobs` and polls it; the
+   FunderMaps Worker (`src/commands/process-mapset.ts`) picks it up and
+   regenerates all vector tiles (`ogr2ogr → tippecanoe → S3 upload
+   (fundermaps-tileset)`).
 
-    -- Step 2: Refresh model
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.model_risk_static;   COMMIT;
-
-    -- Step 3: Refresh 12 statistics matviews
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_inquiries;             COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_inquiry_municipality;  COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_incidents;             COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_incident_municipality; COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_foundation_type;       COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_foundation_risk;       COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_data_collected;        COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_construction_years;    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_buildings_restored;    COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_foundation_type;   COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_foundation_risk;   COMMIT;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_postal_code_data_collected;    COMMIT;
-
-    -- Step 4: Enqueue tile regeneration in the worker
-    INSERT INTO application.worker_jobs (job_type, status, max_retries)
-        VALUES ('process_mapset', 'pending', 0);
-END;
-$$;
-```
-
-Each step's `COMMIT` releases the AccessShareLock taken by the previous `CONCURRENTLY` refresh so unrelated read traffic doesn't queue behind it.
-
-The `process_mapset` row appended at the end is consumed by the FunderMaps Worker (`src/commands/process-mapset.ts`), which regenerates all vector tiles by running `ogr2ogr → tippecanoe → S3 upload (fundermaps-tileset)`.
+Each script is its own transaction, so locks release between steps, and
+`CONCURRENTLY` keeps API/webservice SELECTs unblocked throughout.
 
 **Operational notes**
-- pg_cron jobs live in `defaultdb`; manage them as `doadmin`. Job 7 was previously the systemd timer `fundermaps-refresh-model.timer` on the worker droplet — that timer is **disabled** (see CLAUDE memory; do not re-enable).
-- Refresh duration is dominated by `model_risk_static` (~minutes on the 11M-row dataset) and the larger statistics matviews. The matview is `CONCURRENTLY` so SELECTs by the API and webservice are not blocked.
-- Stale job recovery in the worker resets any `processing` job stuck >2h back to `pending`, so a crashed `process_mapset` will re-fire on the next worker poll.
-
+- **History:** the refresh was originally the systemd timer
+  `fundermaps-refresh-model.timer` on the worker droplet, then pg_cron Job 7
+  (`defaultdb`) calling a `data.refresh_all()` procedure. Both are gone —
+  the timer is disabled, the cron job unscheduled, and the procedure dropped
+  (2026-07-21). Windmill is the only scheduler. Do not resurrect the others.
+- Refresh duration is dominated by `model_risk_static` (~minutes on the
+  11M-row dataset) and the larger statistics matviews.
+- A fresh database restored from `schema.sql` has matviews `WITH NO DATA`;
+  `CONCURRENTLY` fails on those. First population must use plain
+  `REFRESH MATERIALIZED VIEW` — the seed generated by `scripts/build_seed.ts`
+  ends with exactly that block.
+- Stale job recovery in the worker resets any `processing` job stuck >2h back
+  to `pending`, so a crashed `process_mapset` will re-fire on the next worker
+  poll.
 ---
 
 ## 11. Downstream consumers
@@ -776,7 +769,7 @@ These do **not** read `model_risk_static`. They query `report.inquiry_sample` di
    - For a definition change you typically need `DROP MATERIALIZED VIEW` then `CREATE MATERIALIZED VIEW … WITH DATA` (or use the v2-swap pattern documented in `recreate_sample_matviews.sql` to avoid downtime).
    - **Always recreate the unique index** required by `REFRESH … CONCURRENTLY`.
    - **Always re-`GRANT SELECT … TO fundermaps_webapp, fundermaps_webservice`** — Postgres does NOT preserve privileges across DROP/CREATE.
-4. Run `CALL data.refresh_all()` (or selectively refresh only the matviews you changed).
+4. Refresh the matviews you changed (`REFRESH MATERIALIZED VIEW CONCURRENTLY data.<matview>;`) or trigger the Windmill flow `f/fundermaps/data/refresh_data_model` for a full pass.
 5. Spot-check downstream maplayer views (`SELECT count(*) FROM maplayer.analysis_full`).
 6. Regenerate `schema.sql`:
    ```bash
@@ -797,7 +790,7 @@ These do **not** read `model_risk_static`. They query `report.inquiry_sample` di
 - `EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM data.model_risk_dynamic_all WHERE building_id = '<some BAG id>';` — the row plan should still be parameterized index lookups, not seq-scans.
 - Row count parity: `SELECT count(*) FROM data.model_risk_static;` should match the previous count ± expected delta.
 - `SELECT foundation_type, count(*) FROM data.model_risk_static GROUP BY 1 ORDER BY 2 DESC;` should not radically reshape unless you intended to.
-- A worked example for a known address (e.g. `yorick@laixer.com`'s testing flow against `ws.fundermaps.com /api/v3/product/analysis`) before letting the next pg_cron tick fire.
+- A worked example for a known address (e.g. `yorick@laixer.com`'s testing flow against `ws.fundermaps.com /api/v3/product/analysis`) before letting the next nightly Windmill run fire.
 
 ---
 
@@ -809,7 +802,7 @@ These do **not** read `model_risk_static`. They query `report.inquiry_sample` di
 4. **`recreate_sample_matviews.sql` v2 swap is one-shot** — it creates `*_v2` matviews and documents (in comments) a `BEGIN; ALTER ... RENAME ...; COMMIT;` swap. Don't re-run it as-is on a live system; either edit the live matviews directly or re-introduce the v2 swap dance.
 5. **Stale rows in `model_risk_static`** — by design. If you need the matview to mirror `building_active` exactly, schedule a periodic `REFRESH … WITH NO DATA` then full refresh, or add a `DELETE WHERE building_id NOT IN (SELECT external_id FROM building_active)` step.
 6. **Privileges drop on `DROP MATERIALIZED VIEW`** — always re-`GRANT SELECT TO fundermaps_webapp, fundermaps_webservice`. Phase L of the schema cleanup hit this exact bug and is enshrined in the migration history.
-7. **`process_mapset` enqueue at the end of `refresh_all`** — if you change the `application.worker_jobs` schema (column names, enum values), update the `INSERT` here too. The current shape is `(job_type='process_mapset', status='pending', max_retries=0)`.
+7. **`process_mapset` enqueue in the Windmill `process_mapset` flow** — if you change the `application.worker_jobs` schema (column names, enum values), update the flow's `INSERT` too. The current shape is `(job_type='process_mapset', status='pending', max_retries=0)`.
 
 ---
 
@@ -822,7 +815,7 @@ These do **not** read `model_risk_static`. They query `report.inquiry_sample` di
 | Sample matviews (v2 swap)       | `sql/model/recreate_sample_matviews.sql`           |
 | `model_risk_dynamic_all` view   | `sql/model/recreate_model_risk_dynamic_all.sql`    |
 | `model_risk_static` matview     | `sql/model/recreate_model_risk_manifest.sql`       |
-| Daily refresh procedure         | `sql/model/create_refresh_all.sql`                 |
+| Daily refresh                   | Windmill flow `f/fundermaps/data/refresh_data_model` |
 | Analysis views & extra indexes  | `sql/model/consolidate_analysis_views.sql`         |
 | Statistics matview fixes        | `sql/model/fix_statistics.sql`                     |
 | Authoritative dump              | `schema.sql` (regenerate after any change)         |

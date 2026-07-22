@@ -14,8 +14,75 @@
 --     * Duplicate wood_rotterdam_arch in drystand CASE removed
 --     * dewatering_depth cluster branch: checks foundation_depth IS NOT NULL (was wood_level)
 --     * wood_rotterdam_amsterdam removed from no-pile dewatering_depth types
+--
+-- Issue #1005: inquiry-derived signal (risk values, damage_cause, enforcement,
+-- overall_quality, drystand/dewatering measurements) inherits at most from the
+-- CLUSTER tier; the supercluster tier only supplies foundation_type (structural
+-- characteristic, not risk). inquiry_id/inquiry_type are established-only —
+-- never borrowed from a cluster or supercluster peer.
+--
+-- Construction-year fallback (issue Laixer/FunderMaps#1002):
+--   Every building must carry at least one risk indication. When all three
+--   component risks AND the report-derived unclassified_risk are null (~45k
+--   rows: missing groundwater model coverage, 'other'/'combined' foundation
+--   types, no_pile_bearing_floor), unclassified_risk falls back to a
+--   construction-year heuristic: built before 1970 → 'd', 1970 or later →
+--   'b'. Reliability of these rows is 'indicative' by construction (no
+--   sample joins matched). The fallback is deliberately GATED on the other
+--   risks being null — ungated it would stamp a class on every report-less
+--   building in the country and skew the neighborhood statistics.
+--   The outer query wrapper exists only to reference the computed risk
+--   columns in that gate.
 
 CREATE OR REPLACE VIEW data.model_risk_dynamic_all AS
+SELECT
+    base.building_id,
+    base.address_count,
+    base.neighborhood_id,
+    base.construction_year,
+    base.construction_year_reliability,
+    base.foundation_type,
+    base.foundation_type_reliability,
+    base.restoration_costs,
+    base.drystand,
+    base.drystand_risk,
+    base.drystand_risk_reliability,
+    base.bio_infection_risk,
+    base.bio_infection_risk_reliability,
+    base.dewatering_depth,
+    base.dewatering_depth_risk,
+    base.dewatering_depth_risk_reliability,
+    COALESCE(
+        base.unclassified_risk,
+        CASE
+            WHEN base.drystand_risk IS NULL
+             AND base.bio_infection_risk IS NULL
+             AND base.dewatering_depth_risk IS NULL
+            THEN CASE
+                WHEN base.construction_year < 1970
+                    THEN 'd'::data.foundation_risk_indication
+                WHEN base.construction_year >= 1970
+                    THEN 'b'::data.foundation_risk_indication
+                -- construction_year unknown: stays null
+                ELSE NULL
+            END
+            ELSE NULL
+        END
+    ) AS unclassified_risk,
+    base.height,
+    base.velocity,
+    base.ground_water_level,
+    base.ground_level,
+    base.soil,
+    base.surface_area,
+    base.owner,
+    base.inquiry_id,
+    base.inquiry_type,
+    base.damage_cause,
+    base.enforcement_term,
+    base.overall_quality,
+    base.recovery_type
+FROM (
 SELECT
     bp.building_id,
     bp.address_count,
@@ -46,8 +113,6 @@ SELECT
             THEN (established.wood_level::numeric - established.groundwater_level::numeric)::double precision
         WHEN cluster.wood_level IS NOT NULL AND cluster.groundwater_level IS NOT NULL
             THEN (cluster.wood_level::numeric - cluster.groundwater_level::numeric)::double precision
-        WHEN supercluster.wood_level IS NOT NULL AND supercluster.groundwater_level IS NOT NULL
-            THEN (supercluster.wood_level::numeric - supercluster.groundwater_level::numeric)::double precision
         WHEN foundation_type.ft = 'wood_charger'
             THEN gwl.level - 2.5
         WHEN data.is_wood_pile(foundation_type.ft)
@@ -55,7 +120,7 @@ SELECT
         ELSE NULL
     END AS drystand,
 
-    -- Drystand risk (established > cluster > supercluster > indicative)
+    -- Drystand risk (established > cluster > indicative)
     -- Issue #979: established.facade_scan_risk is a report-provided, building-
     -- level override. When non-null it wins regardless of inquiry_type and
     -- forces reliability to 'established'. Does NOT propagate via cluster /
@@ -74,12 +139,6 @@ SELECT
             ARRAY['drystand', 'fungus_infection', 'bio_fungus_infection']::report.foundation_damage_cause[],
             cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised
         ),
-        data.compute_damage_risk(
-            false,
-            supercluster.damage_cause,
-            ARRAY['drystand', 'fungus_infection', 'bio_fungus_infection']::report.foundation_damage_cause[],
-            supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised
-        ),
         data.compute_indicative_drystand_risk(
             foundation_type.ft, bs.velocity, gwl.level, recovery.type IS NOT NULL
         )
@@ -88,11 +147,10 @@ SELECT
         WHEN established.facade_scan_risk IS NOT NULL THEN 'established'::data.reliability
         WHEN established.id IS NOT NULL THEN 'established'::data.reliability
         WHEN cluster.id IS NOT NULL THEN 'cluster'::data.reliability
-        WHEN supercluster.id IS NOT NULL THEN 'supercluster'::data.reliability
         ELSE 'indicative'::data.reliability
     END AS drystand_risk_reliability,
 
-    -- Bio infection risk (established > cluster > supercluster > indicative)
+    -- Bio infection risk (established > cluster > indicative)
     -- Issue #979: facade_scan_risk override (see drystand_risk note above).
     COALESCE(
         established.facade_scan_risk::text::data.foundation_risk_indication,
@@ -108,12 +166,6 @@ SELECT
             ARRAY['bio_infection']::report.foundation_damage_cause[],
             cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised
         ),
-        data.compute_damage_risk(
-            false,
-            supercluster.damage_cause,
-            ARRAY['bio_infection']::report.foundation_damage_cause[],
-            supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised
-        ),
         data.compute_indicative_bio_risk(
             foundation_type.ft, pile_length.pile_length, bs.velocity, recovery.type IS NOT NULL
         )
@@ -122,7 +174,6 @@ SELECT
         WHEN established.facade_scan_risk IS NOT NULL THEN 'established'::data.reliability
         WHEN established.id IS NOT NULL THEN 'established'::data.reliability
         WHEN cluster.id IS NOT NULL THEN 'cluster'::data.reliability
-        WHEN supercluster.id IS NOT NULL THEN 'supercluster'::data.reliability
         ELSE 'indicative'::data.reliability
     END AS bio_infection_risk_reliability,
 
@@ -133,15 +184,13 @@ SELECT
             THEN ((established.foundation_depth::numeric - established.groundwater_level::numeric) - 0.6)::double precision
         WHEN cluster.foundation_depth IS NOT NULL AND cluster.groundwater_level IS NOT NULL
             THEN ((cluster.foundation_depth::numeric - cluster.groundwater_level::numeric) - 0.6)::double precision
-        WHEN supercluster.foundation_depth IS NOT NULL AND supercluster.groundwater_level IS NOT NULL
-            THEN ((supercluster.foundation_depth::numeric - supercluster.groundwater_level::numeric) - 0.6)::double precision
         -- BUG FIX: wood_rotterdam_amsterdam removed from no-pile types
         WHEN data.is_no_pile_family(foundation_type.ft)
             THEN gwl.level - 0.6
         ELSE NULL
     END AS dewatering_depth,
 
-    -- Dewatering depth risk (established > cluster > supercluster > indicative)
+    -- Dewatering depth risk (established > cluster > indicative)
     -- Issue #979: facade_scan_risk override (see drystand_risk note above).
     COALESCE(
         established.facade_scan_risk::text::data.foundation_risk_indication,
@@ -157,12 +206,6 @@ SELECT
             ARRAY['drainage']::report.foundation_damage_cause[],
             cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised
         ),
-        data.compute_damage_risk(
-            false,
-            supercluster.damage_cause,
-            ARRAY['drainage']::report.foundation_damage_cause[],
-            supercluster.enforcement_term, supercluster.overall_quality, supercluster.recovery_advised
-        ),
         data.compute_indicative_dewatering_risk(
             foundation_type.ft, bs.velocity, gwl.level, recovery.type IS NOT NULL
         )
@@ -171,11 +214,10 @@ SELECT
         WHEN established.facade_scan_risk IS NOT NULL THEN 'established'::data.reliability
         WHEN established.id IS NOT NULL THEN 'established'::data.reliability
         WHEN cluster.id IS NOT NULL THEN 'cluster'::data.reliability
-        WHEN supercluster.id IS NOT NULL THEN 'supercluster'::data.reliability
         ELSE 'indicative'::data.reliability
     END AS dewatering_depth_risk_reliability,
 
-    -- Unclassified risk (established > cluster > supercluster)
+    -- Unclassified risk (established > cluster)
     COALESCE(
         data.compute_unclassified_risk(
             recovery.type IS NOT NULL, 'a', 'e',
@@ -186,11 +228,6 @@ SELECT
             cluster_recovery_sample.type IS NOT NULL, 'e', 'd',
             cluster.enforcement_term, cluster.overall_quality,
             cluster.recovery_advised, cluster.damage_cause
-        ),
-        data.compute_unclassified_risk(
-            false, 'e', 'd',
-            supercluster.enforcement_term, supercluster.overall_quality,
-            supercluster.recovery_advised, supercluster.damage_cause
         )
     ) AS unclassified_risk,
 
@@ -204,19 +241,21 @@ SELECT
     bo.owner,
 
     -- Best inquiry info
-    COALESCE(established.id, cluster.id, supercluster.id) AS inquiry_id,
-    COALESCE(established.inquiry_type, cluster.inquiry_type, supercluster.inquiry_type) AS inquiry_type,
-    COALESCE(established.damage_cause, cluster.damage_cause, supercluster.damage_cause) AS damage_cause,
+    -- Issue #1005: inquiry identity applies only to the sampled building itself;
+    -- damage/enforcement/quality may be borrowed from a cluster peer, never supercluster.
+    established.id AS inquiry_id,
+    established.inquiry_type AS inquiry_type,
+    COALESCE(established.damage_cause, cluster.damage_cause) AS damage_cause,
 
     -- Enforcement term remaining years
     date_part('years', age(
-        (COALESCE(established.document_date, cluster.document_date, supercluster.document_date)
-         + data.enforcement_term_years(COALESCE(established.enforcement_term, cluster.enforcement_term, supercluster.enforcement_term))
+        (COALESCE(established.document_date, cluster.document_date)
+         + data.enforcement_term_years(COALESCE(established.enforcement_term, cluster.enforcement_term))
         )::timestamp with time zone,
         CURRENT_TIMESTAMP
     )) AS enforcement_term,
 
-    COALESCE(established.overall_quality, cluster.overall_quality, supercluster.overall_quality) AS overall_quality,
+    COALESCE(established.overall_quality, cluster.overall_quality) AS overall_quality,
     recovery.type AS recovery_type
 
 FROM data.building_precomputed bp
@@ -250,4 +289,5 @@ FROM data.building_precomputed bp
             gr.code,
             bp.address_count
         )
-    )) AS foundation_type(ft);
+    )) AS foundation_type(ft)
+) base;

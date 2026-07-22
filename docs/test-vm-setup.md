@@ -89,7 +89,7 @@ The seed contains:
   buildings, with varied foundation types, qualities, enforcement terms,
   and damage causes — enough for the model pipeline to produce
   non-trivial output.
-- A trailing `CALL data.refresh_all();` that refreshes the 16 matviews
+- A trailing block of plain `REFRESH MATERIALIZED VIEW` statements that populates the 16 matviews
   (`building_sample`, `cluster_sample`, `supercluster_sample`,
   `model_risk_static`, etc.) against the seeded subset. Takes a few
   minutes on Rotterdam alone.

@@ -15,7 +15,8 @@ mapbox-gl (WebFront) ──▶ tiles.fundermaps.com/buildings/{z}/{x}/{y}
                      maplayer.buildings(z,x,y)          ── MVT encode
                               ▼
                      maplayer.building_tiles            ── flat table,
-                     (rebuilt nightly by data.refresh_all(),
+                     (rebuilt nightly by the Windmill flow
+                      f/fundermaps/data/refresh_data_model,
                       SQL owned by FunderMapsWorker)
 ```
 
@@ -31,7 +32,8 @@ This directory is deployment config only — pinned Martin image +
 `config.yaml`. The DO App Platform app `fundermaps-tiles-prod` builds from
 this repo with `source_dir: /tileserver`. All SQL (table, refresh procedure,
 function source) lives in `sql/model/create_building_tiles.sql`; the nightly
-rebuild is Step 4 of `data.refresh_all()`.
+rebuild (`CALL maplayer.refresh_building_tiles()`) runs from the Windmill
+flow `f/fundermaps/data/refresh_data_model`.
 
 ## Database access
 

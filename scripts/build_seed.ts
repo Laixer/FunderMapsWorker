@@ -11,9 +11,11 @@
  *   4. Synthetic application data (org, users, contractor, attribution,
  *      auth_key, mapset, geolock).
  *   5. Synthetic inquiries + samples on random subset buildings — varied
- *      enum values so data.refresh_all() produces non-trivial model rows.
+ *      enum values so the model refresh produces non-trivial model rows.
  *   6. Sequence resets.
- *   7. CALL data.refresh_all() to populate matviews.
+ *   7. REFRESH MATERIALIZED VIEW statements to populate the 16 matviews
+ *      (plain, not CONCURRENTLY — schema.sql creates them WITH NO DATA and
+ *      an unpopulated matview cannot be refreshed concurrently).
  *
  * Skipped on purpose:
  *   - data.building_subsidence_history (timeseries, ~30M rows for Rotterdam).
@@ -431,8 +433,23 @@ SELECT setval('report.inquiry_sample_id_seq',   ${SYNTH.inquirySampleIdStart + S
 COMMIT;
 SET session_replication_role = 'origin';
 
--- Populate matviews. ~minutes on a small subset.
-CALL data.refresh_all();
+-- Populate matviews. ~minutes on a small subset. Mirrors the nightly
+-- Windmill flow f/fundermaps/data/refresh_data_model (samples -> model ->
+-- statistics), but plain REFRESH: these matviews start WITH NO DATA and
+-- CONCURRENTLY requires a populated matview.
+REFRESH MATERIALIZED VIEW data.building_sample;
+REFRESH MATERIALIZED VIEW data.cluster_sample;
+REFRESH MATERIALIZED VIEW data.supercluster_sample;
+REFRESH MATERIALIZED VIEW data.model_risk_static;
+REFRESH MATERIALIZED VIEW data.statistics_product_inquiries;
+REFRESH MATERIALIZED VIEW data.statistics_product_inquiry_municipality;
+REFRESH MATERIALIZED VIEW data.statistics_product_incidents;
+REFRESH MATERIALIZED VIEW data.statistics_product_incident_municipality;
+REFRESH MATERIALIZED VIEW data.statistics_product_foundation_type;
+REFRESH MATERIALIZED VIEW data.statistics_product_foundation_risk;
+REFRESH MATERIALIZED VIEW data.statistics_product_data_collected;
+REFRESH MATERIALIZED VIEW data.statistics_product_construction_years;
+REFRESH MATERIALIZED VIEW data.statistics_product_buildings_restored;
 `);
 
   console.log("Closing output...");
