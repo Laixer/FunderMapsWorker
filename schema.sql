@@ -1344,6 +1344,13 @@ BEGIN
                 drystand_risk, bio_infection_risk, dewatering_depth_risk,
                 unclassified_risk, recovery_type, velocity, damage_cause,
                 inquiry_type,
+                -- WebFront paints with these even at z12–13: every layer
+                -- extrudes on height; owner/restoration-cost/enforcement-term/
+                -- overall-quality layers and address_count filters break
+                -- without them. All low-cardinality → MVT dictionary-encodes
+                -- them cheaply (building_id stays z14+, it's the size killer).
+                address_count, height, owner, restoration_costs,
+                enforcement_term, overall_quality,
                 ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom_simple && env
