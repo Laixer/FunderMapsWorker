@@ -3071,16 +3071,6 @@ COMMENT ON TABLE application.organization_user IS 'Linking table between organiz
 
 
 --
--- Name: portal; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.portal (
-    id integer NOT NULL,
-    name text
-);
-
-
---
 -- Name: session; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -5949,14 +5939,6 @@ ALTER TABLE ONLY application.organization
 
 ALTER TABLE ONLY application.organization_user
     ADD CONSTRAINT organization_user_pkey PRIMARY KEY (user_id, organization_id);
-
-
---
--- Name: portal portal_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.portal
-    ADD CONSTRAINT portal_pkey PRIMARY KEY (id);
 
 
 --
