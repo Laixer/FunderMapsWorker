@@ -4331,16 +4331,6 @@ COMMENT ON TABLE geocoder.country IS 'Contains all countries in our own format.'
 
 
 --
--- Name: postal_code; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.postal_code (
-    postal_code character varying(6) NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL
-);
-
-
---
 -- Name: analysis_building; Type: VIEW; Schema: maplayer; Owner: -
 --
 
@@ -6067,14 +6057,6 @@ ALTER TABLE ONLY geocoder.municipality
 
 ALTER TABLE ONLY geocoder.neighborhood
     ADD CONSTRAINT neighborhood_pkey PRIMARY KEY (id);
-
-
---
--- Name: postal_code postal_code_pkey; Type: CONSTRAINT; Schema: geocoder; Owner: -
---
-
-ALTER TABLE ONLY geocoder.postal_code
-    ADD CONSTRAINT postal_code_pkey PRIMARY KEY (postal_code);
 
 
 --
@@ -8640,13 +8622,6 @@ CREATE INDEX neighborhood_geom_idx ON geocoder.neighborhood USING gist (geom);
 --
 
 CREATE INDEX neighborhood_name_idx ON geocoder.neighborhood USING btree (name);
-
-
---
--- Name: postal_code_geom_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX postal_code_geom_idx ON geocoder.postal_code USING gist (geom);
 
 
 --
