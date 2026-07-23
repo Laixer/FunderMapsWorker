@@ -124,6 +124,16 @@ async function uploadTiles(
 }
 
 async function processOne(tileset: TileBundle): Promise<boolean> {
+  // The PostGIS export below runs before either flag is consulted, so a
+  // bundle with both flags off would still cost a full multi-million-row
+  // ogr2ogr dump per job. Nothing downstream would use it — bail out first.
+  if (!tileset.uploadDataset && !tileset.generateTiles) {
+    log.warn(
+      `${ACCENT.type}${tileset.tileset}${RESET} has upload_dataset and generate_tileset off — nothing to do, skipping`
+    );
+    return true;
+  }
+
   const start = performance.now();
   const workDir = await mkdtemp(join(tmpdir(), `fm-${tileset.tileset}-`));
 
