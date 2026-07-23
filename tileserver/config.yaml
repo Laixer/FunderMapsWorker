@@ -11,9 +11,10 @@
 
 listen_addresses: '0.0.0.0:3000'
 
-# Built-in map preview at / — lets anyone eyeball the buildings source and
-# click-inspect feature attributes without a styled frontend.
-web_ui: enable-for-all
+# Built-in map preview stays off: Martin has no auth, so enabling it exposes
+# a browse UI to the world. To eyeball tiles, run Martin locally with this
+# config against the read-only role instead.
+web_ui: disable
 
 # In-memory tile cache. Data changes once a night, so hit rates are high;
 # tiles are served from here in ~1ms after first render.
