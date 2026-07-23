@@ -1,3 +1,10 @@
+-- !! REVERTED 2026-07-23 — DO NOT RE-RUN before C# Webservice EOL (Aug 2026).
+-- The "Verified 2026-07-20" claim below was wrong: the live Webservice reads
+-- organization_user.role on every API-key sign-in (SignInService.
+-- CreateClaimsIdentityAsync → GetOrganizationRoleByUserIdAsync), and this
+-- migration broke all authenticated /api/v3 traffic until reverted.
+-- See revert_organization_user_role_enum.sql.
+--
 -- Phase 2 follow-up (#1006 roles UI): allow dynamic custom-role names in
 -- application.organization_user.role. The column was the
 -- application.organization_role ENUM, which only admits the four fixed

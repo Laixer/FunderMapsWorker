@@ -3006,7 +3006,7 @@ CREATE TABLE application.organization_mapset (
 CREATE TABLE application.organization_user (
     user_id application.user_id NOT NULL,
     organization_id application.organization_id NOT NULL,
-    role text DEFAULT 'reader' NOT NULL
+    role application.organization_role DEFAULT 'reader'::application.organization_role NOT NULL
 );
 
 
