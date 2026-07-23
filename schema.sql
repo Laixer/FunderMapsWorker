@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict ZjD8I2nYbXGWRKPYx409fdZOGvf4BQzdbaz5tncwtqkG7JaKKb14HsxTISXRtUL
+\restrict eqMA9PHL7CwqtGkU8JHlJgsr1slaqjS6rhBlRGMAyJms50xJNaSFi0fxgjJ9aDa
 
 -- Dumped from database version 17.10
--- Dumped by pg_dump version 18.4 (Ubuntu 18.4-0ubuntu0.26.04.1)
+-- Dumped by pg_dump version 17.10 (Ubuntu 17.10-0ubuntu0.25.10.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1296,6 +1296,8 @@ DECLARE
     env geometry;
     mvt bytea;
 BEGIN
+    -- Below the building tilesets' minzoom, or nonsense coordinates
+    -- (ST_TileEnvelope would error → 500): empty tile, no table hit.
     IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
         RETURN ''::bytea;
     END IF;
@@ -1321,6 +1323,15 @@ BEGIN
         ) tile
         WHERE tile.geom IS NOT NULL;
     ELSE
+        -- z12–13: overview zooms. Slim tiles three ways (measured on the
+        -- densest tile in the country, Amsterdam z12/2103/1346):
+        --   * simplified geometry            (7.4 MB → 4.6 MB)
+        --   * style attributes only, no ids  (unique building_id strings
+        --     alone double a tile)           (4.6 MB → ~1.3 MB)
+        --   * sub-pixel buildings dropped    (~1.3 MB → ~0.3 MB,
+        --     ≈ today's static tippecanoe tile which drop-densest'd
+        --     to ~0.15 MB)
+        -- Click-to-select needs building_id → works from z14 up.
         SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
         FROM (
             SELECT
@@ -1415,8 +1426,12 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
         con.name,
         bgh.surface_area::double precision,
         ST_Transform(bgh.geom, 3857),
+        -- 5.0 Mercator units ≈ 3 m at NL latitude: invisible at z12–13,
+        -- collapses a 40-vertex floor plan to a handful of points.
         ST_SimplifyPreserveTopology(ST_Transform(bgh.geom, 3857), 5.0)
     FROM data.building_geo_hierarchy bgh
+    -- bgh.inquiry_id is the inquiry the model picked; its attribution
+    -- names the contractor that performed the research.
     LEFT JOIN report.inquiry i ON i.id = bgh.inquiry_id
     LEFT JOIN application.attribution attr ON attr.id = i.attribution_id
     LEFT JOIN application.contractor con ON con.id = attr.contractor_id
@@ -1541,6 +1556,16 @@ INHERITS (application.product_tracker_mismatch);
 
 CREATE TABLE _timescaledb_internal._hyper_1_136_chunk (
     CONSTRAINT constraint_136 CHECK (((create_date >= '2026-06-06 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-07-06 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker_mismatch);
+
+
+--
+-- Name: _hyper_1_138_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_1_138_chunk (
+    CONSTRAINT constraint_138 CHECK (((create_date >= '2026-07-06 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-08-05 00:00:00+00'::timestamp with time zone)))
 )
 INHERITS (application.product_tracker_mismatch);
 
@@ -1994,6 +2019,16 @@ INHERITS (application.product_tracker);
 
 CREATE TABLE _timescaledb_internal._hyper_2_135_chunk (
     CONSTRAINT constraint_135 CHECK (((create_date >= '2026-06-06 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-07-06 00:00:00+00'::timestamp with time zone)))
+)
+INHERITS (application.product_tracker);
+
+
+--
+-- Name: _hyper_2_137_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._hyper_2_137_chunk (
+    CONSTRAINT constraint_137 CHECK (((create_date >= '2026-07-06 00:00:00+00'::timestamp with time zone) AND (create_date < '2026-08-05 00:00:00+00'::timestamp with time zone)))
 )
 INHERITS (application.product_tracker);
 
@@ -2560,6 +2595,59 @@ CREATE TABLE application.account (
 
 
 --
+-- Name: api_key_rate_limit; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.api_key_rate_limit (
+    api_key_id text NOT NULL,
+    source text NOT NULL,
+    product text NOT NULL,
+    period text NOT NULL,
+    limit_count integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT api_key_rate_limit_limit_count_check CHECK ((limit_count >= 0)),
+    CONSTRAINT api_key_rate_limit_period_check CHECK ((period = ANY (ARRAY['day'::text, 'month'::text]))),
+    CONSTRAINT api_key_rate_limit_source_check CHECK ((source = ANY (ARRAY['ba'::text, 'legacy'::text])))
+);
+
+
+--
+-- Name: TABLE api_key_rate_limit; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.api_key_rate_limit IS 'Per-(API key, product) billing-event rate limits enforced by FunderMapsWebservice.';
+
+
+--
+-- Name: COLUMN api_key_rate_limit.source; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.api_key_rate_limit.source IS '''ba'' = application.apikey, ''legacy'' = application.auth_key (key id is unique within a source, not across).';
+
+
+--
+-- Name: COLUMN api_key_rate_limit.product; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.api_key_rate_limit.product IS 'Tracker product name, e.g. analysis3, risk3, light3, statistics3.';
+
+
+--
+-- Name: COLUMN api_key_rate_limit.period; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.api_key_rate_limit.period IS 'Calendar window: ''day'' resets at UTC midnight; ''month'' resets at first-of-month UTC.';
+
+
+--
+-- Name: COLUMN api_key_rate_limit.limit_count; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.api_key_rate_limit.limit_count IS 'Max billable events allowed within one period. Absent row = unlimited.';
+
+
+--
 -- Name: apikey; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2759,6 +2847,31 @@ CREATE VIEW application.file_resources_orphaned AS
 
 
 --
+-- Name: invitation; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.invitation (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id application.organization_id NOT NULL,
+    email text NOT NULL,
+    role text DEFAULT 'reader'::text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    team_id uuid,
+    inviter_id application.user_id NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT invitation_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text, 'canceled'::text])))
+);
+
+
+--
+-- Name: TABLE invitation; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.invitation IS 'Better Auth organization-plugin invitations (Phase 2).';
+
+
+--
 -- Name: jwks; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2932,7 +3045,11 @@ CREATE TABLE application.oauth_refresh_token (
 
 CREATE TABLE application.organization (
     id application.organization_id DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL
+    name text NOT NULL,
+    slug text NOT NULL,
+    logo text,
+    metadata jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2941,6 +3058,27 @@ CREATE TABLE application.organization (
 --
 
 COMMENT ON TABLE application.organization IS 'Contains all organizations that are using FunderMaps.';
+
+
+--
+-- Name: organization_custom_role; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.organization_custom_role (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id application.organization_id NOT NULL,
+    role text NOT NULL,
+    permission jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: TABLE organization_custom_role; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_custom_role IS 'Better Auth dynamic access control: admin-defined per-organization roles with a JSON permission map (resource -> actions). Named *_custom_role because application.organization_role is the role enum type.';
 
 
 --
@@ -3012,7 +3150,9 @@ CREATE TABLE application.organization_mapset (
 CREATE TABLE application.organization_user (
     user_id application.user_id NOT NULL,
     organization_id application.organization_id NOT NULL,
-    role application.organization_role DEFAULT 'reader'::application.organization_role NOT NULL
+    role application.organization_role DEFAULT 'reader'::application.organization_role NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -3036,7 +3176,8 @@ CREATE TABLE application.session (
     user_agent text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    impersonated_by uuid
+    impersonated_by uuid,
+    active_organization_id application.organization_id
 );
 
 
@@ -3244,7 +3385,8 @@ CREATE TABLE report.inquiry (
     access_policy application.access_policy DEFAULT 'private'::application.access_policy NOT NULL,
     type report.inquiry_type NOT NULL,
     standard_f3o boolean DEFAULT false NOT NULL,
-    audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL
+    audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL,
+    data_owner_organization_id application.organization_id
 );
 
 
@@ -3281,6 +3423,13 @@ COMMENT ON COLUMN report.inquiry.update_date IS 'Timestamp of last record update
 --
 
 COMMENT ON COLUMN report.inquiry.delete_date IS 'Timestamp of soft delete';
+
+
+--
+-- Name: COLUMN inquiry.data_owner_organization_id; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry.data_owner_organization_id IS 'Organization that owns this inquiry''s data (#973). Durable owner, independent of the processing/attribution account; nullable until backfilled (Phase 2), then falls back to attribution.owner_id in the API.';
 
 
 --
@@ -3965,40 +4114,6 @@ CREATE TABLE data.risk_table_priority (
 
 
 --
--- Name: address; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.address (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    building_number text NOT NULL,
-    postal_code text,
-    street text NOT NULL,
-    external_id text NOT NULL,
-    city text NOT NULL,
-    building_id geocoder.geocoder_id
-);
-
-
---
--- Name: TABLE address; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, including a tsvector column to enable full text search.';
-
-
---
--- Name: address_building; Type: VIEW; Schema: geocoder; Owner: -
---
-
-CREATE VIEW geocoder.address_building AS
- SELECT addr.id AS address_id,
-    ba.external_id AS building_id,
-    ba.geom
-   FROM (geocoder.address addr
-     JOIN geocoder.building_active ba ON (((addr.building_id)::text = ba.external_id)));
-
-
---
 -- Name: statistics_product_buildings_restored; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4028,6 +4143,28 @@ CREATE MATERIALIZED VIEW data.statistics_product_construction_years AS
   WHERE (ba.built_year IS NOT NULL)
   GROUP BY ba.neighborhood_id, decade.decade
   WITH NO DATA;
+
+
+--
+-- Name: address; Type: TABLE; Schema: geocoder; Owner: -
+--
+
+CREATE TABLE geocoder.address (
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    building_number text NOT NULL,
+    postal_code text,
+    street text NOT NULL,
+    external_id text NOT NULL,
+    city text NOT NULL,
+    building_id geocoder.geocoder_id
+);
+
+
+--
+-- Name: TABLE address; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, including a tsvector column to enable full text search.';
 
 
 --
@@ -4194,6 +4331,18 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
      JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
   GROUP BY m.id, ((date_part('year'::text, i.document_date))::integer)
   WITH NO DATA;
+
+
+--
+-- Name: address_building; Type: VIEW; Schema: geocoder; Owner: -
+--
+
+CREATE VIEW geocoder.address_building AS
+ SELECT addr.id AS address_id,
+    ba.external_id AS building_id,
+    ba.geom
+   FROM (geocoder.address addr
+     JOIN geocoder.building_active ba ON (((addr.building_id)::text = ba.external_id)));
 
 
 --
@@ -4452,10 +4601,10 @@ CREATE TABLE maplayer.building_tiles (
     enforcement_term double precision,
     overall_quality text,
     recovery_type text,
-    contractor text,
-    surface_area double precision,
     geom public.geometry(MultiPolygon,3857),
-    geom_simple public.geometry(MultiPolygon,3857)
+    geom_simple public.geometry(MultiPolygon,3857),
+    surface_area double precision,
+    contractor text
 );
 
 
@@ -4691,7 +4840,8 @@ CREATE TABLE report.recovery (
     document_date date NOT NULL,
     document_file text NOT NULL,
     audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL,
-    document_name text NOT NULL
+    document_name text NOT NULL,
+    data_owner_organization_id application.organization_id
 );
 
 
@@ -4728,6 +4878,13 @@ COMMENT ON COLUMN report.recovery.delete_date IS 'Timestamp of soft delete';
 --
 
 COMMENT ON COLUMN report.recovery.document_name IS 'User provided document name';
+
+
+--
+-- Name: COLUMN recovery.data_owner_organization_id; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.recovery.data_owner_organization_id IS 'Organization that owns this recovery''s data (#973). Durable owner, independent of the processing/attribution account; nullable until backfilled, then falls back to attribution.owner_id in the API.';
 
 
 --
@@ -4808,6 +4965,13 @@ ALTER TABLE ONLY _timescaledb_internal._hyper_1_134_chunk ALTER COLUMN create_da
 --
 
 ALTER TABLE ONLY _timescaledb_internal._hyper_1_136_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_1_138_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_138_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
 
 
 --
@@ -5116,6 +5280,13 @@ ALTER TABLE ONLY _timescaledb_internal._hyper_2_133_chunk ALTER COLUMN create_da
 --
 
 ALTER TABLE ONLY _timescaledb_internal._hyper_2_135_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
+
+
+--
+-- Name: _hyper_2_137_chunk create_date; Type: DEFAULT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_137_chunk ALTER COLUMN create_date SET DEFAULT CURRENT_TIMESTAMP;
 
 
 --
@@ -5554,6 +5725,14 @@ ALTER TABLE ONLY application.account
 
 
 --
+-- Name: api_key_rate_limit api_key_rate_limit_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.api_key_rate_limit
+    ADD CONSTRAINT api_key_rate_limit_pkey PRIMARY KEY (api_key_id, source, product);
+
+
+--
 -- Name: apikey apikey_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5607,6 +5786,14 @@ ALTER TABLE ONLY application.contractor
 
 ALTER TABLE ONLY application.file_resources
     ADD CONSTRAINT file_resources_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: invitation invitation_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.invitation
+    ADD CONSTRAINT invitation_pkey PRIMARY KEY (id);
 
 
 --
@@ -5695,6 +5882,22 @@ ALTER TABLE ONLY application.oauth_refresh_token
 
 ALTER TABLE ONLY application.oauth_refresh_token
     ADD CONSTRAINT oauth_refresh_token_token_key UNIQUE (token);
+
+
+--
+-- Name: organization_custom_role organization_custom_role_organization_id_role_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_custom_role
+    ADD CONSTRAINT organization_custom_role_organization_id_role_key UNIQUE (organization_id, role);
+
+
+--
+-- Name: organization_custom_role organization_custom_role_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_custom_role
+    ADD CONSTRAINT organization_custom_role_pkey PRIMARY KEY (id);
 
 
 --
@@ -6067,6 +6270,20 @@ CREATE INDEX _hyper_1_136_chunk_product_tracker_mismatch_create_date_idx ON _tim
 --
 
 CREATE INDEX _hyper_1_136_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_136_chunk USING btree (organization_id);
+
+
+--
+-- Name: _hyper_1_138_chunk_product_tracker_mismatch_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_138_chunk_product_tracker_mismatch_create_date_idx ON _timescaledb_internal._hyper_1_138_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_1_138_chunk_product_tracker_mismatch_organization_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_1_138_chunk_product_tracker_mismatch_organization_id_idx ON _timescaledb_internal._hyper_1_138_chunk USING btree (organization_id);
 
 
 --
@@ -6704,6 +6921,27 @@ CREATE INDEX _hyper_2_135_chunk_product_tracker_create_date_idx ON _timescaledb_
 --
 
 CREATE INDEX _hyper_2_135_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_135_chunk USING btree (organization_id, product, identifier, create_date);
+
+
+--
+-- Name: _hyper_2_137_chunk_product_tracker_building_id_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_137_chunk_product_tracker_building_id_idx ON _timescaledb_internal._hyper_2_137_chunk USING btree (building_id);
+
+
+--
+-- Name: _hyper_2_137_chunk_product_tracker_create_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_137_chunk_product_tracker_create_date_idx ON _timescaledb_internal._hyper_2_137_chunk USING btree (create_date DESC);
+
+
+--
+-- Name: _hyper_2_137_chunk_product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _hyper_2_137_chunk_product_tracker_org_prod_id_date_idx ON _timescaledb_internal._hyper_2_137_chunk USING btree (organization_id, product, identifier, create_date);
 
 
 --
@@ -8037,6 +8275,13 @@ CREATE INDEX idx_session_user_id ON application.session USING btree (user_id);
 
 
 --
+-- Name: invitation_organization_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX invitation_organization_id_idx ON application.invitation USING btree (organization_id);
+
+
+--
 -- Name: organization_geolock_district_district_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -8062,6 +8307,20 @@ CREATE INDEX organization_geolock_neighborhood_neighborhood_id_idx ON applicatio
 --
 
 CREATE INDEX organization_mapset_mapset_id_idx ON application.organization_mapset USING btree (mapset_id);
+
+
+--
+-- Name: organization_slug_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE UNIQUE INDEX organization_slug_idx ON application.organization USING btree (slug);
+
+
+--
+-- Name: organization_user_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE UNIQUE INDEX organization_user_id_idx ON application.organization_user USING btree (id);
 
 
 --
@@ -8464,6 +8723,13 @@ CREATE INDEX inquiry_attribution_id_idx ON report.inquiry USING btree (attributi
 
 
 --
+-- Name: inquiry_data_owner_organization_id_idx; Type: INDEX; Schema: report; Owner: -
+--
+
+CREATE INDEX inquiry_data_owner_organization_id_idx ON report.inquiry USING btree (data_owner_organization_id);
+
+
+--
 -- Name: inquiry_document_date_idx; Type: INDEX; Schema: report; Owner: -
 --
 
@@ -8510,6 +8776,13 @@ CREATE INDEX recovery_access_policy_idx ON report.recovery USING btree (access_p
 --
 
 CREATE INDEX recovery_attribution_id_idx ON report.recovery USING btree (attribution_id);
+
+
+--
+-- Name: recovery_data_owner_organization_id_idx; Type: INDEX; Schema: report; Owner: -
+--
+
+CREATE INDEX recovery_data_owner_organization_id_idx ON report.recovery USING btree (data_owner_organization_id);
 
 
 --
@@ -8690,6 +8963,30 @@ ALTER TABLE ONLY _timescaledb_internal._hyper_2_135_chunk
 
 ALTER TABLE ONLY _timescaledb_internal._hyper_1_136_chunk
     ADD CONSTRAINT "136_299_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_2_137_chunk 137_300_product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_137_chunk
+    ADD CONSTRAINT "137_300_product_tracker_building_id_fkey" FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: _hyper_2_137_chunk 137_301_product_tracker_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_2_137_chunk
+    ADD CONSTRAINT "137_301_product_tracker_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: _hyper_1_138_chunk 138_302_product_tracker_mismatch_organization_id_fkey; Type: FK CONSTRAINT; Schema: _timescaledb_internal; Owner: -
+--
+
+ALTER TABLE ONLY _timescaledb_internal._hyper_1_138_chunk
+    ADD CONSTRAINT "138_302_product_tracker_mismatch_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -9957,6 +10254,22 @@ ALTER TABLE ONLY application.auth_key
 
 
 --
+-- Name: invitation invitation_inviter_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.invitation
+    ADD CONSTRAINT invitation_inviter_id_fkey FOREIGN KEY (inviter_id) REFERENCES application."user"(id);
+
+
+--
+-- Name: invitation invitation_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.invitation
+    ADD CONSTRAINT invitation_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON DELETE CASCADE;
+
+
+--
 -- Name: oauth_access_token oauth_access_token_client_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -10034,6 +10347,14 @@ ALTER TABLE ONLY application.oauth_refresh_token
 
 ALTER TABLE ONLY application.oauth_refresh_token
     ADD CONSTRAINT oauth_refresh_token_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: organization_custom_role organization_custom_role_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_custom_role
+    ADD CONSTRAINT organization_custom_role_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON DELETE CASCADE;
 
 
 --
@@ -10138,6 +10459,14 @@ ALTER TABLE ONLY application.product_tracker_mismatch
 
 ALTER TABLE ONLY application.product_tracker
     ADD CONSTRAINT product_tracker_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: session session_active_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.session
+    ADD CONSTRAINT session_active_organization_id_fkey FOREIGN KEY (active_organization_id) REFERENCES application.organization(id) ON DELETE SET NULL;
 
 
 --
@@ -10285,6 +10614,14 @@ ALTER TABLE ONLY report.inquiry
 
 
 --
+-- Name: inquiry inquiry_data_owner_organization_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.inquiry
+    ADD CONSTRAINT inquiry_data_owner_organization_id_fkey FOREIGN KEY (data_owner_organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
 -- Name: inquiry_sample inquiry_sample_building_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
@@ -10306,6 +10643,14 @@ ALTER TABLE ONLY report.inquiry_sample
 
 ALTER TABLE ONLY report.recovery
     ADD CONSTRAINT recovery_attribution_id_fkey FOREIGN KEY (attribution_id) REFERENCES application.attribution(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: recovery recovery_data_owner_organization_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.recovery
+    ADD CONSTRAINT recovery_data_owner_organization_id_fkey FOREIGN KEY (data_owner_organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -10336,5 +10681,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ZjD8I2nYbXGWRKPYx409fdZOGvf4BQzdbaz5tncwtqkG7JaKKb14HsxTISXRtUL
+\unrestrict eqMA9PHL7CwqtGkU8JHlJgsr1slaqjS6rhBlRGMAyJms50xJNaSFi0fxgjJ9aDa
 

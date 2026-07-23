@@ -100,4 +100,16 @@ CREATE TABLE IF NOT EXISTS application.organization_custom_role (
 COMMENT ON TABLE application.organization_custom_role IS
   'Better Auth dynamic access control: admin-defined per-organization roles with a JSON permission map (resource -> actions). Named *_custom_role because application.organization_role is the role enum type.';
 
+-- ── grants: mirror the sibling application.* tables ───────────────────────
+-- (Missed in the original rollout — api-prod 500ed on the custom-role
+-- endpoints with 42501 until these were applied, 2026-07-23.)
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON application.invitation, application.organization_custom_role
+  TO fundermaps_webapp, fundermaps_windmill;
+
+GRANT SELECT
+  ON application.invitation, application.organization_custom_role
+  TO fundermaps_webservice, grafana;
+
 COMMIT;
