@@ -11,6 +11,10 @@
 
 listen_addresses: '0.0.0.0:3000'
 
+# Built-in map preview at / — lets anyone eyeball the buildings source and
+# click-inspect feature attributes without a styled frontend.
+web_ui: enable-for-all
+
 # In-memory tile cache. Data changes once a night, so hit rates are high;
 # tiles are served from here in ~1ms after first render.
 cache_size_mb: 512
