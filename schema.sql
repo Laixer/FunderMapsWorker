@@ -1314,7 +1314,7 @@ BEGIN
                 dewatering_depth, dewatering_depth_risk,
                 dewatering_depth_risk_reliability, unclassified_risk,
                 height, velocity, owner, inquiry_type, damage_cause,
-                enforcement_term, overall_quality, recovery_type,
+                enforcement_term, overall_quality, recovery_type, contractor,
                 ST_AsMVTGeom(geom, env, 4096, 64, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom && env
@@ -1333,7 +1333,9 @@ BEGIN
                 construction_year, foundation_type, foundation_type_reliability,
                 drystand_risk, bio_infection_risk, dewatering_depth_risk,
                 unclassified_risk, recovery_type, velocity, damage_cause,
-                inquiry_type,
+                -- contractor is set on ~5% of buildings and has ~55
+                -- distinct values → dictionary-encodes to near-nothing
+                inquiry_type, contractor,
                 -- WebFront paints with these even at z12–13: every layer
                 -- extrudes on height; owner/restoration-cost/enforcement-term/
                 -- overall-quality layers and address_count filters break
@@ -1358,7 +1360,7 @@ $$;
 -- Name: FUNCTION buildings(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String"}}]}';
+COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String", "contractor": "String"}}]}';
 
 
 --
@@ -1379,42 +1381,46 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
         dewatering_depth, dewatering_depth_risk,
         dewatering_depth_risk_reliability, unclassified_risk,
         height, velocity, owner, inquiry_type, damage_cause,
-        enforcement_term, overall_quality, recovery_type,
+        enforcement_term, overall_quality, recovery_type, contractor,
         surface_area, geom, geom_simple
     )
     SELECT
-        building_id,
-        ext_neighborhood_id,
-        ext_district_id,
-        ext_municipality_id,
-        address_count,
-        construction_year,
-        construction_year_reliability::text,
-        foundation_type::text,
-        foundation_type_reliability::text,
-        restoration_costs,
-        drystand,
-        drystand_risk::text,
-        drystand_risk_reliability::text,
-        bio_infection_risk::text,
-        bio_infection_risk_reliability::text,
-        dewatering_depth,
-        dewatering_depth_risk::text,
-        dewatering_depth_risk_reliability::text,
-        unclassified_risk::text,
-        height::double precision,
-        velocity::double precision,
-        owner,
-        inquiry_type::text,
-        damage_cause::text,
-        enforcement_term,
-        overall_quality::text,
-        recovery_type::text,
-        surface_area::double precision,
-        ST_Transform(geom, 3857),
-        ST_SimplifyPreserveTopology(ST_Transform(geom, 3857), 5.0)
-    FROM data.building_geo_hierarchy
-    WHERE geom IS NOT NULL;
+        bgh.building_id,
+        bgh.ext_neighborhood_id,
+        bgh.ext_district_id,
+        bgh.ext_municipality_id,
+        bgh.address_count,
+        bgh.construction_year,
+        bgh.construction_year_reliability::text,
+        bgh.foundation_type::text,
+        bgh.foundation_type_reliability::text,
+        bgh.restoration_costs,
+        bgh.drystand,
+        bgh.drystand_risk::text,
+        bgh.drystand_risk_reliability::text,
+        bgh.bio_infection_risk::text,
+        bgh.bio_infection_risk_reliability::text,
+        bgh.dewatering_depth,
+        bgh.dewatering_depth_risk::text,
+        bgh.dewatering_depth_risk_reliability::text,
+        bgh.unclassified_risk::text,
+        bgh.height::double precision,
+        bgh.velocity::double precision,
+        bgh.owner,
+        bgh.inquiry_type::text,
+        bgh.damage_cause::text,
+        bgh.enforcement_term,
+        bgh.overall_quality::text,
+        bgh.recovery_type::text,
+        con.name,
+        bgh.surface_area::double precision,
+        ST_Transform(bgh.geom, 3857),
+        ST_SimplifyPreserveTopology(ST_Transform(bgh.geom, 3857), 5.0)
+    FROM data.building_geo_hierarchy bgh
+    LEFT JOIN report.inquiry i ON i.id = bgh.inquiry_id
+    LEFT JOIN application.attribution attr ON attr.id = i.attribution_id
+    LEFT JOIN application.contractor con ON con.id = attr.contractor_id
+    WHERE bgh.geom IS NOT NULL;
 
     ANALYZE maplayer.building_tiles;
 $$;
@@ -4446,6 +4452,7 @@ CREATE TABLE maplayer.building_tiles (
     enforcement_term double precision,
     overall_quality text,
     recovery_type text,
+    contractor text,
     surface_area double precision,
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857)
