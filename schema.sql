@@ -1352,7 +1352,7 @@ $$;
 -- Name: FUNCTION buildings(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16}]}';
+COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String"}}]}';
 
 
 --
