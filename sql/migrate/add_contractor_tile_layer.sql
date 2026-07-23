@@ -1,69 +1,24 @@
--- Dynamic tile source for the Martin tileserver (hybrid tile pipeline).
+-- Issue Laixer/FunderMaps#882 — contractor layer in the report mapset,
+-- tailored to the dynamic (Martin) tile pipeline: the tippecanoe-era
+-- "analysis_report tileset" no longer exists, so the contractor lands as an
+-- attribute in maplayer.building_tiles / the maplayer.buildings function
+-- source, plus a layer + legend entry in the Rapportage mapset config.
 --
--- One flat physical table replaces the per-request join through
--- data.building_geo_hierarchy (model_risk_static ⋈ building_active): all
--- attributes the five tile-generating analysis_* views expose today, plus
--- the geometry pre-transformed to Web Mercator in two variants — full
--- detail for z14+ and a simplified copy for z12–13 (a building is only a
--- few pixels there; without simplification a dense-city z12 tile is ~7 MB).
+-- Contractor = application.contractor named by the attribution of the
+-- inquiry the model picked for the building (building_geo_hierarchy
+-- .inquiry_id) — the same inquiry inquiry_type/damage_cause/… come from.
 --
--- Rebuilt nightly right after model_risk_static
--- refreshes (attributes change nightly; geometry only on BAG reload —
--- a future optimization is trigger-based partial refresh, see the
--- tileserver plan).
---
--- maplayer.buildings(z,x,y) is a Martin "function source": Martin serves
--- GET /buildings/{z}/{x}/{y} by calling it. The attribute set is exactly
--- the union of what analysis_{building,foundation,monitoring,report,risk}
--- put into the public tippecanoe tiles today — tiles are public, so this
--- function must not expose more than that union.
+-- Canonical definitions updated alongside in sql/model/create_building_tiles.sql.
+-- Run as a role that owns maplayer.building_tiles (fundermaps).
 
-CREATE TABLE IF NOT EXISTS maplayer.building_tiles (
-    building_id text PRIMARY KEY,
-    -- CBS codes, exposed under the same names the analysis views use
-    neighborhood_id text,
-    district_id text,
-    municipality_id text,
-    address_count integer,
-    construction_year integer,
-    construction_year_reliability text,
-    foundation_type text,
-    foundation_type_reliability text,
-    restoration_costs integer,
-    drystand double precision,
-    drystand_risk text,
-    drystand_risk_reliability text,
-    bio_infection_risk text,
-    bio_infection_risk_reliability text,
-    dewatering_depth double precision,
-    dewatering_depth_risk text,
-    dewatering_depth_risk_reliability text,
-    unclassified_risk text,
-    height double precision,
-    velocity double precision,
-    owner text,
-    inquiry_type text,
-    damage_cause text,
-    enforcement_term double precision,
-    overall_quality text,
-    recovery_type text,
-    -- name of the contractor that performed the established inquiry
-    -- (issue #882); same inquiry the other report attributes come from
-    contractor text,
-    -- drop-filter only, never exposed in tiles: at z12 a pixel is ~38 m,
-    -- so small buildings are sub-pixel and tippecanoe used to drop them too
-    surface_area double precision,
-    geom geometry(MultiPolygon, 3857),
-    geom_simple geometry(MultiPolygon, 3857)
-);
+\set ON_ERROR_STOP on
 
-CREATE INDEX IF NOT EXISTS building_tiles_geom_idx
-    ON maplayer.building_tiles USING gist (geom);
-CREATE INDEX IF NOT EXISTS building_tiles_geom_simple_idx
-    ON maplayer.building_tiles USING gist (geom_simple);
+--------------------------------------------------------------------------------
+-- 1. Tile table + refresh + function source
+--------------------------------------------------------------------------------
 
--- Population procedure. TRUNCATE + INSERT, same pattern as
--- data.refresh_building_precomputed(). ~12.6M rows.
+ALTER TABLE maplayer.building_tiles ADD COLUMN IF NOT EXISTS contractor text;
+
 CREATE OR REPLACE PROCEDURE maplayer.refresh_building_tiles()
 LANGUAGE sql
 AS $$
@@ -126,7 +81,6 @@ AS $$
     ANALYZE maplayer.building_tiles;
 $$;
 
--- Martin function source: one URL, zoom decides which geometry variant.
 CREATE OR REPLACE FUNCTION maplayer.buildings(z integer, x integer, y integer)
 RETURNS bytea
 LANGUAGE plpgsql STABLE PARALLEL SAFE
@@ -205,36 +159,59 @@ BEGIN
 END;
 $$;
 
--- TileJSON metadata Martin merges into the source's TileJSON (auto-published
--- sources only). "fields" is MANDATORY per TileJSON 3.0 — without it Martin's
--- strict re-deserialization fails and the whole comment is silently dropped
--- ("Failed to deserialize merged function comment tilejson: missing field
--- `fields`"), which leaves clients without vector_layers and breaks e.g. the
--- Martin web UI. Fields list = the z14+ attribute set; z12–13 tiles carry the
--- style-attribute subset (ids are z14+ only).
 COMMENT ON FUNCTION maplayer.buildings(integer, integer, integer) IS
 '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String", "contractor": "String"}}]}';
 
--- Serving role (created on prod with LOGIN, CONNECTION LIMIT 5 and
--- statement_timeout=15s; password lives outside the repo).
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
-        GRANT USAGE ON SCHEMA maplayer TO fundermaps_tileserver;
-        GRANT SELECT ON maplayer.building_tiles TO fundermaps_tileserver;
-        GRANT EXECUTE ON FUNCTION maplayer.buildings(integer, integer, integer)
-            TO fundermaps_tileserver;
-    END IF;
-END $$;
+--------------------------------------------------------------------------------
+-- 2. One-off backfill so the layer works before the next nightly rebuild
+--    (~320k of 6.45M rows have an established inquiry with a contractor).
+--------------------------------------------------------------------------------
 
--- The nightly rebuild runs from the Windmill flow
--- f/fundermaps/data/refresh_data_model as fundermaps_windmill.
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
-        GRANT USAGE ON SCHEMA maplayer TO fundermaps_windmill;
-        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN
-            ON maplayer.building_tiles TO fundermaps_windmill;
-        GRANT SELECT ON data.building_geo_hierarchy TO fundermaps_windmill;
-    END IF;
-END $$;
+UPDATE maplayer.building_tiles bt
+SET contractor = src.name
+FROM (
+    SELECT mrs.building_id, con.name
+    FROM data.model_risk_static mrs
+    JOIN report.inquiry i ON i.id = mrs.inquiry_id
+    JOIN application.attribution attr ON attr.id = i.attribution_id
+    JOIN application.contractor con ON con.id = attr.contractor_id
+) src
+WHERE bt.building_id = src.building_id;
+
+--------------------------------------------------------------------------------
+-- 3. Mapset config: legend + layer list for the Rapportage mapset.
+--    Legend = top-12 contractors by researched-building count (97% of the
+--    321k sampled buildings) in "Legenda-default" design-token colors
+--    (assigned with a stride so near-identical neighboring greens don't sit
+--    next to each other), plus grey for the ~45 small "Overig" contractors.
+--    Styling lives in FunderMapsWebFront src/config/layers/contractor.json —
+--    names there must match application.contractor.name exactly.
+--------------------------------------------------------------------------------
+
+INSERT INTO application.mapset_layer (id, name, fields, "order") VALUES (
+    'contractor',
+    'Uitvoerder',
+    '[
+        {"name": "KCAF",                "color": "85DBBE"},
+        {"name": "FunderMaps B.V.",     "color": "96ED51"},
+        {"name": "Gemeente Haarlem",    "color": "B59E3C"},
+        {"name": "Gemeente Rotterdam",  "color": "7EDF9A"},
+        {"name": "Perfectkeur",         "color": "BDF450"},
+        {"name": "Funderingsloket",     "color": "9D592D"},
+        {"name": "Elkien",              "color": "79E370"},
+        {"name": "Gemeente Dordrecht",  "color": "D3E14D"},
+        {"name": "Wareco",              "color": "8C3A28"},
+        {"name": "Gemeente Schiedam",   "color": "7EE587"},
+        {"name": "VastgoedNED",         "color": "C9B441"},
+        {"name": "Gemeente Zaanstad",   "color": "7B2A2D"},
+        {"name": "Overig",              "color": "6A6C70"}
+    ]'::jsonb,
+    13
+)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, fields = EXCLUDED.fields;
+
+-- Rapportage mapset
+UPDATE application.mapset
+SET layers = array_append(layers, 'contractor')
+WHERE id = 'clcqk9m5n000a14qel71c83m2'
+  AND NOT ('contractor' = ANY (layers));
