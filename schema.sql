@@ -728,22 +728,6 @@ CREATE PROCEDURE application.cleanup_auth_data()
 BEGIN
     RAISE NOTICE 'Starting authentication data cleanup';
 
-    -- Legacy C# WebApi tables --------------------------------------------------
-
-    DELETE FROM application.auth_access_token
-    WHERE expired_at < NOW();
-    RAISE NOTICE 'Deleted % expired access tokens (legacy).', FOUND::TEXT;
-
-    DELETE FROM application.auth_code
-    WHERE expired_at < NOW();
-    RAISE NOTICE 'Deleted % expired auth codes (legacy).', FOUND::TEXT;
-
-    DELETE FROM application.auth_refresh_token
-    WHERE expired_at < NOW();
-    RAISE NOTICE 'Deleted % expired refresh tokens (legacy).', FOUND::TEXT;
-
-    -- Better Auth tables -------------------------------------------------------
-
     DELETE FROM application.session
     WHERE expires_at < NOW();
     RAISE NOTICE 'Deleted % expired Better Auth sessions.', FOUND::TEXT;
@@ -2675,36 +2659,6 @@ ALTER SEQUENCE application.attribution_id_seq OWNED BY application.attribution.i
 
 
 --
--- Name: auth_access_token; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.auth_access_token (
-    access_token text NOT NULL,
-    ip_address inet NOT NULL,
-    application_id text NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at timestamp with time zone NOT NULL,
-    expired_at timestamp with time zone NOT NULL
-);
-
-
---
--- Name: auth_code; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.auth_code (
-    code text NOT NULL,
-    application_id text NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expired_at timestamp with time zone NOT NULL,
-    code_challenge text,
-    code_challenge_method text
-);
-
-
---
 -- Name: auth_key; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2717,19 +2671,6 @@ CREATE TABLE application.auth_key (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     id uuid DEFAULT gen_random_uuid() NOT NULL
-);
-
-
---
--- Name: auth_refresh_token; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.auth_refresh_token (
-    token text NOT NULL,
-    application_id text NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expired_at timestamp with time zone
 );
 
 
@@ -5632,35 +5573,11 @@ ALTER TABLE ONLY application.attribution
 
 
 --
--- Name: auth_access_token auth_access_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_access_token
-    ADD CONSTRAINT auth_access_token_pkey PRIMARY KEY (access_token);
-
-
---
--- Name: auth_code auth_code_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_code
-    ADD CONSTRAINT auth_code_pkey PRIMARY KEY (code);
-
-
---
 -- Name: auth_key auth_key_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.auth_key
     ADD CONSTRAINT auth_key_pkey PRIMARY KEY (id);
-
-
---
--- Name: auth_refresh_token auth_refresh_token_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_refresh_token
-    ADD CONSTRAINT auth_refresh_token_pkey PRIMARY KEY (token);
 
 
 --
@@ -7967,48 +7884,6 @@ CREATE INDEX attribution_reviewer_id_idx ON application.attribution USING btree 
 
 
 --
--- Name: auth_access_token_application_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_access_token_application_id_idx ON application.auth_access_token USING btree (application_id);
-
-
---
--- Name: auth_access_token_expired_at_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_access_token_expired_at_idx ON application.auth_access_token USING btree (expired_at);
-
-
---
--- Name: auth_access_token_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_access_token_user_id_idx ON application.auth_access_token USING btree (user_id);
-
-
---
--- Name: auth_code_application_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_code_application_id_idx ON application.auth_code USING btree (application_id);
-
-
---
--- Name: auth_code_expired_at_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_code_expired_at_idx ON application.auth_code USING btree (expired_at);
-
-
---
--- Name: auth_code_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_code_user_id_idx ON application.auth_code USING btree (user_id);
-
-
---
 -- Name: auth_key_expires_at_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -8027,27 +7902,6 @@ CREATE UNIQUE INDEX auth_key_key_hash_idx ON application.auth_key USING btree (k
 --
 
 CREATE INDEX auth_key_user_id_idx ON application.auth_key USING btree (user_id);
-
-
---
--- Name: auth_refresh_token_application_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_refresh_token_application_id_idx ON application.auth_refresh_token USING btree (application_id);
-
-
---
--- Name: auth_refresh_token_expired_at_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_refresh_token_expired_at_idx ON application.auth_refresh_token USING btree (expired_at);
-
-
---
--- Name: auth_refresh_token_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX auth_refresh_token_user_id_idx ON application.auth_refresh_token USING btree (user_id);
 
 
 --
@@ -10082,59 +9936,11 @@ ALTER TABLE ONLY application.attribution
 
 
 --
--- Name: auth_access_token auth_access_token_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_access_token
-    ADD CONSTRAINT auth_access_token_application_id_fkey FOREIGN KEY (application_id) REFERENCES application.application(application_id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: auth_access_token auth_access_token_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_access_token
-    ADD CONSTRAINT auth_access_token_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: auth_code auth_code_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_code
-    ADD CONSTRAINT auth_code_application_id_fkey FOREIGN KEY (application_id) REFERENCES application.application(application_id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: auth_code auth_code_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_code
-    ADD CONSTRAINT auth_code_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
 -- Name: auth_key auth_key_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.auth_key
     ADD CONSTRAINT auth_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: auth_refresh_token auth_refresh_token_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_refresh_token
-    ADD CONSTRAINT auth_refresh_token_application_id_fkey FOREIGN KEY (application_id) REFERENCES application.application(application_id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: auth_refresh_token auth_refresh_token_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.auth_refresh_token
-    ADD CONSTRAINT auth_refresh_token_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
