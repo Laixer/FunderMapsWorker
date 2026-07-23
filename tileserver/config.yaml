@@ -22,14 +22,16 @@ cache_size_mb: 512
 postgres:
   connection_string: '${DATABASE_URL}'
   pool_size: 4
-  auto_publish: false
-  functions:
-    buildings:
-      schema: maplayer
-      function: buildings
-      # Martin does not read TileJSON metadata from the function COMMENT
-      # for explicitly configured sources — declare it here so clients
-      # stop requesting z<12 and overzoom past 16 instead of fetching.
-      minzoom: 12
-      maxzoom: 16
-      bounds: [3.2, 50.7, 7.3, 53.6]
+  # Auto-publish (scoped to maplayer, functions only) instead of an explicit
+  # source entry: Martin only merges the TileJSON fragment from the function
+  # COMMENT (minzoom/maxzoom/bounds/vector_layers — see
+  # sql/model/create_building_tiles.sql) for auto-published sources.
+  # Explicitly configured sources ignore the comment, which left the TileJSON
+  # without vector_layers and broke every comment-driven client (the web UI
+  # renders nothing without it). maplayer.buildings(z,x,y) is the only
+  # tile-shaped function in the schema; tables stay unpublished so
+  # building_tiles itself is not exposed as a source.
+  auto_publish:
+    tables: false
+    functions:
+      from_schemas: maplayer
