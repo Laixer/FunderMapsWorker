@@ -1324,6 +1324,12 @@ BEGIN
         SELECT ST_AsMVT(tile, 'buildings', 4096, 'geom') INTO mvt
         FROM (
             SELECT
+                -- Geofence ids are load-bearing at EVERY zoom: WebFront's
+                -- geography filter shows any feature missing them (the
+                -- '!has' fallback), so dropping them here exposed the whole
+                -- country to fenced orgs at z12–13. They dictionary-encode
+                -- well; building_id stays z14+ (near-unique = the size cost).
+                neighborhood_id, district_id, municipality_id,
                 construction_year, foundation_type, foundation_type_reliability,
                 drystand_risk, bio_infection_risk, dewatering_depth_risk,
                 unclassified_risk, recovery_type, velocity, damage_cause,
