@@ -29,9 +29,9 @@ postgres:
   # sql/model/create_building_tiles.sql) for auto-published sources.
   # Explicitly configured sources ignore the comment, which left the TileJSON
   # without vector_layers and broke every comment-driven client (the web UI
-  # renders nothing without it). maplayer.buildings(z,x,y) is the only
-  # tile-shaped function in the schema; tables stay unpublished so
-  # building_tiles itself is not exposed as a source.
+  # renders nothing without it). The tile-shaped functions in the schema are
+  # maplayer.buildings(z,x,y) and maplayer.building_cluster(z,x,y); tables
+  # stay unpublished so the *_tiles source tables are not exposed directly.
   auto_publish:
     tables: false
     functions:

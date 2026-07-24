@@ -83,6 +83,7 @@ The matview is consumed by:
 │     │                                          district,municipality})       │
 │     │   └─ maplayer.analysis_full (GPKG archive export)                      │
 │     ├─ maplayer.building_tiles (Martin tileserver source)                    │
+│     ├─ maplayer.building_cluster_tiles (Martin, from data.building_cluster)  │
 │     └─ data.statistics_*                                                     │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
