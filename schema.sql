@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict eqMA9PHL7CwqtGkU8JHlJgsr1slaqjS6rhBlRGMAyJms50xJNaSFi0fxgjJ9aDa
+\restrict 5YWFpiEb4Nlb3gYppYrh2CxGvP5q7LEbGx1FbfofRgQipeTAVBB2c3iL38gbbmD
 
 -- Dumped from database version 17.10
 -- Dumped by pg_dump version 17.10 (Ubuntu 17.10-0ubuntu0.25.10.1)
@@ -1286,6 +1286,64 @@ COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder
 
 
 --
+-- Name: building_cluster(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
+--
+
+CREATE FUNCTION maplayer.building_cluster(z integer, x integer, y integer) RETURNS bytea
+    LANGUAGE plpgsql STABLE PARALLEL SAFE
+    AS $$
+DECLARE
+    env geometry;
+    mvt bytea;
+BEGIN
+    -- Below the tileset's minzoom, or nonsense coordinates
+    -- (ST_TileEnvelope would error → 500): empty tile, no table hit.
+    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
+        RETURN ''::bytea;
+    END IF;
+
+    env := ST_TileEnvelope(z, x, y);
+
+    IF z >= 14 THEN
+        SELECT ST_AsMVT(tile, 'building_cluster', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                cluster_id::text AS cluster_id,
+                building_count,
+                ST_AsMVTGeom(geom, env, 4096, 64, true) AS geom
+            FROM maplayer.building_cluster_tiles
+            WHERE geom && env
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    ELSE
+        -- z12–13: overview zooms. Simplified geometry, no ids (near-unique
+        -- uuid strings dominate tile size), sub-pixel clusters dropped —
+        -- same thresholds as building_tiles (a cluster smaller than a
+        -- single big building is invisible here anyway).
+        SELECT ST_AsMVT(tile, 'building_cluster', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
+            FROM maplayer.building_cluster_tiles
+            WHERE geom_simple && env
+              AND surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    END IF;
+
+    RETURN coalesce(mvt, ''::bytea);
+END;
+$$;
+
+
+--
+-- Name: FUNCTION building_cluster(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON FUNCTION maplayer.building_cluster(z integer, x integer, y integer) IS '{"description": "FunderMaps building cluster (bouwkundige eenheid) outlines (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "building_cluster", "minzoom": 12, "maxzoom": 16, "fields": {"cluster_id": "String", "building_count": "Number"}}]}';
+
+
+--
 -- Name: buildings(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
 --
 
@@ -1372,6 +1430,40 @@ $$;
 --
 
 COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String", "contractor": "String"}}]}';
+
+
+--
+-- Name: refresh_building_cluster_tiles(); Type: PROCEDURE; Schema: maplayer; Owner: -
+--
+
+CREATE PROCEDURE maplayer.refresh_building_cluster_tiles()
+    LANGUAGE sql
+    AS $$
+    TRUNCATE maplayer.building_cluster_tiles;
+
+    INSERT INTO maplayer.building_cluster_tiles (
+        cluster_id, building_count, surface_area, geom, geom_simple
+    )
+    SELECT
+        u.cluster_id,
+        u.building_count,
+        ST_Area(u.geom::geography, true),
+        ST_Multi(ST_Transform(u.geom, 3857)),
+        -- 5.0 Mercator units ≈ 3 m at NL latitude, matching building_tiles:
+        -- invisible at z12–13, collapses dense outlines to a few points.
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(u.geom, 3857), 5.0))
+    FROM (
+        SELECT
+            bc.cluster_id,
+            count(*) AS building_count,
+            ST_Union(ba.geom) AS geom
+        FROM data.building_cluster bc
+        JOIN geocoder.building_active ba ON ba.external_id = bc.building_id
+        GROUP BY bc.cluster_id
+    ) u;
+
+    ANALYZE maplayer.building_cluster_tiles;
+$$;
 
 
 --
@@ -4455,15 +4547,16 @@ CREATE VIEW maplayer.analysis_full AS
 
 
 --
--- Name: building_cluster; Type: VIEW; Schema: maplayer; Owner: -
+-- Name: building_cluster_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
-CREATE VIEW maplayer.building_cluster AS
- SELECT bc.cluster_id,
-    public.st_union(ba.geom) AS geom
-   FROM (data.building_cluster bc
-     JOIN geocoder.building_active ba ON ((ba.external_id = bc.building_id)))
-  GROUP BY bc.cluster_id;
+CREATE TABLE maplayer.building_cluster_tiles (
+    cluster_id uuid NOT NULL,
+    building_count integer NOT NULL,
+    surface_area double precision,
+    geom public.geometry(MultiPolygon,3857),
+    geom_simple public.geometry(MultiPolygon,3857)
+);
 
 
 --
@@ -6027,6 +6120,14 @@ ALTER TABLE ONLY geocoder.residence
 
 ALTER TABLE ONLY geocoder.state
     ADD CONSTRAINT state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: building_cluster_tiles building_cluster_tiles_pkey; Type: CONSTRAINT; Schema: maplayer; Owner: -
+--
+
+ALTER TABLE ONLY maplayer.building_cluster_tiles
+    ADD CONSTRAINT building_cluster_tiles_pkey PRIMARY KEY (cluster_id);
 
 
 --
@@ -8585,6 +8686,20 @@ CREATE INDEX state_name_idx ON geocoder.state USING btree (name);
 
 
 --
+-- Name: building_cluster_tiles_geom_idx; Type: INDEX; Schema: maplayer; Owner: -
+--
+
+CREATE INDEX building_cluster_tiles_geom_idx ON maplayer.building_cluster_tiles USING gist (geom);
+
+
+--
+-- Name: building_cluster_tiles_geom_simple_idx; Type: INDEX; Schema: maplayer; Owner: -
+--
+
+CREATE INDEX building_cluster_tiles_geom_simple_idx ON maplayer.building_cluster_tiles USING gist (geom_simple);
+
+
+--
 -- Name: building_tiles_geom_idx; Type: INDEX; Schema: maplayer; Owner: -
 --
 
@@ -10578,5 +10693,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eqMA9PHL7CwqtGkU8JHlJgsr1slaqjS6rhBlRGMAyJms50xJNaSFi0fxgjJ9aDa
+\unrestrict 5YWFpiEb4Nlb3gYppYrh2CxGvP5q7LEbGx1FbfofRgQipeTAVBB2c3iL38gbbmD
 
