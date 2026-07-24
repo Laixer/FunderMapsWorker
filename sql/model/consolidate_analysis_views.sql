@@ -1,15 +1,17 @@
 -- Phase A6: Consolidate Analysis Views + Add Indexes
 --
--- Problem: 5 analysis views (analysis_building, analysis_foundation, analysis_full,
--- analysis_report, analysis_risk) repeat the same 4-way JOIN and WHERE clause.
--- They also use unnecessary DISTINCT ON — the PK on model_risk_static guarantees
+-- Problem: the analysis views repeated the same 4-way JOIN and WHERE clause,
+-- plus an unnecessary DISTINCT ON — the PK on model_risk_static guarantees
 -- uniqueness.
 --
--- Fix: Create a shared base view (building_geo_hierarchy), then make each
--- analysis view a thin column projection.
+-- Fix: a shared base view (building_geo_hierarchy) with analysis_full as a
+-- thin column projection on top.
 --
--- Note: analysis_monitoring is different (queries inquiry_sample directly,
--- not model_risk_static) and is left unchanged here.
+-- 2026-07-24: trimmed to analysis_full only. The other analysis_* views
+-- (building, foundation, monitoring, report, risk) were dropped in
+-- sql/migrate/drop_analysis_tile_views.sql after the Martin cutover moved
+-- their layers onto the dynamic 'buildings' source — do not recreate them.
+-- analysis_full survives as the GPKG dataset-archive export source.
 
 --------------------------------------------------------------------------------
 -- Shared base view
@@ -30,41 +32,8 @@ JOIN geocoder.municipality m ON m.id = d.municipality_id
 WHERE mrs.address_count > 0;
 
 --------------------------------------------------------------------------------
--- Thin projection views (no DISTINCT ON needed — PK guarantees uniqueness)
+-- Thin projection view (no DISTINCT ON needed — PK guarantees uniqueness)
 --------------------------------------------------------------------------------
-
-CREATE OR REPLACE VIEW maplayer.analysis_building AS
-SELECT
-    building_id,
-    ext_neighborhood_id AS neighborhood_id,
-    ext_district_id AS district_id,
-    ext_municipality_id AS municipality_id,
-    address_count,
-    construction_year,
-    construction_year_reliability,
-    height,
-    owner,
-    geom
-FROM data.building_geo_hierarchy;
-
----
-
-CREATE OR REPLACE VIEW maplayer.analysis_foundation AS
-SELECT
-    building_id,
-    ext_neighborhood_id AS neighborhood_id,
-    ext_district_id AS district_id,
-    ext_municipality_id AS municipality_id,
-    foundation_type,
-    foundation_type_reliability,
-    height,
-    owner,
-    recovery_type,
-    velocity,
-    geom
-FROM data.building_geo_hierarchy;
-
----
 
 CREATE OR REPLACE VIEW maplayer.analysis_full AS
 SELECT
@@ -100,46 +69,6 @@ SELECT
     height,
     owner,
     inquiry_id,
-    geom
-FROM data.building_geo_hierarchy;
-
----
-
-CREATE OR REPLACE VIEW maplayer.analysis_report AS
-SELECT
-    building_id,
-    ext_neighborhood_id AS neighborhood_id,
-    ext_district_id AS district_id,
-    ext_municipality_id AS municipality_id,
-    height,
-    owner,
-    inquiry_type,
-    damage_cause,
-    enforcement_term,
-    overall_quality,
-    geom
-FROM data.building_geo_hierarchy;
-
----
-
-CREATE OR REPLACE VIEW maplayer.analysis_risk AS
-SELECT
-    building_id,
-    ext_neighborhood_id AS neighborhood_id,
-    ext_district_id AS district_id,
-    ext_municipality_id AS municipality_id,
-    restoration_costs,
-    bio_infection_risk,
-    bio_infection_risk_reliability,
-    dewatering_depth,
-    dewatering_depth_risk,
-    dewatering_depth_risk_reliability,
-    drystand,
-    drystand_risk,
-    drystand_risk_reliability,
-    unclassified_risk,
-    height,
-    owner,
     geom
 FROM data.building_geo_hierarchy;
 

@@ -229,28 +229,8 @@ LEFT JOIN data.risk_table_priority rtp
    AND rtp.settlement_speed = inputz.settlement_speed;
 
 --------------------------------------------------------------------------------
--- Fix 5: analysis_monitoring
+-- Fix 5 (removed 2026-07-24): analysis_monitoring
 --
--- Bug: DISTINCT ON without ORDER BY — nondeterministic row selection.
---
--- Fix: Add ORDER BY create_date DESC (or document_date DESC from inquiry).
--- Note: This view queries inquiry_sample directly, not model_risk_static.
+-- The view was dropped in sql/migrate/drop_analysis_tile_views.sql after the
+-- Martin cutover retired its static tileset — do not recreate it.
 --------------------------------------------------------------------------------
-
-CREATE OR REPLACE VIEW maplayer.analysis_monitoring AS
-SELECT DISTINCT ON (ba.external_id)
-    ba.external_id AS building_id,
-    round(GREATEST(bh.height, 0::real)::numeric, 2) AS height,
-    n.external_id AS neighborhood_id,
-    d.external_id AS district_id,
-    m.external_id AS municipality_id,
-    ba.geom
-FROM report.inquiry_sample is2
-JOIN report.inquiry i ON i.id = is2.inquiry_id
-JOIN geocoder.building_active ba ON ba.external_id = is2.building_id::text
-JOIN data.building_height bh ON bh.building_id = ba.external_id
-JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
-JOIN geocoder.district d ON d.id = n.district_id
-JOIN geocoder.municipality m ON m.id = d.municipality_id
-WHERE i.type = 'monitoring'
-ORDER BY ba.external_id, i.document_date DESC;

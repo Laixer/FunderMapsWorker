@@ -25,7 +25,7 @@ For every active "house"-type BAG building in the Netherlands (≈ 11.2M rows), 
 The matview is consumed by:
 - The TS API (`fundermaps_webapp` role) and C# Webservice (`fundermaps_webservice` role) — both have `SELECT` granted.
 - 12 `data.statistics_*` matviews aggregating per neighborhood / municipality / postal code.
-- 5 thin projection views in `maplayer.*` used as the source of vector tiles (`analysis_building`, `analysis_foundation`, `analysis_full`, `analysis_report`, `analysis_risk`).
+- `maplayer.analysis_full`, a thin projection view used as the GPKG dataset-archive export source. (Four sibling `analysis_*` tile views were dropped 2026-07-24 after the Martin tileserver cutover — analysis map layers now render from `maplayer.building_tiles` directly.)
 
 ---
 
@@ -81,11 +81,8 @@ The matview is consumed by:
 │   data.model_risk_static                                                     │
 │     ├─ data.building_geo_hierarchy (joins to geocoder.{neighborhood,         │
 │     │                                          district,municipality})       │
-│     │   ├─ maplayer.analysis_building                                        │
-│     │   ├─ maplayer.analysis_foundation                                      │
-│     │   ├─ maplayer.analysis_full                                            │
-│     │   ├─ maplayer.analysis_report                                          │
-│     │   └─ maplayer.analysis_risk                                            │
+│     │   └─ maplayer.analysis_full (GPKG archive export)                      │
+│     ├─ maplayer.building_tiles (Martin tileserver source)                    │
 │     └─ data.statistics_*                                                     │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -736,15 +733,15 @@ WHERE mrs.address_count > 0;
 
 The `mrs.address_count > 0` filter excludes orphaned / unaddressed buildings (sheds, tiny annexes) from all map products.
 
-### 11.2 `maplayer.analysis_*` views (tile sources)
+### 11.2 `maplayer.analysis_full` (GPKG archive export)
 
-Five thin column projections — `analysis_building`, `analysis_foundation`, `analysis_full`, `analysis_report`, `analysis_risk`. None of them re-do `DISTINCT ON` (`building_id` is unique in `model_risk_static` thanks to its PK). Each picks the columns relevant to the tileset it feeds.
+A thin column projection exposing essentially every model output. It no longer re-does `DISTINCT ON` (`building_id` is unique in `model_risk_static` thanks to its PK).
 
-`analysis_full` exposes essentially every model output and is the heaviest tileset to generate (`MAX_TILESET_WORKERS=1` is set on the worker droplet because parallel tilesets OOM the 8 GB node).
+Until the 2026-07-23 Martin tileserver cutover there were five such views feeding static tippecanoe tilesets; the other four (`analysis_building`, `analysis_foundation`, `analysis_report`, `analysis_risk`) plus `analysis_monitoring` were dropped on 2026-07-24 (`sql/migrate/drop_analysis_tile_views.sql`) — analysis map layers now render from `maplayer.building_tiles` via Martin. `analysis_full` survives because its `maplayer.bundle` row is GPKG-export-only, feeding the nightly dataset archive (raw material for model-run diffs). It remains the heaviest export (`MAX_TILESET_WORKERS=1` is set on the worker droplet because parallel exports OOM the 8 GB node).
 
-### 11.3 `maplayer.facade_scan` and `maplayer.analysis_monitoring`
+### 11.3 `maplayer.facade_scan`
 
-These do **not** read `model_risk_static`. They query `report.inquiry_sample` directly to surface facade-crack and joint-monitoring data. Listed here for completeness (also in `consolidate_analysis_views.sql`).
+Does **not** read `model_risk_static`. It queries `report.inquiry_sample` directly to surface facade-crack data. (`maplayer.analysis_monitoring`, which did the same for joint-monitoring data, was dropped with the other tile views.)
 
 ### 11.4 Statistics matviews
 
