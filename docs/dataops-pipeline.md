@@ -1,0 +1,290 @@
+# FunderMaps Data Ops — pipeline design
+
+**Status:** current best design. Not implemented.
+**Last revised:** 2026-07-24
+
+FunderMaps Data Ops is the combination of two halves:
+
+- **Windmill** — the automated lane. Ingest, classify, extract, validate, gate.
+- **Invoer app** (FunderMapsClientApp) — the human lane. Authoring, review, promotion.
+
+Fundie is the LLM-backed copilot that sits on the human lane and explains what
+the automated lane proposed. There is no other LLM in the stack; we own the
+whole inference layer.
+
+---
+
+## 1. Scope
+
+Everything that arrives becomes one of three domain types:
+
+| Type | Lands in | Weight |
+|---|---|---|
+| **Incident** (melding) | `report.incident` | Light — address, complainant, free text, photos. Mostly routing. |
+| **Report** (onderzoek) | `report.inquiry` + `report.inquiry_sample[]` | Heavy — 61 fields per address, from a PDF. |
+| **Recovery** (herstel) | `report.recovery` + `report.recovery_sample[]` | Medium — ~15 fields per address. |
+
+Format is **orthogonal** to type. An incident can arrive as email, a report as a
+PDF, a recovery as JSON. Do not build a pipeline per format or per source.
+
+---
+
+## 2. Core abstraction: dossier + artifacts
+
+```
+DOSSIER  ── one submission, one subject (building or address set)
+   │
+   ├── ARTIFACT  email body      text/plain
+   ├── ARTIFACT  report.pdf      application/pdf     (born-digital or scanned)
+   ├── ARTIFACT  photo_01.jpeg   image/jpeg
+   └── ARTIFACT  melding.json    application/json
+                                          │
+                                    resolves to ONE OF
+                                          ▼
+                          INCIDENT · REPORT · RECOVERY
+```
+
+The dossier is the unit of work, of review, and of audit. A single email with a
+PDF attachment and three photos is **one** dossier with five artifacts, not four
+separate things. Artifacts nest (`parent_artifact_id`) so the email → attachment
+tree comes for free.
+
+---
+
+## 3. Intake — the front door
+
+All channels converge on `dataops.dossier` + `dataops.artifact`.
+
+| Channel | Mechanism | Notes |
+|---|---|---|
+| **Email** | IMAP poll → dossier per thread | Body is an artifact; attachments recurse. Sender identity feeds trust/routing. Thread replies append to the existing dossier. |
+| **Upload** | Invoer app / management portal | Human picks the type, or lets classify decide. |
+| **Bulk drop** | Spaces prefix watch | The `feedback-verwerkt-*` zips land here; one dossier per `melding-XXXX/` folder. |
+| **API** | `POST /dataops/dossier` | For anything programmatic later. |
+| **Invoer app form** | Direct authoring | Structured already — enters at stage 5, skips extraction. |
+
+**Sniff content, do not trust the extension.** Batch 1 of the feedback corpus
+already contains a `.png` with a soft hyphen in the filename, `.json` files of
+three different shapes, and PDFs that are scans rather than born-digital.
+
+Per-format normalization into an artifact:
+
+- **email** — RFC822 parse: headers, body (prefer `text/plain`, fall back to
+  HTML→text), attachments recurse as child artifacts.
+- **pdf** — straight to the model as a document block. Born-digital and scanned
+  both work natively; no separate OCR stage. Mind the 32 MB / 100-page request
+  limits — chunk long reports by page range.
+- **image** — vision, native resolution up to 2576 px on the long edge.
+- **json** — mapped if the shape is recognised (the melding export), otherwise
+  treated as text.
+- **csv / xlsx** — a different path: this is *many* records, and fans out to N
+  dossiers rather than becoming one.
+
+---
+
+## 4. The spine
+
+```
+1 INGEST ─ 2 CLASSIFY ─ 3 EXTRACT ─ 4 RESOLVE ─ 5 ENRICH ─ 6 VALIDATE ─ 7 GATE ─ 8 PROPOSE ─ 9 REVIEW ─ 10 COMMIT ─ 11 VERDICT
+                                                      ▲
+                                    invoer app authoring enters here ──┘
+```
+
+### 1 · Ingest
+Land bytes immutably, keyed by content SHA-256. Register dossier + artifacts.
+Idempotent — re-running a batch is a no-op. Never mutate landed bytes; this is
+the archive of record.
+
+### 2 · Classify
+One cheap call over the whole artifact set: which type, is it in scope, which
+building. Output `{type, confidence, subject_hint, out_of_scope_reason}`.
+`unknown` is a valid answer and routes to a human — never force a guess.
+
+### 3 · Extract
+Type-specific. Strict tool call (`emit_incident` / `emit_report` /
+`emit_recovery`) with `citations: {enabled: true}` on every document artifact,
+so each extracted field carries page + snippet. Citations and
+`output_config.format` are mutually exclusive — tools are the way to get both
+structure and provenance.
+
+Cache the field-schema preamble: it is large and frozen, so it reads at ~0.1×.
+
+### 4 · Resolve
+Address / `bag_nummeraanduiding_id` → `geocoder.building`. Explicit
+`resolution_status ∈ {resolved, stale_bag, ambiguous, absent}` — never a silent
+drop. BAG import freshness is a known failure mode (issue #992), and 15% of
+feedback batch 1 has no usable address at all.
+
+### 5 · Enrich
+Current analysis, neighbouring buildings, prior dossiers on the same building.
+Where an artifact carries an intake-time `fundermaps` snapshot (the melding
+export does), diff it against now — "the model changed its mind since this was
+reported" is a free and useful review queue.
+
+### 6 · Validate
+Cross-field and cross-building coherence. **This is rules, not the LLM.** The
+model extracts; deterministic rules object. Examples:
+
+- `woodLevel` above `pileHeadLevel`
+- `foundationType: houtenpaal` with `constructionPile: beton`
+- every neighbour on the block is concrete, this one says wood
+- `settlementSpeed` inconsistent with the recorded crack pattern
+
+Rules are testable and explainable, which matters when a bank asks.
+
+### 7 · Gate
+Per proposed action: `autonomy ∈ {auto, confirm, manual}`, `reversible`,
+`riskWeight`, and a human-readable reason. Confidence alone never promotes an
+irreversible action.
+
+`recoveryAdvised` and `enforcementTerm` are permanently `manual` regardless of
+confidence — they are liability-bearing judgements.
+
+### 8 · Propose
+Lands in `dataops.proposal`, **never** directly in `report.*`. Field-level:
+value, confidence, citation, model + prompt version.
+
+### 9 · Review
+Invoer app + Fundie. See §6.
+
+### 10 · Commit
+Promotion goes through FunderMapsApi with the reviewer's token, so the existing
+audit-status state machine and org scoping apply unchanged. Machine-authored
+rows carry a **distinct actor identity**, not a reviewer's — see issue #973,
+where 4,918 reviewer collisions had to be remapped to `review@`.
+
+### 11 · Verdict
+Every accept / edit / reject writes an eval row: proposed value, final value,
+actor, timestamp, prompt version. This is the training signal, the regression
+suite, and the provenance answer. It is the reason the rest is worth building.
+
+---
+
+## 5. Schema sketch
+
+```sql
+dataops.dossier    id, channel, type, type_confidence, subject_building_id,
+                   resolution_status, state, created_at
+dataops.artifact   id, dossier_id, parent_artifact_id, storage_key, sha256,
+                   mime, bytes
+dataops.proposal   id, dossier_id, target_table, target_field, value,
+                   confidence, artifact_id, page, snippet, model, prompt_version
+dataops.gate       proposal_id, autonomy, reversible, risk_weight, reason
+dataops.verdict    proposal_id, action, final_value, actor, decided_at
+```
+
+Keep the raw payload in a `jsonb` column alongside typed columns. Schema drift
+is guaranteed: feedback batch 1 alone has 26 distinct `values` keys of which
+only 8 appear in more than 80% of records.
+
+---
+
+## 6. The invoer app's two roles
+
+```
+        AUTHOR                                    REVIEW
+   human types a sample  ──┐              ┌──  human accepts/edits a proposal
+                           ├── SAME FORM ─┤
+   pipeline extracts one ──┘              └──  Fundie explains the proposal
+```
+
+**One schema, two authors.** Anything a human can type into `SampleForm`, the
+pipeline can propose; anything the pipeline proposes, the human reviews in the
+identical form. Manual entry is a dossier whose artifact is "a human's
+keystrokes" — it enters at stage 5, so it still gets neighbour context, still
+gets validated by the same rules, and still produces an eval row when edited
+later. The coherence checker therefore protects hand-typed data too, which is
+where a good share of real errors live.
+
+Fundie's three interventions inside the app:
+
+1. **Draft, don't type** — proposals arrive pre-computed, each field showing its
+   citation (`foundationType: houtenpaal · p.7`).
+2. **Coherence check in `SampleForm`** — object before submit, not after.
+3. **Triage the review queue** — rank by "needs a human", so reviewer attention
+   goes where it pays. There are ~20,361 inquiries sitting in `pending_review`.
+
+---
+
+## 7. Test corpora and eval
+
+All in `s3://fundermaps-data` (ams3).
+
+| Corpus | Path | Size | Use |
+|---|---|---|---|
+| Meldingen + documents | `source/feedback-verwerkt-*.zip` × 16 | 1,537 records, ~7 GB | Incident lane. **Labeled**: each record carries a prior system's triage proposal *and* the human outcome. |
+| Invoer samples | `samples/2026/may/*.csv` | 122 MB `inquiry_sample.csv` | Report/recovery lanes — human-entered ground truth. |
+| Risk reference | `validation/risk_model_reference.csv` | 783 buildings | Model validation. BAG pand-id → foundation type + drystand / dewatering / bio-infection risk, each with reliability. |
+
+Melding JSON structure:
+
+```
+submission        code, status, stage, municipality
+values            adres, bag_nummeraanduiding_id, opmerkingen (free text),
+                  intake_topics, manual_reporter_type, …
+fundermaps        analysis snapshot AT INTAKE — foundationType, 3 risks +
+                  reliability, restorationCosts, constructionYear (83/100 present)
+computed.aiTriage prior system's output: category, confidence, routePlan,
+                  actionPlan, replyDraft, trace. Prior art + baseline, not a
+                  system to integrate with.
+timelineEvents    status_change / resident_message / external_message / task_update
+files[]           URLs into formfiles.ams3.digitaloceanspaces.com
+```
+
+**Eval plan**
+
+- **Model quality** — `risk_model_reference.csv`, 783 buildings, pure SQL, no
+  LLM. Do this first; it says whether the underlying model is sound before
+  anything is built on top of it.
+- **Incidents** — hold batch 1 (100 records) as dev. Baseline to beat is the
+  `computed.aiTriage.category` already in the export. **Do not touch batches
+  2–16 until there is a metric.**
+- **Reports / recoveries** — replay source PDFs through extraction, diff against
+  what a human actually entered in the `samples/` CSVs.
+
+The `autonomy` / `reversible` / `riskWeight` vocabulary in the existing
+`aiTriage` block is well designed. Adopt it wholesale rather than inventing one.
+
+---
+
+## 8. Windmill flows
+
+Windmill is still **single-worker instance-wide** — all flow parallelism
+serializes. Design to avoid fan-out:
+
+```
+dataops/ingest_channel      cron · IMAP + Spaces prefix watch → dossiers
+dataops/classify_batch      submit Batch API job, park
+dataops/extract_batch       submit Batch API job, park
+dataops/collect_batch       poll → land proposals
+dataops/validate_and_gate   pure SQL + rules, no LLM
+```
+
+The Batches API is the right primitive twice over: 50% cheaper, and it turns
+1,537 concurrent calls into submit-poll-ingest, which one worker handles fine.
+
+---
+
+## 9. Open questions
+
+1. **PII stance** — names, emails, addresses, photos of homes, kadaster
+   ownership documents. Proposal: redact at stage 1, send `opmerkingen` plus
+   technical artifacts to the model, withhold `naam` / `email` / `bedrijf`.
+   Retention policy on landed copies still needed. Decision belongs to Yorick
+   and Don.
+2. **Incident channel** — the incident portals moved off our infra around
+   March 2026 and intake froze at 2,756. If meldingen now arrive by email, the
+   email channel is replacing a lost channel rather than adding one, which
+   raises its priority.
+
+---
+
+## 10. Phasing
+
+| Phase | Work | Rationale |
+|---|---|---|
+| 1 | Risk-reference validation harness (783 buildings, SQL only) | Zero AI risk, immediate signal on model quality. Self-contained. |
+| 2 | Ingest + artifact normalization, all formats, no inference | Proves the front door. Email parsing is the risky part — find out early. |
+| 3 | Classify + incident extraction on the dev batch, scored against the existing labels | First real number. |
+| 4 | Report extraction (61 fields) + Fundie in `SampleForm` | Highest value, on proven plumbing. |
+| 5 | Recovery extraction | Same machinery, smaller surface. |

@@ -11,6 +11,16 @@
 
 listen_addresses: '0.0.0.0:3000'
 
+# Glyphs generated from the Noto Sans TTFs baked into the image (see
+# Dockerfile) — served at /font/{fontstack}/{range}. Chrome's Local
+# Network Access blocks browser fetches to *.digitaloceanspaces.com from
+# public origins, so every browser-fetched asset must live on this host.
+fonts: /fonts
+
+# Basemap style JSON (FunderMapsWorker tileserver/styles/, baked into the
+# image) — served at /style/{id}. Same LNA reasoning as fonts.
+styles: /styles
+
 # Built-in map preview stays off: Martin has no auth, so enabling it exposes
 # a browse UI to the world. To eyeball tiles, run Martin locally with this
 # config against the read-only role instead.

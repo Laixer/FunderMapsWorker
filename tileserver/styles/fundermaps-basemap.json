@@ -18,8 +18,7 @@
    "url": "https://tiles.fundermaps.com/boundaries"
   }
  },
- "sprite": "https://fundermaps-tileset.ams3.digitaloceanspaces.com/assets/sprites/ofm",
- "glyphs": "https://fundermaps-tileset.ams3.digitaloceanspaces.com/assets/fonts/{fontstack}/{range}.pbf",
+ "glyphs": "https://tiles.fundermaps.com/font/{fontstack}/{range}",
  "layers": [
   {
    "id": "background",
