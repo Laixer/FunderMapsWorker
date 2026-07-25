@@ -12,10 +12,14 @@
   "openmaptiles": {
    "type": "vector",
    "url": "https://tiles.openfreemap.org/planet"
+  },
+  "fundermaps_boundaries": {
+   "type": "vector",
+   "url": "https://tiles.fundermaps.com/boundaries"
   }
  },
- "sprite": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
- "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+ "sprite": "https://fundermaps-tileset.ams3.digitaloceanspaces.com/assets/sprites/ofm",
+ "glyphs": "https://fundermaps-tileset.ams3.digitaloceanspaces.com/assets/fonts/{fontstack}/{range}.pbf",
  "layers": [
   {
    "id": "background",
@@ -1826,6 +1830,39 @@
      12,
      3
     ]
+   }
+  },
+  {
+   "id": "fundermaps-municipality",
+   "type": "line",
+   "source": "fundermaps_boundaries",
+   "source-layer": "municipality",
+   "minzoom": 7,
+   "paint": {
+    "line-color": "hsl(267, 75%, 31%)",
+    "line-width": 1.5
+   }
+  },
+  {
+   "id": "fundermaps-district",
+   "type": "line",
+   "source": "fundermaps_boundaries",
+   "source-layer": "district",
+   "minzoom": 10,
+   "paint": {
+    "line-color": "hsl(282, 68%, 38%)",
+    "line-width": 1
+   }
+  },
+  {
+   "id": "fundermaps-neighborhood",
+   "type": "line",
+   "source": "fundermaps_boundaries",
+   "source-layer": "neighborhood",
+   "minzoom": 10,
+   "paint": {
+    "line-color": "hsl(291, 47%, 60%)",
+    "line-width": 1
    }
   },
   {
