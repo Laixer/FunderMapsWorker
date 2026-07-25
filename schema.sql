@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5YWFpiEb4Nlb3gYppYrh2CxGvP5q7LEbGx1FbfofRgQipeTAVBB2c3iL38gbbmD
+\restrict EIacua7n9pEe8qSkMveXN9EkP7fJfjhs4ew6HfYOamNJO1zjhD9HefXvWwOe5G7
 
 -- Dumped from database version 17.10
 -- Dumped by pg_dump version 17.10 (Ubuntu 17.10-0ubuntu0.25.10.1)
@@ -372,6 +372,21 @@ CREATE DOMAIN report.diameter AS numeric(5,2);
 --
 
 COMMENT ON DOMAIN report.diameter IS 'Domain for the diameter of an object.';
+
+
+--
+-- Name: dossier_event_kind; Type: TYPE; Schema: report; Owner: -
+--
+
+CREATE TYPE report.dossier_event_kind AS ENUM (
+    'created',
+    'submitted',
+    'approved',
+    'rejected',
+    'reopened',
+    'imported',
+    'proposed'
+);
 
 
 --
@@ -1286,71 +1301,12 @@ COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder
 
 
 --
--- Name: building_cluster(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
---
-
-CREATE FUNCTION maplayer.building_cluster(z integer, x integer, y integer) RETURNS bytea
-    LANGUAGE plpgsql STABLE PARALLEL SAFE
-    AS $$
-DECLARE
-    env geometry;
-    mvt bytea;
-BEGIN
-    -- Below the tileset's minzoom, or nonsense coordinates
-    -- (ST_TileEnvelope would error → 500): empty tile, no table hit.
-    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
-        RETURN ''::bytea;
-    END IF;
-
-    env := ST_TileEnvelope(z, x, y);
-
-    IF z >= 14 THEN
-        SELECT ST_AsMVT(tile, 'building_cluster', 4096, 'geom') INTO mvt
-        FROM (
-            SELECT
-                cluster_id::text AS cluster_id,
-                building_count,
-                ST_AsMVTGeom(geom, env, 4096, 64, true) AS geom
-            FROM maplayer.building_cluster_tiles
-            WHERE geom && env
-        ) tile
-        WHERE tile.geom IS NOT NULL;
-    ELSE
-        -- z12–13: overview zooms. Simplified geometry, no ids (near-unique
-        -- uuid strings dominate tile size), sub-pixel clusters dropped —
-        -- same thresholds as building_tiles (a cluster smaller than a
-        -- single big building is invisible here anyway).
-        SELECT ST_AsMVT(tile, 'building_cluster', 4096, 'geom') INTO mvt
-        FROM (
-            SELECT
-                ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
-            FROM maplayer.building_cluster_tiles
-            WHERE geom_simple && env
-              AND surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
-        ) tile
-        WHERE tile.geom IS NOT NULL;
-    END IF;
-
-    RETURN coalesce(mvt, ''::bytea);
-END;
-$$;
-
-
---
--- Name: FUNCTION building_cluster(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
---
-
-COMMENT ON FUNCTION maplayer.building_cluster(z integer, x integer, y integer) IS '{"description": "FunderMaps building cluster (bouwkundige eenheid) outlines (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "building_cluster", "minzoom": 12, "maxzoom": 16, "fields": {"cluster_id": "String", "building_count": "Number"}}]}';
-
-
---
 -- Name: boundaries(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
 --
 
-CREATE FUNCTION maplayer.boundaries(z integer, x integer, y integer)
-RETURNS bytea
-LANGUAGE plpgsql STABLE PARALLEL SAFE
-AS $$
+CREATE FUNCTION maplayer.boundaries(z integer, x integer, y integer) RETURNS bytea
+    LANGUAGE plpgsql STABLE PARALLEL SAFE
+    AS $$
 DECLARE
     env geometry;
     env4326 geometry;
@@ -1417,6 +1373,64 @@ $$;
 --
 
 COMMENT ON FUNCTION maplayer.boundaries(z integer, x integer, y integer) IS '{"description": "FunderMaps admin boundaries (municipality/district/neighborhood)", "minzoom": 7, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "municipality", "minzoom": 7, "maxzoom": 16, "fields": {"id": "String", "name": "String"}}, {"id": "district", "minzoom": 10, "maxzoom": 16, "fields": {"id": "String", "name": "String"}}, {"id": "neighborhood", "minzoom": 10, "maxzoom": 16, "fields": {"id": "String", "name": "String"}}]}';
+
+
+--
+-- Name: building_cluster(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
+--
+
+CREATE FUNCTION maplayer.building_cluster(z integer, x integer, y integer) RETURNS bytea
+    LANGUAGE plpgsql STABLE PARALLEL SAFE
+    AS $$
+DECLARE
+    env geometry;
+    mvt bytea;
+BEGIN
+    -- Below the tileset's minzoom, or nonsense coordinates
+    -- (ST_TileEnvelope would error → 500): empty tile, no table hit.
+    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
+        RETURN ''::bytea;
+    END IF;
+
+    env := ST_TileEnvelope(z, x, y);
+
+    IF z >= 14 THEN
+        SELECT ST_AsMVT(tile, 'building_cluster', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                cluster_id::text AS cluster_id,
+                building_count,
+                ST_AsMVTGeom(geom, env, 4096, 64, true) AS geom
+            FROM maplayer.building_cluster_tiles
+            WHERE geom && env
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    ELSE
+        -- z12–13: overview zooms. Simplified geometry, no ids (near-unique
+        -- uuid strings dominate tile size), sub-pixel clusters dropped —
+        -- same thresholds as building_tiles (a cluster smaller than a
+        -- single big building is invisible here anyway).
+        SELECT ST_AsMVT(tile, 'building_cluster', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                ST_AsMVTGeom(geom_simple, env, 4096, 8, true) AS geom
+            FROM maplayer.building_cluster_tiles
+            WHERE geom_simple && env
+              AND surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    END IF;
+
+    RETURN coalesce(mvt, ''::bytea);
+END;
+$$;
+
+
+--
+-- Name: FUNCTION building_cluster(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON FUNCTION maplayer.building_cluster(z integer, x integer, y integer) IS '{"description": "FunderMaps building cluster (bouwkundige eenheid) outlines (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "building_cluster", "minzoom": 12, "maxzoom": 16, "fields": {"cluster_id": "String", "building_count": "Number"}}]}';
 
 
 --
@@ -4841,6 +4855,45 @@ CREATE VIEW maplayer.incident_neighborhood AS
 
 
 --
+-- Name: dossier_event; Type: TABLE; Schema: report; Owner: -
+--
+
+CREATE TABLE report.dossier_event (
+    id bigint NOT NULL,
+    create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    kind report.dossier_event_kind NOT NULL,
+    inquiry_id integer,
+    recovery_id integer,
+    incident_id text,
+    actor application.user_id,
+    note text,
+    metadata jsonb,
+    CONSTRAINT dossier_event_one_subject CHECK ((((((inquiry_id IS NOT NULL))::integer + ((recovery_id IS NOT NULL))::integer) + ((incident_id IS NOT NULL))::integer) = 1))
+);
+
+
+--
+-- Name: TABLE dossier_event; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON TABLE report.dossier_event IS 'Append-only trail of dossier lifecycle events. Exactly one of inquiry_id / recovery_id / incident_id is set.';
+
+
+--
+-- Name: dossier_event_id_seq; Type: SEQUENCE; Schema: report; Owner: -
+--
+
+ALTER TABLE report.dossier_event ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME report.dossier_event_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: incident_id_seq; Type: SEQUENCE; Schema: report; Owner: -
 --
 
@@ -6220,6 +6273,14 @@ ALTER TABLE ONLY maplayer.building_tiles
 
 ALTER TABLE ONLY maplayer.bundle
     ADD CONSTRAINT bundle_pkey PRIMARY KEY (tileset);
+
+
+--
+-- Name: dossier_event dossier_event_pkey; Type: CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.dossier_event
+    ADD CONSTRAINT dossier_event_pkey PRIMARY KEY (id);
 
 
 --
@@ -8790,6 +8851,27 @@ CREATE INDEX building_tiles_geom_simple_idx ON maplayer.building_tiles USING gis
 
 
 --
+-- Name: dossier_event_incident_idx; Type: INDEX; Schema: report; Owner: -
+--
+
+CREATE INDEX dossier_event_incident_idx ON report.dossier_event USING btree (incident_id, create_date) WHERE (incident_id IS NOT NULL);
+
+
+--
+-- Name: dossier_event_inquiry_idx; Type: INDEX; Schema: report; Owner: -
+--
+
+CREATE INDEX dossier_event_inquiry_idx ON report.dossier_event USING btree (inquiry_id, create_date) WHERE (inquiry_id IS NOT NULL);
+
+
+--
+-- Name: dossier_event_recovery_idx; Type: INDEX; Schema: report; Owner: -
+--
+
+CREATE INDEX dossier_event_recovery_idx ON report.dossier_event USING btree (recovery_id, create_date) WHERE (recovery_id IS NOT NULL);
+
+
+--
 -- Name: incident_building_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
@@ -10686,6 +10768,38 @@ ALTER TABLE ONLY geocoder.residence
 
 
 --
+-- Name: dossier_event dossier_event_actor_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.dossier_event
+    ADD CONSTRAINT dossier_event_actor_fkey FOREIGN KEY (actor) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_event dossier_event_incident_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.dossier_event
+    ADD CONSTRAINT dossier_event_incident_id_fkey FOREIGN KEY (incident_id) REFERENCES report.incident(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier_event dossier_event_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.dossier_event
+    ADD CONSTRAINT dossier_event_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES report.inquiry(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier_event dossier_event_recovery_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE ONLY report.dossier_event
+    ADD CONSTRAINT dossier_event_recovery_id_fkey FOREIGN KEY (recovery_id) REFERENCES report.recovery(id) ON DELETE CASCADE;
+
+
+--
 -- Name: incident incident_building_id_fkey; Type: FK CONSTRAINT; Schema: report; Owner: -
 --
 
@@ -10769,5 +10883,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5YWFpiEb4Nlb3gYppYrh2CxGvP5q7LEbGx1FbfofRgQipeTAVBB2c3iL38gbbmD
+\unrestrict EIacua7n9pEe8qSkMveXN9EkP7fJfjhs4ew6HfYOamNJO1zjhD9HefXvWwOe5G7
 
