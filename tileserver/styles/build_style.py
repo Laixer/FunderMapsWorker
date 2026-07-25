@@ -24,7 +24,6 @@ import json
 import urllib.request
 
 POSITRON_URL = "https://tiles.openfreemap.org/styles/positron"
-ASSETS = "https://fundermaps-tileset.ams3.digitaloceanspaces.com/assets"
 TILESERVER = "https://tiles.fundermaps.com"
 
 # Palette extracted from mapbox://styles/laixer/clcz2iorf003414p22imzzhnk
@@ -150,9 +149,14 @@ def main() -> None:
     style["name"] = "FunderMaps basemap"
     style.pop("id", None)
 
-    # Self-hosted glyphs and sprites (mirrored on Spaces); OFM stays for tiles.
-    style["glyphs"] = f"{ASSETS}/fonts/{{fontstack}}/{{range}}.pbf"
-    style["sprite"] = f"{ASSETS}/sprites/ofm"
+    # Glyphs come from Martin (TTFs baked into the tileserver image).
+    # Chrome's Local Network Access blocks browser fetches to
+    # *.digitaloceanspaces.com from public origins, so browser-fetched
+    # assets must live behind tiles.fundermaps.com. No sprite for now:
+    # only the road-shield/airport icons used it; Martin SVG sprites are
+    # a follow-up if we want the shields back.
+    style["glyphs"] = f"{TILESERVER}/font/{{fontstack}}/{{range}}"
+    style.pop("sprite", None)
 
     # Admin boundaries from our own tileserver, drawn under the labels.
     style["sources"]["fundermaps_boundaries"] = {

@@ -62,11 +62,17 @@ Mapbox → MapLibre migration: the legacy Studio style `fundermaps_basemap`
 `styles/build_style.py` and rerun it; don't hand-edit the JSON.
 
 Tiles come from OpenFreeMap (self-hostable escape hatch if ever needed).
-Glyphs (Noto Sans) and sprites are self-hosted on the `fundermaps-tileset`
-Space under `assets/`. The purple municipality/district/neighborhood lines
-come from the Martin function source `maplayer.boundaries`
-(`sql/model/create_boundary_tiles.sql`) reading `geocoder.*` — replacing
-the dead `laixer.*` Mapbox uploads. Martin discovers sources at startup,
-so a new function needs a tileserver redeploy to appear.
-The style is served as a static file; demo copy lives in the
-`fundermaps-development` Space under `maplibre-demo/`.
+Everything else a browser fetches is served by Martin itself: the style at
+`/style/fundermaps-basemap` (baked into the image from `styles/`), glyphs
+at `/font/{fontstack}/{range}` (generated from Noto Sans TTFs, see
+Dockerfile). This is deliberate: Chrome's Local Network Access feature
+blocks fetches from public origins to `*.digitaloceanspaces.com` (both
+the direct and CDN endpoints), so Spaces can never host browser-fetched
+assets. No sprite currently (only road shields used it; Martin SVG
+sprites are the follow-up if we want them back).
+The purple municipality/district/neighborhood lines come from the Martin
+function source `maplayer.boundaries` (`sql/model/create_boundary_tiles.sql`)
+reading `geocoder.*`. Martin discovers function sources at startup, so a
+new function needs a tileserver redeploy. Style changes also need an image
+rebuild (the style is baked in). Demo copy of the comparison page lives in
+the `fundermaps-development` Space under `maplibre-demo/`.
