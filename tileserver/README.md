@@ -61,9 +61,12 @@ Mapbox → MapLibre migration: the legacy Studio style `fundermaps_basemap`
 (OpenMapTiles schema). It is generated — edit the palette/overrides in
 `styles/build_style.py` and rerun it; don't hand-edit the JSON.
 
-The style currently references OpenFreeMap-hosted tiles, glyphs and
-sprites. Planned follow-ups: self-hosted glyphs/sprites on Spaces, and
-municipality/district/neighborhood boundary lines as Martin function
-sources over `geocoder` (replacing the dead `laixer.*` Mapbox uploads).
+Tiles come from OpenFreeMap (self-hostable escape hatch if ever needed).
+Glyphs (Noto Sans) and sprites are self-hosted on the `fundermaps-tileset`
+Space under `assets/`. The purple municipality/district/neighborhood lines
+come from the Martin function source `maplayer.boundaries`
+(`sql/model/create_boundary_tiles.sql`) reading `geocoder.*` — replacing
+the dead `laixer.*` Mapbox uploads. Martin discovers sources at startup,
+so a new function needs a tileserver redeploy to appear.
 The style is served as a static file; demo copy lives in the
 `fundermaps-development` Space under `maplibre-demo/`.

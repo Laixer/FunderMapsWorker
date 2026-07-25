@@ -1344,6 +1344,82 @@ COMMENT ON FUNCTION maplayer.building_cluster(z integer, x integer, y integer) I
 
 
 --
+-- Name: boundaries(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
+--
+
+CREATE FUNCTION maplayer.boundaries(z integer, x integer, y integer)
+RETURNS bytea
+LANGUAGE plpgsql STABLE PARALLEL SAFE
+AS $$
+DECLARE
+    env geometry;
+    env4326 geometry;
+    -- one MVT pixel at this zoom, for simplification
+    tol double precision;
+    mvt bytea := ''::bytea;
+    part bytea;
+BEGIN
+    -- Below municipality minzoom, or nonsense coordinates
+    -- (ST_TileEnvelope would error → 500): empty tile, no table hit.
+    IF z < 7 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
+        RETURN ''::bytea;
+    END IF;
+
+    env := ST_TileEnvelope(z, x, y);
+    env4326 := ST_Transform(env, 4326);
+    tol := (40075016.686 / (1 << z)) / 4096;
+
+    SELECT ST_AsMVT(tile, 'municipality', 4096, 'geom') INTO part
+    FROM (
+        SELECT external_id AS id, name,
+               ST_AsMVTGeom(
+                   ST_SimplifyPreserveTopology(ST_Transform(geom, 3857), tol),
+                   env, 4096, 64, true) AS geom
+        FROM geocoder.municipality
+        WHERE geom && env4326 AND NOT water
+    ) tile
+    WHERE tile.geom IS NOT NULL;
+    mvt := mvt || coalesce(part, ''::bytea);
+
+    IF z >= 10 THEN
+        SELECT ST_AsMVT(tile, 'district', 4096, 'geom') INTO part
+        FROM (
+            SELECT external_id AS id, name,
+                   ST_AsMVTGeom(
+                       ST_SimplifyPreserveTopology(ST_Transform(geom, 3857), tol),
+                       env, 4096, 64, true) AS geom
+            FROM geocoder.district
+            WHERE geom && env4326 AND NOT water
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+        mvt := mvt || coalesce(part, ''::bytea);
+
+        SELECT ST_AsMVT(tile, 'neighborhood', 4096, 'geom') INTO part
+        FROM (
+            SELECT external_id AS id, name,
+                   ST_AsMVTGeom(
+                       ST_SimplifyPreserveTopology(ST_Transform(geom, 3857), tol),
+                       env, 4096, 64, true) AS geom
+            FROM geocoder.neighborhood
+            WHERE geom && env4326 AND NOT water
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+        mvt := mvt || coalesce(part, ''::bytea);
+    END IF;
+
+    RETURN mvt;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION boundaries(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON FUNCTION maplayer.boundaries(z integer, x integer, y integer) IS '{"description": "FunderMaps admin boundaries (municipality/district/neighborhood)", "minzoom": 7, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "municipality", "minzoom": 7, "maxzoom": 16, "fields": {"id": "String", "name": "String"}}, {"id": "district", "minzoom": 10, "maxzoom": 16, "fields": {"id": "String", "name": "String"}}, {"id": "neighborhood", "minzoom": 10, "maxzoom": 16, "fields": {"id": "String", "name": "String"}}]}';
+
+
+--
 -- Name: buildings(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
 --
 

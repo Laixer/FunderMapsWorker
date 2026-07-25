@@ -11,9 +11,11 @@ extracted from the legacy style. Regenerate with:
 
     python3 build_style.py            # writes fundermaps-basemap.json
 
-The output references OpenFreeMap's hosted tiles, glyphs and sprites.
-Self-hosting those on Spaces is a planned follow-up; when that lands the
-sources/glyphs/sprite URLs get swapped here, not hand-edited in the JSON.
+Tiles come from OpenFreeMap (self-hostable escape hatch: Planetiler NL
+extract -> PMTiles on Spaces). Glyphs (Noto Sans, openmaptiles/fonts v2.0)
+and sprites (mirrored from OFM) are self-hosted on the fundermaps-tileset
+Space. Admin boundaries (the purple lines) come from the Martin function
+source maplayer.boundaries (sql/model/create_boundary_tiles.sql).
 
 Not part of the worker runtime — the style is served as a static file
 (currently from the fundermaps-development Space; final home TBD).
@@ -22,6 +24,8 @@ import json
 import urllib.request
 
 POSITRON_URL = "https://tiles.openfreemap.org/styles/positron"
+ASSETS = "https://fundermaps-tileset.ams3.digitaloceanspaces.com/assets"
+TILESERVER = "https://tiles.fundermaps.com"
 
 # Palette extracted from mapbox://styles/laixer/clcz2iorf003414p22imzzhnk
 TAN = {
@@ -106,6 +110,36 @@ PAINT = {
     "label_country_1":          {"text-color": TAN["label"], "text-halo-color": TAN["halo"]},
 }
 
+# FunderMaps admin boundaries — the purple lines from the legacy style,
+# served by the Martin function source maplayer.boundaries. Inserted below
+# the label layers' start so lines never overprint text.
+BOUNDARY_LAYERS = [
+    {
+        "id": "fundermaps-municipality",
+        "type": "line",
+        "source": "fundermaps_boundaries",
+        "source-layer": "municipality",
+        "minzoom": 7,
+        "paint": {"line-color": "hsl(267, 75%, 31%)", "line-width": 1.5},
+    },
+    {
+        "id": "fundermaps-district",
+        "type": "line",
+        "source": "fundermaps_boundaries",
+        "source-layer": "district",
+        "minzoom": 10,
+        "paint": {"line-color": "hsl(282, 68%, 38%)", "line-width": 1},
+    },
+    {
+        "id": "fundermaps-neighborhood",
+        "type": "line",
+        "source": "fundermaps_boundaries",
+        "source-layer": "neighborhood",
+        "minzoom": 10,
+        "paint": {"line-color": "hsl(291, 47%, 60%)", "line-width": 1},
+    },
+]
+
 
 def main() -> None:
     # OpenFreeMap rejects urllib's default User-Agent with a 403.
@@ -115,6 +149,19 @@ def main() -> None:
 
     style["name"] = "FunderMaps basemap"
     style.pop("id", None)
+
+    # Self-hosted glyphs and sprites (mirrored on Spaces); OFM stays for tiles.
+    style["glyphs"] = f"{ASSETS}/fonts/{{fontstack}}/{{range}}.pbf"
+    style["sprite"] = f"{ASSETS}/sprites/ofm"
+
+    # Admin boundaries from our own tileserver, drawn under the labels.
+    style["sources"]["fundermaps_boundaries"] = {
+        "type": "vector",
+        "url": f"{TILESERVER}/boundaries",
+    }
+    first_symbol = next(i for i, l in enumerate(style["layers"])
+                        if l["type"] == "symbol")
+    style["layers"][first_symbol:first_symbol] = BOUNDARY_LAYERS
 
     layer_ids = {layer["id"] for layer in style["layers"]}
     missed = [lid for lid in PAINT if lid not in layer_ids]
