@@ -18,6 +18,7 @@
    "url": "https://tiles.fundermaps.com/boundaries"
   }
  },
+ "sprite": "https://tiles.fundermaps.com/sprite/basemap",
  "glyphs": "https://tiles.fundermaps.com/font/{fontstack}/{range}",
  "layers": [
   {

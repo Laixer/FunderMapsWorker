@@ -10,5 +10,6 @@ ADD --chmod=644 https://raw.githubusercontent.com/openmaptiles/fonts/0bcd6431ec8
 
 COPY config.yaml /config.yaml
 COPY styles/ /styles/
+COPY sprites/ /sprites/
 
 CMD ["--config", "/config.yaml"]
