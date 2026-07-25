@@ -25,7 +25,7 @@ styles: /styles
 # served at /sprite/<name>[.json|.png]. The basemap set is the road
 # shields, airport icon and place dot the style references (shield SVGs
 # from maputnik/osm-liberty, renamed to the OFM icon names).
-sprites: /sprites
+sprites: /sprites/basemap
 
 # Built-in map preview stays off: Martin has no auth, so enabling it exposes
 # a browse UI to the world. To eyeball tiles, run Martin locally with this
