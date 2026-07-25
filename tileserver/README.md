@@ -52,3 +52,18 @@ curl -s  https://tiles.fundermaps.com/catalog | jq
 Frontend A/B testing without a deploy: the WebFront tileserver-test harness
 (`TILESERVER_SOURCE` / `TILESERVER_LAYER` in localStorage or `?source=&layer=`
 query params) can point the map at this server; the source-layer is `buildings`.
+
+## Basemap style (MapLibre migration)
+
+`styles/fundermaps-basemap.json` is the MapLibre basemap style for the
+Mapbox → MapLibre migration: the legacy Studio style `fundermaps_basemap`
+(warm tan monochrome) recreated on OpenFreeMap's Positron skeleton
+(OpenMapTiles schema). It is generated — edit the palette/overrides in
+`styles/build_style.py` and rerun it; don't hand-edit the JSON.
+
+The style currently references OpenFreeMap-hosted tiles, glyphs and
+sprites. Planned follow-ups: self-hosted glyphs/sprites on Spaces, and
+municipality/district/neighborhood boundary lines as Martin function
+sources over `geocoder` (replacing the dead `laixer.*` Mapbox uploads).
+The style is served as a static file; demo copy lives in the
+`fundermaps-development` Space under `maplibre-demo/`.
