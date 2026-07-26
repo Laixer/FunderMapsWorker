@@ -17,8 +17,9 @@ and sprites (mirrored from OFM) are self-hosted on the fundermaps-tileset
 Space. Admin boundaries (the purple lines) come from the Martin function
 source maplayer.boundaries (sql/model/create_boundary_tiles.sql).
 
-Not part of the worker runtime — the style is served as a static file
-(currently from the fundermaps-development Space; final home TBD).
+Not part of the worker runtime — the generated JSON is baked into the Martin
+image and served at tiles.fundermaps.com/style/fundermaps-basemap, so a style
+change needs a tileserver redeploy.
 """
 import json
 import urllib.request
@@ -46,6 +47,7 @@ TAN = {
     "label":         "hsl(0, 0%, 0%)",
     "label_muted":   "hsl(0, 0%, 27%)",
     "label_road":    "hsl(40, 47%, 41%)",
+    "label_house":   "hsl(40, 35%, 50%)",   # house numbers, a step below road names
     "label_water":   "hsl(205, 60%, 35%)",
     "halo":          "hsl(40, 53%, 100%)",
     "halo_soft":     "hsla(40, 53%, 100%, 0.75)",
@@ -139,6 +141,33 @@ BOUNDARY_LAYERS = [
     },
 ]
 
+# House numbers — the legacy Mapbox basemap drew them, Positron does not, so
+# this layer has no upstream counterpart to re-paint. The OpenMapTiles
+# ``housenumber`` layer is z14-only (overzoomed above), one ``housenumber``
+# field, and in NL it is effectively the BAG via OSM's import.
+#
+# Inserted as the *first* symbol layer: MapLibre places symbols in reverse
+# layer order, so being first means house numbers are placed last and yield
+# every collision to street and place names instead of pushing them off.
+HOUSENUMBER_LAYER = {
+    "id": "housenumber",
+    "type": "symbol",
+    "source": "openmaptiles",
+    "source-layer": "housenumber",
+    "minzoom": 17,
+    "filter": ["==", ["geometry-type"], "Point"],
+    "layout": {
+        "text-field": ["get", "housenumber"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+    },
+    "paint": {
+        "text-color": TAN["label_house"],
+        "text-halo-color": TAN["halo"],
+        "text-halo-width": 1,
+    },
+}
+
 
 def main() -> None:
     # OpenFreeMap rejects urllib's default User-Agent with a 403.
@@ -163,7 +192,7 @@ def main() -> None:
     }
     first_symbol = next(i for i, l in enumerate(style["layers"])
                         if l["type"] == "symbol")
-    style["layers"][first_symbol:first_symbol] = BOUNDARY_LAYERS
+    style["layers"][first_symbol:first_symbol] = BOUNDARY_LAYERS + [HOUSENUMBER_LAYER]
 
     layer_ids = {layer["id"] for layer in style["layers"]}
     missed = [lid for lid in PAINT if lid not in layer_ids]
