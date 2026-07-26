@@ -51,6 +51,30 @@ TAN = {
     "label_water":   "hsl(205, 60%, 35%)",
     "halo":          "hsl(40, 53%, 100%)",
     "halo_soft":     "hsla(40, 53%, 100%, 0.75)",
+    "sky":           "hsl(208, 68%, 84%)",
+    "horizon":       "hsl(39, 57%, 88%)",
+    "fog":           "hsl(39, 62%, 91%)",
+}
+
+# Sky and distance fog. Only visible when the camera is pitched far enough to
+# show the horizon (roughly z12 at 70 degrees); at the near-top-down city views
+# the product normally uses, this is a no-op. Without it MapLibre draws its
+# default hard blue band across the horizon, which fights the tan palette.
+#
+# This is the whole cartography surface MapLibre 6.0.0 actually gives us:
+# there is no ambient occlusion and no cast shadows (Mapbox-v3 only), and
+# fill-extrusion-rounded-corner-distance exists in style-spec 26.x but the
+# 6.0.0 runtime rejects it. Deliberately NOT setting `light`: tinting it warm
+# desaturates hsl(213, 13%, 57%) (concrete/steel pile) into the unclassified
+# grey and breaks the foundation-type legend, and a neutral re-aim is a wash.
+SKY = {
+    "sky-color": TAN["sky"],
+    "horizon-color": TAN["horizon"],
+    "fog-color": TAN["fog"],
+    "fog-ground-blend": 0.62,
+    "horizon-fog-blend": 0.7,
+    "sky-horizon-blend": 0.85,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 0.8, 12, 0.5, 16, 0.25],
 }
 
 # layer-id (exact, from Positron) -> paint overrides
@@ -184,6 +208,8 @@ def main() -> None:
     # browser-fetched assets must live behind tiles.fundermaps.com.
     style["glyphs"] = f"{TILESERVER}/font/{{fontstack}}/{{range}}"
     style["sprite"] = f"{TILESERVER}/sprite/basemap"
+
+    style["sky"] = SKY
 
     # Admin boundaries from our own tileserver, drawn under the labels.
     style["sources"]["fundermaps_boundaries"] = {
