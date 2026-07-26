@@ -3410,5 +3410,28 @@
    }
   }
  ],
- "name": "FunderMaps basemap"
+ "name": "FunderMaps basemap",
+ "sky": {
+  "sky-color": "hsl(208, 68%, 84%)",
+  "horizon-color": "hsl(39, 57%, 88%)",
+  "fog-color": "hsl(39, 62%, 91%)",
+  "fog-ground-blend": 0.62,
+  "horizon-fog-blend": 0.7,
+  "sky-horizon-blend": 0.85,
+  "atmosphere-blend": [
+   "interpolate",
+   [
+    "linear"
+   ],
+   [
+    "zoom"
+   ],
+   0,
+   0.8,
+   12,
+   0.5,
+   16,
+   0.25
+  ]
+ }
 }
