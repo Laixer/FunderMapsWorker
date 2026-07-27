@@ -193,6 +193,87 @@ HOUSENUMBER_LAYER = {
 }
 
 
+# Numeric comparisons Positron applies to properties that OpenMapTiles only
+# emits sometimes: `ref_length` exists on a road only if it carries a ref, and
+# most roads do not. MapLibre evaluates the filter anyway, finds null where it
+# wants a number, and writes
+#
+#   layers[highway-shield-non-us].filter[1]: Expected value to be of type
+#   number, but found null instead. Falling back to false.
+#
+# to the console — from the worker thread, so it lands once per tile parse and
+# turns the console into noise the moment anyone opens a map.
+#
+# The fallback is already what we want: no ref, no shield. So the fix is to say
+# it in the filter instead of letting the evaluator discover it. `all`
+# short-circuits left to right, so a `has` in front of the comparison means the
+# comparison never sees a null, and the set of drawn features is unchanged.
+COMPARISONS = ("<", "<=", ">", ">=")
+
+
+def compared_property(condition):
+    """The feature property a `["<=", ["get", P], n]` comparison reads, if any."""
+    if not (isinstance(condition, list) and len(condition) == 3):
+        return None
+    if condition[0] not in COMPARISONS:
+        return None
+    for side in condition[1:]:
+        if (isinstance(side, list) and len(side) == 2
+                and side[0] == "get" and isinstance(side[1], str)):
+            return side[1]
+    return None
+
+
+def guard_missing_properties(style) -> int:
+    """Put a `has` in front of every numeric comparison in an `all` filter."""
+    guarded = 0
+    for layer in style["layers"]:
+        original = layer.get("filter")
+        if not (isinstance(original, list) and original and original[0] == "all"):
+            continue
+        rewritten = ["all"]
+        for condition in original[1:]:
+            prop = compared_property(condition)
+            if prop is not None and ["has", prop] not in rewritten:
+                rewritten.append(["has", prop])
+            rewritten.append(condition)
+        if rewritten != original:
+            layer["filter"] = rewritten
+            guarded += 1
+    return guarded
+
+
+def unguarded_comparisons(style):
+    """Comparisons this pass cannot reach — nested, or under an `any`.
+
+    Reported rather than rewritten: a `has` hoisted out of an `any` would drop
+    features that the other branch would have drawn. Positron has none today;
+    if an upstream refresh introduces one, the warning is worth a look rather
+    than a silent behaviour change.
+    """
+    found = []
+
+    def walk(node, path):
+        if isinstance(node, list) and node and isinstance(node[0], str):
+            if compared_property(node) is not None:
+                found.append((path, node))
+            for child in node[1:]:
+                walk(child, path)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child, path)
+
+    for layer in style["layers"]:
+        f = layer.get("filter")
+        if not (isinstance(f, list) and f and f[0] == "all"):
+            walk(f, layer["id"])
+            continue
+        for condition in f[1:]:
+            if compared_property(condition) is None:
+                walk(condition, layer["id"])
+    return found
+
+
 def main() -> None:
     # OpenFreeMap rejects urllib's default User-Agent with a 403.
     req = urllib.request.Request(POSITRON_URL, headers={"User-Agent": "fundermaps-style-build"})
@@ -233,9 +314,14 @@ def main() -> None:
             layer.setdefault("paint", {}).update(override)
             patched += 1
 
+    guarded = guard_missing_properties(style)
+    for path, condition in unguarded_comparisons(style):
+        print(f"warning: unguarded comparison in {path}: {json.dumps(condition)}")
+
     with open("fundermaps-basemap.json", "w") as fh:
         json.dump(style, fh, indent=1)
-    print(f"patched {patched}/{len(style['layers'])} layers -> fundermaps-basemap.json")
+    print(f"patched {patched}/{len(style['layers'])} layers, "
+          f"guarded {guarded} filters -> fundermaps-basemap.json")
 
 
 if __name__ == "__main__":

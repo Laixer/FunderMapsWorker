@@ -1649,6 +1649,10 @@
    "filter": [
     "all",
     [
+     "has",
+     "admin_level"
+    ],
+    [
      ">=",
      [
       "get",
@@ -2343,6 +2347,10 @@
    "filter": [
     "all",
     [
+     "has",
+     "ref_length"
+    ],
+    [
      "<=",
      [
       "get",
@@ -2420,6 +2428,10 @@
    "minzoom": 11,
    "filter": [
     "all",
+    [
+     "has",
+     "ref_length"
+    ],
     [
      "<=",
      [
@@ -2502,6 +2514,10 @@
    "minzoom": 12,
    "filter": [
     "all",
+    [
+     "has",
+     "ref_length"
+    ],
     [
      "<=",
      [
@@ -3181,6 +3197,10 @@
       "class"
      ],
      "country"
+    ],
+    [
+     "has",
+     "rank"
     ],
     [
      ">=",
