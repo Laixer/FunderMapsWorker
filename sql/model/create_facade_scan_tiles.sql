@@ -28,7 +28,12 @@ CREATE TABLE IF NOT EXISTS maplayer.facade_scan_tiles (
     neighborhood_id text,
     district_id text,
     municipality_id text,
-    height numeric,
+    -- double precision, NOT numeric: ST_AsMVT has no MVT type for numeric and
+    -- encodes it as a STRING, which silently breaks fill-extrusion-height
+    -- (["get","height"] must yield a number or the layer renders flat).
+    -- The static tippecanoe tiles emitted a number here; building_tiles has
+    -- always used double precision for the same reason.
+    height double precision,
     owner text,
     -- report.rotation_type / report.crack_type / report.facade_scan_risk /
     -- data.foundation_risk_indication stored as text: ST_AsMVT emits the
@@ -64,7 +69,7 @@ AS $$
         f.neighborhood_id,
         f.district_id,
         f.municipality_id,
-        f.height,
+        f.height::double precision,
         f.owner,
         f.skewed_parallel_facade::text,
         f.skewed_perpendicular_facade::text,
