@@ -37,7 +37,11 @@ CREATE TABLE IF NOT EXISTS maplayer.incident_tiles (
     -- report.foundation_damage_cause as text: ST_AsMVT emits the enum label
     -- either way, and text keeps this table independent of enum DDL.
     foundation_damage_cause text,
-    height numeric,
+    -- double precision, NOT numeric: ST_AsMVT has no MVT type for numeric and
+    -- encodes it as a STRING, which silently breaks fill-extrusion-height
+    -- (incident.json feeds ["get","height"] straight into it). The static
+    -- tippecanoe tiles emitted a number here.
+    height double precision,
     geom geometry(MultiPolygon, 3857)
 );
 
@@ -110,7 +114,7 @@ AS $$
         d.external_id,
         m.external_id,
         i.foundation_damage_cause::text,
-        round(GREATEST(bh.height, 0::real)::numeric, 2),
+        round(GREATEST(bh.height, 0::real)::numeric, 2)::double precision,
         ST_Multi(ST_Transform(ba.geom, 3857))
     FROM report.incident i
     JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
