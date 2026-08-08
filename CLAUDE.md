@@ -38,7 +38,8 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 - **Subprocess execution**: GDAL and tippecanoe are invoked as child processes via `src/lib/subprocess.ts` which wraps `Bun.spawn` with timeout and stdio capture.
 - **Path alias**: `@/*` maps to `./src/*` (configured in tsconfig.json).
 - **Payload validation**: Each command validates its payload with Zod schemas before execution.
-- **S3 buckets**: `fundermaps-data` (datasets/exports), `fundermaps-tileset` (vector tiles), `fundermaps` (PDFs/artifacts), `fundermaps-development` (default).
+- **S3 buckets**: `fundermaps-archive` (**cold storage** — the nightly GPKG exports under `mapset/` and the monthly keepers under `mapset-archive/`; this is the permanent static-model history), `fundermaps-data` (source datasets, exports, funda media), `fundermaps-tileset` (basemap fonts/sprites/styles; the vector tilesets themselves were retired in favour of the Martin tileserver), `fundermaps` (PDFs/artifacts), `fundermaps-development` (default).
+  - Cold-bucket gotchas: **multipart upload fails** (`BadDigest` on `CompleteMultipartUpload`), so uploads must be single-part `PutObject` — capped at 5 GB, and `analysis_full` is ~3.34 GB. **Spaces cannot server-side copy between buckets at all** (`NotImplemented: … cross-region or cross-cluster CopyObject`), only within one bucket. 30-day minimum retention.
 
 ## System Dependencies (for local dev)
 
