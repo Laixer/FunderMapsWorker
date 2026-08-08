@@ -21,6 +21,25 @@ interface TileBundle {
   generateTiles: boolean;
 }
 
+// Nightly GPKG exports go to the COLD storage bucket, not fundermaps-data.
+// The whole mapset/ + mapset-archive/ history (3,759 objects / 2 TB) was moved
+// there on 2026-08-07: it is write-once, read-almost-never data, and cold is
+// $0.007/GiB against $0.02/GiB standard.
+//
+// Two constraints this upload path already happens to satisfy — do not "fix"
+// either of them without re-reading them:
+//   * Multipart upload to a cold bucket fails with
+//     "BadDigest: The Content-Md5 you specified did not match what we
+//     received" on CompleteMultipartUpload. providers/s3.ts uses a plain
+//     PutObjectCommand (single-part), which works.
+//   * A single PUT is capped at 5 GB. The largest export is analysis_full at
+//     ~3.34 GB. If it ever approaches 5 GB this breaks, and the fix is not
+//     multipart — it is splitting the export.
+// Cold also has a 30-day minimum retention, so re-running process_mapset twice
+// in one day overwrites that day's key and incurs a small early-update charge
+// (~$0.02 for analysis_full). Harmless, but that is why it shows on the bill.
+const ARCHIVE_BUCKET = "fundermaps-archive";
+
 const TILE_CACHE =
   "max-age=43200,s-maxage=300,stale-while-revalidate=300,stale-if-error=600";
 const MAX_RETRIES = 3;
@@ -88,7 +107,7 @@ async function uploadDataset(
     log.step(`Uploading '${ACCENT.type}${tileset.tileset}${RESET}' dataset to S3`);
     const gpkg = join(workDir, `${tileset.tileset}.gpkg`);
     const s3Path = `mapset/${datePath()}/${tileset.tileset}.gpkg`;
-    await s3.uploadFile(gpkg, s3Path, "fundermaps-data");
+    await s3.uploadFile(gpkg, s3Path, ARCHIVE_BUCKET);
     return true;
   } catch (e) {
     log.error(`Failed to upload dataset for ${tileset.tileset}`, { error: String(e) });
