@@ -98,7 +98,7 @@ Only `active`, `frozen` and `deprecated` cost a nightly full run.
 The instinct is to partition a table by version. **Don't.** A materialized view
 cannot be partitioned, so that route means replacing the existing refresh
 machinery with a hand-rolled staging-and-swap — and giving up
-`CONCURRENTLY`, which is what currently lets 11.2M rows rebuild for 46 minutes
+`CONCURRENTLY`, which is what currently lets 11.2M rows rebuild for ~18 minutes
 without blocking a single customer read.
 
 What is actually there today is one line:
@@ -166,8 +166,17 @@ came from, and duplicating both per version buys little.
 
 The nightly flow takes **~46 minutes** and runs twice a day, on a Windmill
 instance that has **exactly one worker** — all flow parallelism serializes
-instance-wide. Two full models is ~90 minutes a run; three is over two hours,
-twice daily, on the same worker that also has to do BAG imports and exports.
+instance-wide.
+
+Be precise about which part of that a second model actually duplicates. The
+model refresh step itself is **~18 minutes** (17.4 / 18.2 / 18.7 on the three
+runs around 2026-08-09); the remaining ~28 are samples, statistics, tiles and
+the mapset export. So a second full model adds ~18 minutes per run, not 46 —
+roughly 64 minutes for two and 82 for three, twice daily, on the same worker
+that also has to do BAG imports and exports.
+
+That is less alarming than doubling, but it is still the binding constraint, and
+it is why candidates do not get a national run:
 
 So the framework's central rule: **a candidate is scored on a sample, never on
 all 11.2M buildings.**
@@ -178,7 +187,7 @@ evaluation sample = the 311,145 buildings with a surveyed foundation type
 ```
 
 That is ~3% of the data — roughly 100 MB and a couple of minutes instead of
-3.8 GB and 46. It is also the *only* part of the country where a candidate can
+3.8 GB and 18. It is also the *only* part of the country where a candidate can
 be judged at all, since the rest has nothing to check against. A candidate gets
 promoted to a full national run when it has earned it, not to find out whether
 it has.
