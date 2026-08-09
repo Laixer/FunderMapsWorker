@@ -440,7 +440,9 @@ SET session_replication_role = 'origin';
 REFRESH MATERIALIZED VIEW data.building_sample;
 REFRESH MATERIALIZED VIEW data.cluster_sample;
 REFRESH MATERIALIZED VIEW data.supercluster_sample;
-REFRESH MATERIALIZED VIEW data.model_risk_static;
+-- Name the concrete versioned matview: data.model_risk_static is a VIEW onto
+-- the default version now (docs/model-versioning.md) and cannot be refreshed.
+REFRESH MATERIALIZED VIEW data.model_risk_static_2024_1;
 REFRESH MATERIALIZED VIEW data.statistics_product_inquiries;
 REFRESH MATERIALIZED VIEW data.statistics_product_inquiry_municipality;
 REFRESH MATERIALIZED VIEW data.statistics_product_incidents;

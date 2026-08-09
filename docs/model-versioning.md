@@ -130,9 +130,24 @@ number of full materialisations stays at two or three.
 
 The three objects that depend on the model directly —
 `data.building_geo_hierarchy`, `data.statistics_product_foundation_risk`,
-`data.statistics_product_foundation_type` — will follow the rename to the
-concrete matview. Recreate them against the pointer view instead, so they track
-the default rather than pinning themselves to the frozen model by accident.
+`data.statistics_product_foundation_type`, with `maplayer.analysis_full` behind
+them — follow the rename automatically, because Postgres tracks dependencies by
+OID rather than by name. They end up bound to the **concrete** 2024.1 matview
+rather than to the pointer.
+
+That was left deliberately as applied, and is identical in behaviour while
+2024.1 is the default. **It becomes a required decision at step 4**: each object
+then has to be pointed at either the pointer view (track whatever is default) or
+a named version (stay put). Repointing the two statistics matviews needs
+`DROP ... CASCADE` through `maplayer.analysis_full`, which is not worth doing
+for zero behavioural change.
+
+One thing a rename does not carry: **`REFRESH` cannot target a view.** Anything
+that refreshes the model must name a concrete versioned matview. Two places did,
+and both were updated with the migration — the Windmill script
+`f/fundermaps/data/refresh_risk_model`, and `scripts/build_seed.ts`. Windmill CE
+has no failure alerting, so missing the first would have failed the next
+scheduled refresh silently.
 
 The rest of the coupling is runtime (the API, the Webservice, Martin's tile SQL,
 the GPKG export) and has to be found by reading those services, not by asking
@@ -237,7 +252,7 @@ Worth doing at the same time as §8, since both touch the same code path.
 | Step | Work | Size | Why here |
 |---|---|---|---|
 | 1 | Registry table + lifecycle enum; register the current model as `frozen` with its input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
-| 2 | Rename the matview, add the pointer view, repoint the three dependents | one migration + 3 `CREATE OR REPLACE` | The migration everything else needs. No consumer changes. Reversible by renaming back. |
+| 2 | ✅ **Done 2026-08-09.** Rename the matview, add the pointer view, update the two `REFRESH` call sites | one migration + Windmill script + build_seed | The migration everything else needs. No consumer changes. Reversible by renaming back. Dependents deferred to step 4. |
 | 3 | Evaluation sample + wire `sql/validate/` to score a named version | one view + arguments on existing scripts | Makes Model 4 development safe before Model 4 exists. |
 | 4 | Second matview + one line in `refresh_risk_model` | one line, once a model exists | Only now does the nightly window grow. Do not do this before there is a model to put in it. |
 | 5 | Version in the Webservice response; `product_tracker` records it | small | Reversible, no contract change yet. |
