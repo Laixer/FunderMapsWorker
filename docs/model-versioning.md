@@ -38,20 +38,16 @@ model-2026.2-rc1 a candidate
 
 Nobody ever has to ask whether "v4" means the API or the model again.
 
-## 3. A version is SQL *and* the data it ran on
+## 3. A version records the data it ran on
 
-This is the part that is easy to skip and expensive to skip. The same SQL over a
-newer BAG import produces different output. If a version records only its logic,
-every diff becomes unreadable: *did the model change, or did the ground under
-it?*
+The same SQL over a newer BAG import produces different output, so a version
+that says nothing about its inputs makes every later comparison ambiguous: *did
+the model change, or did the ground under it?* `inputs` is what answers that.
 
-We already paid for this. `validation/risk_model_reference.csv` carried no
-provenance stamp, so when it was finally compared against the model, **52% of
-the reported mismatches turned out to be a merged fix behaving correctly**
-(issue #78) — and establishing that took a full afternoon of forensics that a
-single recorded git SHA would have made unnecessary.
-
-So a registered version pins both:
+**No hashes or checksums** — deliberately, by decision on 2026-08-09. A version
+is identified by its slug, described by its notes, and tied to its data by
+`inputs`. The logic itself is pinned by the fact that a model's SQL is not
+edited after it is registered: new logic means a new slug.
 
 ```sql
 CREATE TABLE data.model_version (
@@ -59,11 +55,12 @@ CREATE TABLE data.model_version (
     slug          text NOT NULL UNIQUE,          -- 'model-2026.1'
     title         text NOT NULL,
     status        data.model_status NOT NULL,    -- see §4
-    sql_git_sha   text NOT NULL,                 -- of sql/model/ when built
-    -- vintages of every input, so a diff can attribute itself
-    inputs        jsonb NOT NULL,                -- {bag_import: '2026-08-09',
-                                                 --  tdbag: '2024', insar: '...',
-                                                 --  geotop: '...'}
+    -- vintage and row-count fingerprint of every input, so a comparison
+    -- between versions can attribute itself to logic or to data
+    inputs        jsonb NOT NULL,                -- {bag_building: {rows: …},
+                                                 --  building_subsidence: {rows: …,
+                                                 --    vintage: '2024-11-19'}, …}
+    is_default    boolean NOT NULL DEFAULT false,
     notes         text,
     created_at    timestamptz NOT NULL DEFAULT now(),
     activated_at  timestamptz,
@@ -73,7 +70,9 @@ CREATE TABLE data.model_version (
 ```
 
 `inputs` is `jsonb` deliberately: Model 4 adds sources we have not named yet, and
-a rigid column per input would need a migration each time.
+a rigid column per input would need a migration each time. Row counts are stored
+alongside dates because most input tables carry no date column at all, and a
+count detects change better than a hand-typed date nobody updates.
 
 ## 4. Lifecycle
 
@@ -135,12 +134,9 @@ The three objects that depend on the model directly —
 concrete matview. Recreate them against the pointer view instead, so they track
 the default rather than pinning themselves to the frozen model by accident.
 
-The blast radius is smaller than it looks: only three database objects depend on
-the model directly — `data.building_geo_hierarchy`,
-`data.statistics_product_foundation_risk` and
-`data.statistics_product_foundation_type`. The rest of the coupling is runtime
-(the API, the Webservice, Martin's tile SQL, the GPKG export) and has to be
-found by reading those services, not by asking Postgres.
+The rest of the coupling is runtime (the API, the Webservice, Martin's tile SQL,
+the GPKG export) and has to be found by reading those services, not by asking
+Postgres.
 
 **Cost per fully-materialised version: ~3.8 GB**, against a 70 GB database on a
 16 GB-RAM plan where RAM is already the binding constraint, not CPU. Two or
@@ -240,7 +236,7 @@ Worth doing at the same time as §8, since both touch the same code path.
 
 | Step | Work | Size | Why here |
 |---|---|---|---|
-| 1 | Registry table + lifecycle enum; register the current model as `frozen` with its git SHA and input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
+| 1 | Registry table + lifecycle enum; register the current model as `frozen` with its input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
 | 2 | Rename the matview, add the pointer view, repoint the three dependents | one migration + 3 `CREATE OR REPLACE` | The migration everything else needs. No consumer changes. Reversible by renaming back. |
 | 3 | Evaluation sample + wire `sql/validate/` to score a named version | one view + arguments on existing scripts | Makes Model 4 development safe before Model 4 exists. |
 | 4 | Second matview + one line in `refresh_risk_model` | one line, once a model exists | Only now does the nightly window grow. Do not do this before there is a model to put in it. |
