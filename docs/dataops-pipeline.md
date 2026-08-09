@@ -1,7 +1,9 @@
 # FunderMaps Data Ops — pipeline design
 
-**Status:** current best design. Not implemented.
-**Last revised:** 2026-07-24
+**Status:** current best design. Not implemented, apart from the drift check in §7.
+**Last revised:** 2026-08-09 — phase 1 corrected after the first
+`validate_model_drift` run showed the risk reference is model output rather than
+ground truth (issue #78). Model *accuracy* is still unmeasured.
 
 FunderMaps Data Ops is the combination of two halves:
 
@@ -214,7 +216,16 @@ All in `s3://fundermaps-data` (ams3).
 |---|---|---|---|
 | Meldingen + documents | `source/feedback-verwerkt-*.zip` × 16 | 1,537 records, ~7 GB | Incident lane. **Labeled**: each record carries a prior system's triage proposal *and* the human outcome. |
 | Invoer samples | `samples/2026/may/*.csv` | 122 MB `inquiry_sample.csv` | Report/recovery lanes — human-entered ground truth. |
-| Risk reference | `validation/risk_model_reference.csv` | 783 buildings | Model validation. BAG pand-id → foundation type + drystand / dewatering / bio-infection risk, each with reliability. |
+| Risk **drift** snapshot | `validation/risk_model_reference.csv` | 783 buildings | **Model output, not ground truth** — see the warning below. Drift detection only. BAG pand-id → foundation type + drystand / dewatering / bio-infection risk, each with reliability. |
+
+> ⚠️ **`risk_model_reference.csv` is an export of the model's own output.** 167 of
+> its 783 rows carry `Funderingstype (betrouwbaarheid) = indicative`, which means
+> no inquiry backs that building — nobody ever surveyed it, so there is no human
+> value to record. Its reliability columns use the `data.reliability` inheritance
+> tiers, a model-internal concept, and its headers are the Dutch model-output
+> labels. Comparing against it measures **stability over time**, never accuracy.
+> No number derived from it may be quoted as "the model is N% correct".
+> See FunderMapsWorker issue #78.
 
 Melding JSON structure:
 
@@ -233,9 +244,21 @@ files[]           URLs into formfiles.ams3.digitaloceanspaces.com
 
 **Eval plan**
 
-- **Model quality** — `risk_model_reference.csv`, 783 buildings, pure SQL, no
-  LLM. Do this first; it says whether the underlying model is sound before
-  anything is built on top of it.
+- **Model drift** — `risk_model_reference.csv` vs `data.model_risk_dynamic_all`,
+  783 buildings, pure SQL, no LLM. Implemented as
+  `f/fundermaps/data/validate_model_drift`; first run 2026-08-09. Catches
+  *unintended* movement between model versions. It cannot tell you the model is
+  right, only that it has not changed — and it reports every *intended* change
+  as a mismatch too, so the snapshot must be regenerated after each model change
+  or the signal drowns (issue #78: 52% of the first run's mismatches were #1005
+  working correctly).
+- **Model accuracy** — the harness that does *not* exist yet, and the one the
+  rest of this document actually leans on. Requires held-out human observation:
+  take buildings whose `foundation_type_reliability = established`, re-run the
+  model with that inquiry excluded from its inputs, and compare the prediction
+  against what the surveyor recorded in `report.inquiry_sample`. Pure SQL, no
+  LLM, no PII exposure. **This is the number an extraction lane has to beat**,
+  and without it "the model proposes, the human reviews" has no baseline.
 - **Incidents** — hold batch 1 (100 records) as dev. Baseline to beat is the
   `computed.aiTriage.category` already in the export. **Do not touch batches
   2–16 until there is a metric.**
@@ -283,7 +306,8 @@ The Batches API is the right primitive twice over: 50% cheaper, and it turns
 
 | Phase | Work | Rationale |
 |---|---|---|
-| 1 | Risk-reference validation harness (783 buildings, SQL only) | Zero AI risk, immediate signal on model quality. Self-contained. |
+| 0 | ~~Risk-reference validation harness (783 buildings, SQL only)~~ **Done — but it is a drift check, not a quality check** | Built and run 2026-08-09. Keep it; regenerate its snapshot per issue #78. It moves the pipeline nowhere on its own. |
+| 1 | **Model accuracy harness** — held-out `established` inquiries, SQL only | The corrected phase 1. Zero AI risk, self-contained, and it is the baseline every later phase is measured against. Do it before any inference work, not because it blocks the plumbing but because without it no extraction result can be called good or bad. |
 | 2 | Ingest + artifact normalization, all formats, no inference | Proves the front door. Email parsing is the risky part — find out early. |
 | 3 | Classify + incident extraction on the dev batch, scored against the existing labels | First real number. |
 | 4 | Report extraction (61 fields) + Fundie in `SampleForm` | Highest value, on proven plumbing. |
