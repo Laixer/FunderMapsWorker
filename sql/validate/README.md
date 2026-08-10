@@ -61,6 +61,29 @@ moves only 22 buildings and is therefore immaterial but worth filtering.
 
 ---
 
+## The frozen benchmark
+
+`data.model_evaluation_sample` (created 2026-08-09) is what a **candidate**
+model is scored against. Two kinds of row:
+
+| purpose | rows | what it is |
+|---|---|---|
+| `truth` | 296,839 | buildings a surveyor inspected, answer frozen at creation, split 207,888 train / 88,951 test (39.4% wood) |
+| `population` | 103,687 | stratified national sample, no truth — answers "what does this model say about the country", not "is it right" |
+
+**It is a table, not a view, and that is the point.** The truth set grows daily
+as inquiries land; a view would mean a candidate scored on Tuesday and one
+scored on Friday were measured against different benchmarks, and the gap between
+them would be partly the data. Sampling is deterministic on `hashtext(building_id)`,
+so the split never moves. Regenerate deliberately and bump `sample_version`.
+
+**Weight population figures, never average them raw.** The sample is
+proportional except for a floor of 2,000 rows per stratum, which keeps the two
+tiny unknown-soil strata alive and makes the raw sample unrepresentative.
+Measured on the current model: national wood share reads **5.97% raw** against
+**3.74% weighted**, where the true figure is 3.71%. Raw overstates by 60%. Join
+`data.model_evaluation_stratum_weight` and weight by `national_buildings`.
+
 ## The scripts
 
 | Script | Answers |
