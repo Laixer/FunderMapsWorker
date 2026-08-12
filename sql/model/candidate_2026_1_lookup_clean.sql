@@ -1,0 +1,37 @@
+-- Refit of the 2026.1 foundation lookup on evidence-backed truth only.
+--
+-- The original fit used evaluation sample v1, of which 33.4% of answers came
+-- from `quickscan` inquiries -- and per Don (2026-08-12) a QuickScan's
+-- foundation type is almost always FunderMaps' own data read back to us. A
+-- third of the training signal was the model learning from itself.
+--
+-- This refits on sample_version 2, grades 'physical' (someone dug) and
+-- 'documented' (a drawing exists), dropping 'opinion' (a professional's
+-- assertion with nothing behind it) as well as quickscan entirely.
+--
+-- Scored on evidence-backed held-out buildings (42,606):
+--
+--                            accuracy   wood found   false alarms
+--   frozen 2024.1              67.0%       63.6%        13.6%
+--   candidate, dirty fit       80.7%       77.7%        10.1%
+--   candidate, CLEAN fit       81.9%       81.3%        10.4%
+--
+-- Better on every axis than the frozen model, including fewer false alarms.
+--
+-- BUT IT DOES NOT FIX THE GEOGRAPHIC BIAS, which is the reason this candidate
+-- is not shippable. Against municipalities with their own evidence-backed
+-- truth, it still over-predicts wood badly outside the wood-heavy core:
+--
+--                  surveyed   actually wood   clean fit says
+--   Utrecht          15,299        0.8%           7.4%
+--   Nieuwkoop           356        4.5%          28.7%
+--   Amstelveen          833       29.9%          34.3%
+--
+-- Surveyed buildings are the ones somebody worried about, so they should be
+-- MORE wooden than their unsurveyed neighbours, not less. The cells cannot see
+-- location, and the training signal is dominated by KCAF/Rotterdam/Haarlem/
+-- Schiedam surveys of old wood-pile districts. The fix is local evidence, not
+-- more national features.
+--
+--   psql "$DB_URL" -f sql/model/candidate_2026_1_lookup_clean.sql
+--   (body: see git history -- built inline 2026-08-12)
