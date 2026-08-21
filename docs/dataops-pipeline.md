@@ -1,9 +1,10 @@
 # FunderMaps Data Ops — pipeline design
 
-**Status:** current best design. Not implemented, apart from the drift check in §7.
-**Last revised:** 2026-08-09 — phase 1 corrected after the first
-`validate_model_drift` run showed the risk reference is model output rather than
-ground truth (issue #78). Model *accuracy* is still unmeasured.
+**Status:** phases 0, 1 and 2 are built. §5 describes what shipped; the rest is
+still design.
+**Last revised:** 2026-08-21 — §5 rewritten against the code that now exists
+(`create_dataops_ingest.sql`, `ingest-dossier.ts`), and the phasing table updated
+with what the two benchmarks measured.
 
 FunderMaps Data Ops is the combination of two halves:
 
@@ -162,22 +163,173 @@ suite, and the provenance answer. It is the reason the rest is worth building.
 
 ---
 
-## 5. Schema sketch
+## 5. The front door, as built
 
-```sql
-dataops.dossier    id, channel, type, type_confidence, subject_building_id,
-                   resolution_status, state, created_at
-dataops.artifact   id, dossier_id, parent_artifact_id, storage_key, sha256,
-                   mime, bytes
-dataops.proposal   id, dossier_id, target_table, target_field, value,
-                   confidence, artifact_id, page, snippet, model, prompt_version
-dataops.gate       proposal_id, autonomy, reversible, risk_weight, reason
-dataops.verdict    proposal_id, action, final_value, actor, decided_at
+Phase 2 shipped on 2026-08-21 as `sql/migrate/create_dataops_ingest.sql` and
+`src/commands/ingest-dossier.ts`. This section describes what exists, not what
+was planned; the earlier sketch (`dataops.proposal` / `dataops.gate`) is
+superseded.
+
+### 5.1 What the command does
+
+```
+  bun run ingest-dossier --file <path | s3://key> [--dry-run]
+
+  +-----------------------------------------------------------------------------+
+  |  FETCH            s3://...  ->  Spaces          local path -> copy           |
+  |                   the original is NEVER modified                             |
+  +--------------------------------+--------------------------------------------+
+                                   v
+  +-----------------------------------------------------------------------------+
+  |  SNIFF            pageCount . size . producer . text-chars PER PAGE          |
+  |                   extension is ignored; report.inquiry.type is ignored       |
+  +--------------------------------+--------------------------------------------+
+                                   v
+                        .----------------------.
+                        |  totalChars > 2000   |
+                        |        AND           |
+                        |  scanned < pages/2   |
+                        '----+------------+----'
+                        yes  |            |  no
+              +--------------v--+      +--v---------------+
+              |   TEXT  LANE    |      |   VISION  LANE   |
+              | born-digital    |      | scans, drawings  |
+              +--------+--------+      +--------+---------+
+                       |                        |
+   +-------------------v----------+   +---------v------------------------------+
+   | text layer = THE EVIDENCE    |   | text layer = SOMEONE'S ANSWER          |
+   | keep it all                  |   | paint out EVERY text box               |
+   |                              |   |                                        |
+   | drop page 1 only if          |   | per page (max 8):                      |
+   |   chars < 600 AND            |   |   render 1600px -> white-out boxes     |
+   |   total > 5000               |   |   -> classifyPage()   ~$0.0009         |
+   |   ( = a preparer cover )     |   |                                        |
+   +---------------+--------------+   |   keep page only if                    |
+                   |                  |     leaks == false   (fail closed)     |
+                   |                  |     AND material not in                |
+                   |                  |         {photo, blank, map}            |
+                   |                  +---------+------------------------------+
+                   |                            |
+                   |                   .--------v---------.
+                   |                   | any page usable? |
+                   |                   '---+----------+---'
+                   |                    no |          | yes
+                   |            +----------v-------+  |
+                   |            |  NO MODEL CALL   |  |   <- ~25% of intake
+                   |            |  -> straight to  |  |      costs nothing
+                   |            |     a human      |  |
+                   |            +------------------+  |
+                   v                                  v
+     extractFields(text)                    readDrawing(clean pages)
+     6 fields, 86-98%                       1 field, 92% when committed
+     ~$6.78 / 1000 docs                     ~$2.89 / 1000 docs
+                   |                                  |
+                   +----------------+-----------------+
+                                    v
+                       .----------------------------.
+                       |  confidence >= 0.95        |
+                       |        AND                 |
+                       |  evidence quote present    |   <- both, always
+                       '------+---------------+-----'
+                         yes  |               |  no
+                   +----------v-----+   +-----v----------+
+                   | auto_accepted  |   |    pending     |
+                   +----------------+   +----------------+
 ```
 
-Keep the raw payload in a `jsonb` column alongside typed columns. Schema drift
-is guaranteed: feedback batch 1 alone has 26 distinct `values` keys of which
-only 8 appear in more than 80% of records.
+Why the lane split is not cosmetic: on a scan the text layer is whatever the
+preparer typed on top, so it must be removed; on a bureau report the text layer
+*is* the document, so removing it would erase the evidence. An earlier benchmark
+got this backwards and leaked the answer into 166 of its 198 documents, scoring
+95% against its own handwriting.
+
+Why auto-accept needs evidence as well as confidence: in the extraction run one
+groundwater level in 39 was fabricated at ordinary confidence and was
+indistinguishable from the 38 real ones until someone opened the report.
+
+### 5.2 Where it sits
+
+```
+ CHANNELS                    THIS CLI                      HUMAN LANE          PRODUCTION
+ --------                    --------                      ----------          ----------
+
+ email ------+
+ upload -----+         +------------------+         +----------------+
+ bulk drop --+-------> | ingest-dossier   | ------> |  Data Studio   | ------> report.inquiry
+ API --------+         |  sniff/redact/   | propose |  validation    | commit  report.inquiry_sample
+ invoer -----+         |  triage/read     |         |  screen        |
+                       +--------+---------+         +-------+--------+
+                                |                           |
+                                |  writes                   |  writes
+                                v                           v
+                    dataops.dossier                  dataops.verdict
+                    dataops.artifact                        |
+                    dataops.artifact_page                   |  confirmed / corrected
+                    dataops.extraction                      |
+                    dataops.extraction_field <--------------+
+                                                     THE LABEL SUPPLY
+                                                     (replaces cover sheets,
+                                                      which stop existing
+                                                      once this runs)
+```
+
+Only the last arrow touches `report.*`, and only a human pulls it. Nothing the
+model produces reaches production data on its own.
+
+### 5.3 Data flow
+
+```
+  +-- Spaces ------------------------+        the bytes never enter Postgres
+  |  inquiry-report/<uuid>.pdf       |        (229 GB, 30,659 files today)
+  +--------------+-------------------+
+                 | storage_key
+                 v
+  dataops.dossier --1:n--> artifact --1:n--> artifact_page
+    channel                  storage_key       page_no
+    subject                  lane              material      <- the routing key
+    duplicate_of +           page_count        material_conf
+    inquiry_id   |           annotation_text <---- the preparer's own summary:
+                 |           annotation_pages     LIFTED OFF, NEVER SENT TO A MODEL,
+                 |                                KEPT because on old files it IS the label
+                 |
+                 +- structural duplicates: bureau AND corporation send the same report
+
+                            artifact --1:n--> extraction --1:n--> extraction_field
+                                                model                field   <- report.inquiry_sample
+                                                prompt_version       value      column name
+                                                lane                 confidence
+                                                cost_usd             evidence <- required for auto
+                                                                     evidence_page
+                                                                     state
+                                                                       |
+                                                                       v
+                                                                    verdict
+                                                                      outcome
+                                                                      final_value    <- training pair
+                                                                      review_seconds <- the business case
+```
+
+The loop that matters is `extraction_field -> verdict -> final_value`. Labels
+today come from the cover sheet an invoerder writes before uploading. Once this
+pipeline reads documents instead, nobody writes those any more, and `verdict`
+becomes the only source of new training data we have. That is why it exists from
+day one rather than being retrofitted.
+
+### 5.4 Tables
+
+| table | holds |
+|---|---|
+| `dataops.dossier` | one submission; `duplicate_of` links the structurally duplicated deliveries |
+| `dataops.artifact` | one file, nesting via `parent_artifact_id`; carries `annotation_text` |
+| `dataops.artifact_page` | per-page `material`, cleanliness, redaction count |
+| `dataops.extraction` | one model pass: model, prompt version, lane, cost |
+| `dataops.extraction_field` | one proposed value with its evidence and state |
+| `dataops.verdict` | what the human decided — the training set |
+
+Raw payloads still belong in a `jsonb` column alongside typed columns when the
+email and JSON channels land. Schema drift is guaranteed: feedback batch 1 alone
+has 26 distinct `values` keys of which only 8 appear in more than 80% of
+records.
 
 ---
 
@@ -308,7 +460,8 @@ The Batches API is the right primitive twice over: 50% cheaper, and it turns
 |---|---|---|
 | 0 | ~~Risk-reference validation harness (783 buildings, SQL only)~~ **Done — but it is a drift check, not a quality check** | Built and run 2026-08-09. Keep it; regenerate its snapshot per issue #78. It moves the pipeline nowhere on its own. |
 | 1 | **Model accuracy harness** — held-out `established` inquiries, SQL only | The corrected phase 1. Zero AI risk, self-contained, and it is the baseline every later phase is measured against. Do it before any inference work, not because it blocks the plumbing but because without it no extraction result can be called good or bad. |
-| 2 | Ingest + artifact normalization, all formats, no inference | Proves the front door. Email parsing is the risky part — find out early. |
-| 3 | Classify + incident extraction on the dev batch, scored against the existing labels | First real number. |
-| 4 | Report extraction (61 fields) + Fundie in `SampleForm` | Highest value, on proven plumbing. |
-| 5 | Recovery extraction | Same machinery, smaller surface. |
+| 2 | ~~Ingest + artifact normalization~~ **Done 2026-08-21** — `dataops` schema + `ingest-dossier`, PDF only | Front door proven on real production documents; see §5. Email parsing is still the risky part and is not built. |
+| 3 | ~~Classify + score against existing labels~~ **Done 2026-08-21** — two benchmarks, three models | The first real numbers. Archive lane: 92% when the model commits, 46% of the queue clears at ≥0.95 confidence with 97.3% accuracy. Report lane: six fields at 86–98%. Model choice mattered far more than prompt: qwen3-vl-235b sat at chance where gemini-3.7-flash reached 92%. |
+| 4 | **Validation screen in the Data Studio** — write `dataops.verdict` | Now the critical path, not the nice-to-have. The label supply dies the day the pipeline replaces cover sheets, so corrections have to be recorded from the first document processed. |
+| 5 | Email + JSON channels; recovery and incident extraction | Same machinery, wider surface. |
+| 6 | Backfill — re-read the 15,012 documents we already hold | The extraction run found data in reports nobody had typed: `groundwater_level_temp` is filled on 11% of samples while the reports carry it far more often. This is recovery of paid-for data, not new intake. |
