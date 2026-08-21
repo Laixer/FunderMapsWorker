@@ -38,6 +38,17 @@ const BARREN = new Set(["photo", "blank", "map"]);
 
 export async function ingestDossier(payload: {
   file: string;
+  /**
+   * Attach to an existing dossier instead of opening a new one.
+   *
+   * A dossier is one SUBMISSION, not one file. Don's batch for Oeverlaan 43 is
+   * nine files -- a 1991 drawing, a municipal archive file, a 102-page
+   * funderingsonderzoek, records of the works -- all describing the same
+   * building. Processed as nine dossiers that connection is lost, and the
+   * reviewer sees nine unrelated proposals instead of one property with a
+   * paper trail.
+   */
+  dossier_id?: number;
   channel?: "email" | "upload" | "bulk_drop" | "api" | "invoer_app";
   subject?: string;
   external_ref?: string;
@@ -67,36 +78,73 @@ export async function ingestDossier(payload: {
       storageKey = `dataops/${basename(file)}`;
     }
 
+    const kind = await pdf.fileKind(localPath);
+    if (kind === "other") throw new Error(`unsupported file type: ${basename(file)}`);
+
     // -- sniff ---------------------------------------------------------------
     // Never trust the extension. The type on report.inquiry is no better a
     // guide: 42 of 160 `foundation_research` files turned out to be scans.
-    const pages = await pdf.pageCount(localPath);
     const size = Bun.file(localPath).size;
+    const pages = kind === "pdf" ? await pdf.pageCount(localPath) : 1;
     result.pages = pages;
-    log.step(`${pages} pages, ${(size / 1024 / 1024).toFixed(1)} MB, producer "${await pdf.producer(localPath)}"`);
+    log.step(
+      kind === "pdf"
+        ? `pdf, ${pages} pages, ${(size / 1024 / 1024).toFixed(1)} MB, producer "${await pdf.producer(localPath)}"`
+        : `image, ${(size / 1024 / 1024).toFixed(1)} MB`
+    );
 
     const pageChars: number[] = [];
-    for (let p = 1; p <= pages; p++) {
-      pageChars.push((await pdf.pageText(localPath, p, false)).replace(/\s/g, "").length);
+    if (kind === "pdf") {
+      for (let p = 1; p <= pages; p++) {
+        pageChars.push((await pdf.pageText(localPath, p, false)).replace(/\s/g, "").length);
+      }
     }
     const totalChars = pageChars.reduce((a, b) => a + b, 0);
-    const scanned = pageChars.filter(pdf.looksScanned).length;
+    const scanned = kind === "image" ? 1 : pageChars.filter(pdf.looksScanned).length;
 
-    // A document whose text layer is substantial is a typed report: the text IS
-    // the evidence and must not be touched. One that is mostly empty is a scan,
-    // where any text present was added on top by whoever prepared the file.
-    const textLane = totalChars > 2000 && scanned < pages / 2;
+    // Route on CHARACTERS, not on how many pages happen to be scans.
+    //
+    // The first version of this rule also required `scanned < pages / 2`, and a
+    // 102-page funderingsonderzoek with 70,470 characters of text failed it:
+    // 54 of its pages were scanned appendices and photographs, so a document
+    // that is unambiguously a typed report was sent down the vision lane,
+    // truncated to 8 pages, and produced nothing. Worse, redaction painted out
+    // the report's own text on the way -- the exact damage the lane split
+    // exists to prevent.
+    //
+    // A scan's added caption runs to ~60 characters and a preparer's cover
+    // sheet to ~300, so 2,000 separates the two cases without needing to count
+    // pages at all. Mixed documents ultimately want both lanes and a merge;
+    // until then, text wins, because that is where the evidence is.
+    // An image has no text layer, so the text lane is not available to it.
+    const textLane = kind === "pdf" && totalChars >= 2000;
     result.lane = textLane ? "text" : "vision";
     log.step(`lane: ${ACCENT.type}${result.lane}${RESET} (${totalChars} text chars, ${scanned}/${pages} pages look scanned)`);
 
     // -- rows ----------------------------------------------------------------
     if (!dry_run) {
-      const [d] = await sql<{ id: number }[]>`
-        INSERT INTO dataops.dossier (channel, subject, external_ref)
-        VALUES (${channel}, ${payload.subject ?? null}, ${payload.external_ref ?? null})
+      if (payload.dossier_id) {
+        result.dossierId = payload.dossier_id;
+        log.step(`attaching to existing dossier #${payload.dossier_id}`);
+      } else {
+        const [d] = await sql<{ id: number }[]>`
+          INSERT INTO dataops.dossier (channel, subject, external_ref)
+          VALUES (${channel}, ${payload.subject ?? null}, ${payload.external_ref ?? null})
+          RETURNING id`;
+        result.dossierId = d!.id;
+        log.step(`opened dossier #${d!.id}`);
+      }
+    }
+
+    if (!dry_run) {
+      const [a] = await sql<{ id: number }[]>`
+        INSERT INTO dataops.artifact
+          (dossier_id, storage_key, original_filename, mime_type, size_bytes, page_count, lane)
+        VALUES (${result.dossierId}, ${storageKey}, ${basename(file)},
+                ${kind === "pdf" ? "application/pdf" : "image/jpeg"},
+                ${size}, ${pages}, ${result.lane})
         RETURNING id`;
-      result.dossierId = d!.id;
-      log.step(`dossier #${d!.id}`);
+      result.artifactId = a!.id;
     }
 
     // -- redact + classify ---------------------------------------------------
@@ -111,7 +159,10 @@ export async function ingestDossier(payload: {
     if (result.lane === "vision") {
       const cap = Math.min(pages, 8);
       for (let p = 1; p <= cap; p++) {
-        const r = await pdf.redactPage(localPath, p, workDir);
+        const r =
+          kind === "image"
+            ? await pdf.prepareImage(localPath, workDir)
+            : await pdf.redactPage(localPath, p, workDir);
         if (r.redacted > 0) {
           result.redactedPages++;
           annotations.push(r.annotation);
@@ -125,7 +176,19 @@ export async function ingestDossier(payload: {
         const usable = verdict.leaks === false && !BARREN.has(verdict.material ?? "other");
         if (usable) cleanPages.push({ page: p, b64, material: verdict.material });
 
-        if (!dry_run && result.artifactId === null) { /* artifact row inserted below */ }
+        // Persist the triage. It decides the routing, it explains after the
+        // fact why a page was dropped, and without it a reviewer looking at a
+        // thin result has no way to see that six of eight pages were blanks.
+        if (!dry_run) {
+          await sql`
+            INSERT INTO dataops.artifact_page
+              (artifact_id, page_no, material, material_conf, is_clean, redacted_boxes, text_chars)
+            VALUES (${result.artifactId}, ${p},
+                    ${(verdict.material ?? null) as string | null},
+                    ${verdict.confidence}, ${usable}, ${r.redacted},
+                    ${pageChars[p - 1] ?? 0})
+            ON CONFLICT (artifact_id, page_no) DO NOTHING`;
+        }
         log.step(
           `  page ${p}: ${verdict.material ?? "?"}` +
             (verdict.leaks === false ? "" : verdict.leaks ? "  LEAKS -> dropped" : "  unreadable -> dropped") +
@@ -133,27 +196,37 @@ export async function ingestDossier(payload: {
         );
       }
     } else {
-      // Text lane: the preparer's cover sheet is page 1 when it is short and
-      // typed while the rest of the document is long-form.
-      const coverLikely = pageChars[0] !== undefined && pageChars[0] < 600 && totalChars > 5000;
-      if (coverLikely) {
-        annotations.push((await pdf.pageText(localPath, 1)).trim());
-        annotationPages.push(1);
-        result.redactedPages = 1;
+      // Text lane: find the preparer's summary by its template, on ANY page.
+      // Size heuristics do not work here -- see pdf.looksLikeCoverSheet.
+      for (let p = 1; p <= pages; p++) {
+        if ((pageChars[p - 1] ?? 0) === 0) continue;
+        const t = await pdf.pageText(localPath, p);
+        if (!pdf.looksLikeCoverSheet(t)) continue;
+        annotations.push(t.trim());
+        annotationPages.push(p);
+        result.redactedPages++;
+      }
+      if (!dry_run) {
+        for (let p = 1; p <= pages; p++) {
+          await sql`
+            INSERT INTO dataops.artifact_page
+              (artifact_id, page_no, material, material_conf, is_clean, redacted_boxes, text_chars)
+            VALUES (${result.artifactId}, ${p},
+                    ${annotationPages.includes(p) ? "other" : "report"}, NULL,
+                    ${!annotationPages.includes(p)}, 0, ${pageChars[p - 1] ?? 0})
+            ON CONFLICT (artifact_id, page_no) DO NOTHING`;
+        }
       }
     }
 
-    if (!dry_run) {
-      const [a] = await sql<{ id: number }[]>`
-        INSERT INTO dataops.artifact
-          (dossier_id, storage_key, original_filename, mime_type, size_bytes,
-           page_count, lane, annotation_text, annotation_pages)
-        VALUES (${result.dossierId}, ${storageKey}, ${basename(file)}, 'application/pdf',
-                ${size}, ${pages}, ${result.lane},
-                ${annotations.join("\n---\n") || null},
-                ${annotationPages.length ? annotationPages : null})
-        RETURNING id`;
-      result.artifactId = a!.id;
+    // What the preparer added is only known once every page has been through
+    // redaction, so it lands as an update rather than at insert time.
+    if (!dry_run && annotationPages.length > 0) {
+      await sql`
+        UPDATE dataops.artifact
+           SET annotation_text  = ${annotations.join("\n---\n") || null},
+               annotation_pages = ${annotationPages}
+         WHERE id = ${result.artifactId}`;
     }
 
     // -- read ----------------------------------------------------------------
@@ -161,8 +234,9 @@ export async function ingestDossier(payload: {
     let fields: vision.FieldRead[] = [];
 
     if (result.lane === "text") {
-      const from = annotationPages.includes(1) ? 2 : 1;
-      fields = await vision.extractFields(await pdf.documentText(localPath, from));
+      fields = await vision.extractFields(
+        await pdf.documentText(localPath, 1, annotationPages)
+      );
     } else if (cleanPages.length > 0) {
       const read = await vision.readDrawing(cleanPages.map((p) => p.b64));
       if (read.foundationType) {
@@ -181,8 +255,15 @@ export async function ingestDossier(payload: {
 
     // Decide the gate here, not inside the write path: a --dry-run has to
     // report exactly what a real run would do, or it is not a rehearsal.
+    // Inference is allowed and often right, but it is not the same as reading a
+    // value off the page, and the two were previously indistinguishable at the
+    // gate. The prompt now makes the model mark an inferred value with
+    // "afgeleid:"; anything so marked goes to a human whatever it scores.
+    const inferred = (f: vision.FieldRead) => /^\s*afgeleid\s*:/i.test(f.evidence ?? "");
     const cleared = (f: vision.FieldRead) =>
-      (f.confidence ?? 0) >= env.DATAOPS_AUTO_ACCEPT && !!f.evidence?.trim();
+      (f.confidence ?? 0) >= env.DATAOPS_AUTO_ACCEPT &&
+      !!f.evidence?.trim() &&
+      !inferred(f);
     result.autoAccepted = fields.filter(cleared).length;
 
     if (!dry_run && result.artifactId !== null) {
@@ -207,7 +288,11 @@ export async function ingestDossier(payload: {
     }
 
     for (const f of fields) {
-      const gate = cleared(f) ? `${ACCENT.ok}auto${RESET}` : `${ACCENT.muted}human${RESET}`;
+      const gate = cleared(f)
+        ? `${ACCENT.ok}auto${RESET}`
+        : inferred(f)
+          ? `${ACCENT.muted}human(afgeleid)${RESET}`
+          : `${ACCENT.muted}human${RESET}`;
       log.step(
         `  ${f.field} = ${ACCENT.type}${f.value}${RESET} ` +
           `(${f.confidence ?? "?"}) ${gate}  ${ACCENT.muted}${(f.evidence ?? "no evidence").slice(0, 70)}${RESET}`
@@ -232,7 +317,10 @@ if (import.meta.main) {
 
   const file = arg("file");
   if (!file) {
-    console.error("usage: ingest-dossier --file <path|s3://key> [--channel upload] [--subject ...] [--dry-run]");
+    console.error(
+      "usage: ingest-dossier --file <path|s3://key> [--dossier <id>] [--channel upload] [--subject ...] [--ref ...] [--dry-run]\n" +
+        "       --dossier attaches the file to an existing submission instead of opening a new one"
+    );
     process.exit(1);
   }
 
@@ -243,6 +331,7 @@ if (import.meta.main) {
       channel: (arg("channel") as any) ?? "upload",
       subject: arg("subject"),
       external_ref: arg("ref"),
+      dossier_id: arg("dossier") ? Number(arg("dossier")) : undefined,
       dry_run: argv.includes("--dry-run"),
     });
     log.info("done", { ...r });

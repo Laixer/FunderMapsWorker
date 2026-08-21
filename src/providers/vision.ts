@@ -153,7 +153,22 @@ export const FOUNDATION_VOCABULARY = `  wood                      Hout
   no_pile_bearing_floor     Niet onderheid: fundering met dragende vloer
   no_pile_concrete_floor    Niet onderheid: dragende betonvloer
   no_pile_slit              Niet onderheid: slieten
-  other                     Overig`;
+  other                     Overig
+
+Regel voor de keuze -- let op, die verschilt per groep:
+
+HOUTEN PALEN: Amsterdam en Rotterdam zijn BENAMINGEN van een constructiewijze.
+- Gebruik wood_amsterdam, wood_rotterdam of een gecombineerde variant ALLEEN als
+  het document die benaming zelf gebruikt. Leid ze nooit af uit een tekening.
+- Staat er alleen dat de fundering op houten palen staat, kies dan wood. Dat is
+  geen slechter antwoord -- het is het juiste antwoord.
+
+NIET ONDERHEID: dit zijn BESCHRIJVINGEN van wat het gebouw draagt.
+- Beschrijft het document de constructie -- gemetselde voet of poeren, betonnen
+  stroken, slieten, een dragende betonvloer -- kies dan de bijbehorende code.
+  De beschrijving is het bewijs; er hoeft geen benaming te staan.
+- Kies no_pile alleen als vaststaat dat er geen palen zijn maar het document
+  niet zegt waar het gebouw dan op rust.`;
 
 const READ_PROMPT = `Je bekijkt pagina's uit een Nederlands bouwdossier of archiefstuk.
 Het kan gaan om oude bouwtekeningen (soms van rond 1900), handgeschreven aantekeningen,
@@ -163,9 +178,16 @@ Bepaal het FUNDERINGSTYPE van het gebouw. Kies exact een van deze codes:
 
 ${FOUNDATION_VOCABULARY}
 
-Kies de meest SPECIFIEKE code die het document ondersteunt. Blijkt uit het document
-alleen dat het houten palen zijn, zonder dat het Amsterdam of Rotterdam noemt, kies dan
-"wood". Is het funderingstype niet af te leiden, antwoord dan "onbekend".
+Is het funderingstype niet af te leiden, antwoord dan "onbekend".
+
+Regels voor het bewijs:
+- Citeer letterlijk uit het document. Het bewijs moet de waarde zelf bevatten of
+  die onmiskenbaar benoemen.
+- Komt de waarde uit een TABEL of een tekstblok met labels, neem dan de kolomkop
+  of het label mee in het citaat, niet alleen de waarde.
+- Staat de waarde er niet letterlijk maar leid je die af uit wat je ziet, begin
+  het bewijs dan met "afgeleid: " en beschrijf waaruit. Afleiden mag -- op een
+  oude tekening is dat vaak de enige manier -- het verzwijgen niet.
 
 Antwoord met alleen JSON:
 {"funderingstype": "...", "zekerheid": 0.0, "bewijs": "wat je op de tekening ziet waaruit dit blijkt", "pagina": 1}`;
@@ -204,8 +226,7 @@ const EXTRACT_PROMPT = `Hieronder staat de tekst van een Nederlands funderingson
 opgesteld door een ingenieursbureau. Haal de volgende gegevens eruit. Staat een veld er
 niet in, geef dan null. Verzin niets.
 
-  funderingstype       een van (gebruik exact deze codes), kies de meest specifieke die
-                       het rapport ondersteunt:
+  funderingstype       een van (gebruik exact deze codes):
 ${FOUNDATION_VOCABULARY}
   bouwjaar             bouwjaar van het pand, als jaartal
   funderingskwaliteit  een van: slecht, matig, redelijk, goed, matig_tot_goed, matig_tot_slecht
@@ -215,6 +236,15 @@ ${FOUNDATION_VOCABULARY}
   grondwaterstand      gemeten grondwaterstand in meters t.o.v. NAP, als getal
 
 Geef bij elk veld dat je invult het citaat uit het rapport waar het vandaan komt.
+
+Regels voor het bewijs:
+- Citeer letterlijk uit het document. Het bewijs moet de waarde zelf bevatten of
+  die onmiskenbaar benoemen.
+- Komt de waarde uit een TABEL, neem dan de kolomkop of de rijlabel mee in het
+  citaat, niet alleen de cel. "Gouvernestraat 273-277 | Slecht | 10" toont niet
+  welke kolom de 10 is; zonder kop is het citaat waardeloos.
+- Staat de waarde er niet letterlijk maar leid je die af, begin het bewijs dan
+  met "afgeleid: " en beschrijf waaruit. Afleiden mag -- het verzwijgen niet.
 
 Antwoord met alleen JSON:
 {"funderingstype": null, "bouwjaar": null, "funderingskwaliteit": null,

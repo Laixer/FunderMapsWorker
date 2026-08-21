@@ -44,10 +44,16 @@ export async function pageText(
   return r.stdout;
 }
 
-export async function documentText(pdfPath: string, from = 1): Promise<string> {
+export async function documentText(
+  pdfPath: string,
+  from = 1,
+  skipPages: number[] = []
+): Promise<string> {
   const pages = await pageCount(pdfPath);
+  const skip = new Set(skipPages);
   const parts: string[] = [];
   for (let p = from; p <= pages; p++) {
+    if (skip.has(p)) continue;          // a preparer's summary is not evidence
     const t = await pageText(pdfPath, p);
     if (t.trim().length === 0) continue;
     parts.push(`\n--- pagina ${p} ---\n${t}`);
@@ -161,6 +167,59 @@ async function paintOut(
   ]);
 
   await spawn(["convert", src, "-fill", "white", "-stroke", "none", ...draws, dst]);
+}
+
+/**
+ * Prepare a loose image for the vision lane.
+ *
+ * Archive material does not always arrive as a PDF -- Het Utrechts Archief
+ * hands out plain JPEGs, and a 6859x4883 scan of a 1920s drawing is a perfectly
+ * ordinary thing to be sent. There is no text layer to strip, so redaction does
+ * not apply; any caption burned into the pixels is caught by the classifier
+ * instead, which is the same safety net that covers scanned-in cover sheets.
+ */
+export async function prepareImage(
+  imagePath: string,
+  outDir: string,
+  longEdge = 1600
+): Promise<RenderedPage> {
+  const dst = join(outDir, "p-001.jpg");
+  const probe = await spawn(["identify", "-format", "%w %h", imagePath]).catch(() => null);
+  if (!probe) throw new Error(`not a readable image: ${imagePath}`);
+  await spawn([
+    "convert", imagePath, "-resize", `${longEdge}x${longEdge}>`,
+    "-quality", "80", dst,
+  ]);
+  return { page: 1, path: dst, redacted: 0, annotation: "" };
+}
+
+/** Sniff the kind from content, never from the extension. */
+export async function fileKind(path: string): Promise<"pdf" | "image" | "other"> {
+  const r = await spawn(["file", "-b", "--mime-type", path]).catch(() => null);
+  const mime = r?.stdout.trim() ?? "";
+  if (mime === "application/pdf") return "pdf";
+  if (mime.startsWith("image/")) return "image";
+  return "other";
+}
+
+/**
+ * Does this page's text look like the preparer's own summary sheet?
+ *
+ * Recognised by its template rather than by any ratio. An earlier version
+ * guessed from size -- "a short page in front of a long document" -- and missed
+ * every cover attached to a scan, because a scan contributes no text of its own
+ * so the document never looked long. The model then read `Fundering: Niet
+ * onderheid - gemetseld` straight off page 1 and scored a perfect match against
+ * the human who wrote it.
+ *
+ * Two shapes exist in the corpus: the full FunderMaps sheet, and a bare typed
+ * header of address / Bouwjaar / Fundering above a scan. Both label the
+ * foundation, which is the thing that must never reach a model.
+ */
+export function looksLikeCoverSheet(text: string): boolean {
+  const t = text.replace(/\s+/g, " ");
+  if (/\bFundering\s*:/i.test(t)) return true;
+  return /\bRapportage\s*:/i.test(t) && /\bBouwjaar\s*:/i.test(t);
 }
 
 /** A page with essentially no text layer is a scan; with plenty, a typed document. */
