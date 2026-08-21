@@ -7,6 +7,7 @@
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts",
     "load-dataset": "bun run src/commands/load-dataset.ts",
+    "ingest-dossier": "bun run src/commands/ingest-dossier.ts",
     "test": "bun test",
     "typecheck": "bun run --bun tsc --noEmit"
   },

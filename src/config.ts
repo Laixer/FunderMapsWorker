@@ -15,6 +15,19 @@ const envSchema = z.object({
   FUNDERMAPS_S3_ACCESS_KEY: z.string(),
   FUNDERMAPS_S3_SECRET_KEY: z.string(),
 
+  // Data Ops — document lanes.
+  // Models are configurable because the benchmark showed the choice matters far
+  // more than the prompt: on 1,192 archive documents gemini-3.7-flash reached
+  // 92% when it committed, gemini-3.1-pro 86% at 7.7x the price, and
+  // qwen3-vl-235b sat at chance. Pinning a winner in code would age badly.
+  OPENROUTER_API_KEY: z.string().optional(),
+  DATAOPS_CLASSIFY_MODEL: z.string().default("google/gemini-3.7-flash"),
+  DATAOPS_VISION_MODEL: z.string().default("google/gemini-3.7-flash"),
+  DATAOPS_TEXT_MODEL: z.string().default("google/gemini-3.7-flash"),
+  // Nothing is auto-accepted below this, and nothing without an evidence quote.
+  // At >=0.95 the archive benchmark cleared 46% of the queue at 97.3%.
+  DATAOPS_AUTO_ACCEPT: z.coerce.number().default(0.95),
+
   // Worker
   POLL_INTERVAL: z.coerce.number().default(30),
   MAX_CONCURRENT: z.coerce.number().default(3),
