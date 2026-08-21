@@ -218,8 +218,22 @@ export async function fileKind(path: string): Promise<"pdf" | "image" | "other">
  */
 export function looksLikeCoverSheet(text: string): boolean {
   const t = text.replace(/\s+/g, " ");
-  if (/\bFundering\s*:/i.test(t)) return true;
-  return /\bRapportage\s*:/i.test(t) && /\bBouwjaar\s*:/i.test(t);
+  const fundering = /\bFundering\s*:/i.test(t);
+  const bouwjaar  = /\bBouwjaar\s*:/i.test(t);
+
+  // The full FunderMaps sheet.
+  if (/\bRapportage\s*:/i.test(t) && (fundering || bouwjaar)) return true;
+
+  // The bare typed header above a scan: address, Bouwjaar, Fundering. Both
+  // labels together, on a page with little else, is the signature.
+  //
+  // `Fundering:` ALONE is not enough. A construction drawing legitimately
+  // carries an annotation block headed `PREFAB FUNDERING:` or similar, and an
+  // earlier version of this rule threw those pages away whole -- turning a
+  // confident, correct `concrete` into no answer at all.
+  if (fundering && bouwjaar && t.length < 1200) return true;
+
+  return false;
 }
 
 /** A page with essentially no text layer is a scan; with plenty, a typed document. */
