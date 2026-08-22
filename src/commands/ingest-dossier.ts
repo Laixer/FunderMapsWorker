@@ -2,6 +2,7 @@ import { log, ACCENT, RESET } from "../lib/log.ts";
 import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as vision from "../providers/vision.ts";
+import { mayEstablishFoundationType, FIELDS_REQUIRING_ADMISSIBLE_SOURCE } from "../providers/admissibility.ts";
 import * as s3 from "../providers/s3.ts";
 import { env } from "../config.ts";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
@@ -251,6 +252,23 @@ export async function ingestDossier(payload: {
       log.warn("no page carries usable evidence — routed to a human, no model call made");
     }
 
+    // Can this document establish a foundation type at all? A QuickScan or an
+    // NWWI risk report states one, but it is FunderMaps data coming back to us.
+    // Reading it is not extraction; it is a loop. See providers/admissibility.ts.
+    const sourceText =
+      result.lane === "text"
+        ? await pdf.documentText(localPath, 1, annotationPages)
+        : annotations.join(" ");
+    const adm = mayEstablishFoundationType(sourceText, file);
+    if (!adm.ok) {
+      log.warn(`bron niet toelaatbaar voor funderingstype`, { reden: adm.reason?.slice(0, 90) });
+      fields = fields.map(f =>
+        FIELDS_REQUIRING_ADMISSIBLE_SOURCE.has(f.field)
+          ? { ...f, rejected: adm.reason }
+          : f
+      );
+    }
+
     result.fields = fields.length;
 
     // Decide the gate here, not inside the write path: a --dry-run has to
@@ -261,6 +279,7 @@ export async function ingestDossier(payload: {
     // "afgeleid:"; anything so marked goes to a human whatever it scores.
     const inferred = (f: vision.FieldRead) => /^\s*afgeleid\s*:/i.test(f.evidence ?? "");
     const cleared = (f: vision.FieldRead) =>
+      !f.rejected &&
       (f.confidence ?? 0) >= env.DATAOPS_AUTO_ACCEPT &&
       !!f.evidence?.trim() &&
       !inferred(f);
@@ -279,16 +298,22 @@ export async function ingestDossier(payload: {
       for (const f of fields) {
         // Auto-accept needs BOTH a high score and a passage to point at.
         const auto = cleared(f);
+        // A value from an inadmissible source is kept, not discarded: the
+        // reviewer should see what the document said and why we will not take
+        // it. 'rejected' plus the reason in the evidence makes that legible.
         await sql`
           INSERT INTO dataops.extraction_field
             (extraction_id, field, value, confidence, evidence, state)
           VALUES (${ex!.id}, ${f.field}, ${f.value}, ${f.confidence},
-                  ${f.evidence}, ${auto ? "auto_accepted" : "pending"})`;
+                  ${f.rejected ? `${f.rejected}\n\nCitaat uit het document: ${f.evidence ?? ""}` : f.evidence},
+                  ${f.rejected ? "rejected" : auto ? "auto_accepted" : "pending"})`;
       }
     }
 
     for (const f of fields) {
-      const gate = cleared(f)
+      const gate = f.rejected
+        ? `${ACCENT.fail}geweigerd${RESET}`
+        : cleared(f)
         ? `${ACCENT.ok}auto${RESET}`
         : inferred(f)
           ? `${ACCENT.muted}human(afgeleid)${RESET}`

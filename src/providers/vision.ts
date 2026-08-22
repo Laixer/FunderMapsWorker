@@ -76,6 +76,22 @@ function parseJson(text: string, keys: string[]): Record<string, unknown> | null
   return Object.keys(out).length ? out : null;
 }
 
+
+/**
+ * Confidence, coerced to 0..1.
+ *
+ * The prompts ask for a number between 0 and 1 and usually get one, but a model
+ * will now and then answer 95 where it meant 0.95. Both confidence columns are
+ * numeric(4,3), so that raises "numeric field overflow" and loses the whole
+ * document -- six of 500 in the first full pilot, and silently, because the
+ * failure lands in a log rather than in the table.
+ */
+function norm01(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const x = v > 1 && v <= 100 ? v / 100 : v;
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+}
+
 const asImage = (b64: string) => ({
   type: "image_url",
   image_url: { url: `data:image/jpeg;base64,${b64}` },
@@ -122,7 +138,7 @@ export async function classifyPage(jpegBase64: string): Promise<PageVerdict> {
   const a = parseJson(j.choices?.[0]?.message?.content ?? "", ["verklapt", "materiaal", "zekerheid"]);
   return {
     material: (a?.["materiaal"] as Material) ?? null,
-    confidence: typeof a?.["zekerheid"] === "number" ? (a["zekerheid"] as number) : null,
+    confidence: norm01(a?.["zekerheid"]),
     // Fail closed. A verdict we could not read is not evidence of a clean page.
     leaks: typeof a?.["verklapt"] === "boolean" ? (a["verklapt"] as boolean) : null,
   };
@@ -212,7 +228,7 @@ export async function readDrawing(pages: string[]): Promise<DrawingRead> {
   const ft = (a?.["funderingstype"] as string) ?? null;
   return {
     foundationType: ft && ft !== "onbekend" ? ft : null,
-    confidence: typeof a?.["zekerheid"] === "number" ? (a["zekerheid"] as number) : null,
+    confidence: norm01(a?.["zekerheid"]),
     evidence: (a?.["bewijs"] as string) ?? null,
     page: typeof a?.["pagina"] === "number" ? (a["pagina"] as number) : null,
   };
@@ -261,6 +277,13 @@ export interface FieldRead {
   value: string;
   evidence: string | null;
   confidence: number | null;
+  /**
+   * Set when the document is not allowed to establish this field -- a QuickScan
+   * or NWWI risk report stating a foundation type it read off FunderMaps.
+   * The value is kept so a reviewer can see what was claimed and why we refuse
+   * it; it never clears the gate. See providers/admissibility.ts.
+   */
+  rejected?: string;
 }
 
 export async function extractFields(reportText: string): Promise<FieldRead[]> {
@@ -273,7 +296,7 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
   const a = parseJson(j.choices?.[0]?.message?.content ?? "", [...EXTRACT_FIELDS]);
   if (!a) return [];
   const ev = (a["bewijs"] ?? {}) as Record<string, string>;
-  const conf = typeof a["zekerheid"] === "number" ? (a["zekerheid"] as number) : null;
+  const conf = norm01(a["zekerheid"]);
 
   return EXTRACT_FIELDS.flatMap((f) => {
     const v = a[f];

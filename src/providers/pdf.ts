@@ -16,6 +16,9 @@ import { readdir, unlink, rename } from "node:fs/promises";
  * decided before anything is stripped. See classifyPages / redactPage.
  */
 
+/** Above this many characters a page is a typed document, not an annotated scan. */
+export const TEXT_PAGE_CHARS = 300;
+
 export interface WordBox {
   x0: number; y0: number; x1: number; y1: number;
 }
@@ -132,6 +135,25 @@ export async function redactPage(
   }
 
   const annotation = (await pageText(pdfPath, page)).trim();
+
+  // A page carrying a substantial text layer is not a scan with a caption on
+  // it; it is a typed document, and its text is the evidence. Painting it out
+  // destroys the page before anything reads it.
+  //
+  // This guard exists because the lane threshold is a hard cutoff on a
+  // continuous quantity. Inquiry 130075 -- a 1979 Rotterdam funderingsonderzoek
+  // stating "het funderingshout in goede staat was" -- carried 1,927 characters
+  // against a 2,000-character threshold, was routed to the vision lane, had both
+  // pages whited out, and was reported as blank. Seventy-three characters
+  // decided whether a survey report was read or erased.
+  //
+  // Redaction may therefore only remove a caption from a page that is
+  // otherwise empty, never the body of a typed one. Getting the lane wrong now
+  // costs a worse reading, not the document.
+  if (annotation.replace(/\s/g, "").length > TEXT_PAGE_CHARS) {
+    await rename(src, dst);
+    return { page, path: dst, redacted: 0, annotation: "" };
+  }
   const { width, height } = await pageSize(pdfPath, page);
   await paintOut(src, dst, boxes, width, height);
   await unlink(src).catch(() => {});
