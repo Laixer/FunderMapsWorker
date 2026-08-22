@@ -86,6 +86,7 @@ RETURNS report.foundation_type LANGUAGE sql IMMUTABLE AS $$
 CREATE OR REPLACE FUNCTION pg_temp.fam3(ft report.foundation_type) RETURNS text
 LANGUAGE sql IMMUTABLE AS $$ SELECT CASE WHEN ft IS NULL THEN NULL
   WHEN data.is_wood_family(ft) THEN 'wood' WHEN data.is_no_pile_family(ft) THEN 'no_pile'
+    WHEN data.is_concrete_family(ft) THEN 'concrete'
   ELSE ft::text END $$;
 
 \echo '=== TEST half: current tree vs v3 (one threshold + one guard changed) ==='

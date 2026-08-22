@@ -49,6 +49,7 @@ LANGUAGE sql IMMUTABLE AS $$
     WHEN ft IS NULL THEN NULL
     WHEN data.is_wood_family(ft) THEN 'wood'
     WHEN data.is_no_pile_family(ft) THEN 'no_pile'
+    WHEN data.is_concrete_family(ft) THEN 'concrete'
     ELSE ft::text
   END $$;
 
