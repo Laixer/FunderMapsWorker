@@ -55,10 +55,38 @@ export interface Admissibility {
   reason?: string;
 }
 
+/**
+ * Attachment categories as the public intake form records them
+ * (files[*].category). When the submitter has labelled the document, that beats
+ * any inference we can make from its text -- and it is the only signal that
+ * works on a scan, where there is no text to match against.
+ */
+const CATEGORY_MAY_ESTABLISH: Record<string, boolean> = {
+  quickscan: false,          // QuickScan / Fase 0 -- states our own data
+  foundationresearch: true,  // Fase 1 / Fase 2 -- real fieldwork
+  archieveresearch: true,    // bouwtekening / archiefstuk
+  herstelbewijs: true,       // factuur, oplevering
+  foto: true,                // nothing to establish, but not disqualified
+  overig: true,
+};
+
 export function mayEstablishFoundationType(
   documentText: string,
-  filePath: string
+  filePath: string,
+  declaredCategory?: string
 ): Admissibility {
+  // The submitter's own label is the strongest signal we get, and the only one
+  // available for a scanned document.
+  if (declaredCategory && CATEGORY_MAY_ESTABLISH[declaredCategory] === false) {
+    return {
+      ok: false,
+      reason:
+        `bron niet toelaatbaar voor funderingstype: de indiener heeft dit bestand ` +
+        `gelabeld als "${declaredCategory}". Het funderingstype in een QuickScan ` +
+        `is FunderMaps-data die naar ons terugkomt.`,
+    };
+  }
+
   const head = documentText.slice(0, HEADER_CHARS).replace(/\s+/g, " ");
 
   for (const rx of DECLARED_PROVENANCE) {

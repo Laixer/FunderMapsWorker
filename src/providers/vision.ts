@@ -196,6 +196,18 @@ ${FOUNDATION_VOCABULARY}
 
 Is het funderingstype niet af te leiden, antwoord dan "onbekend".
 
+Let op de herkomst van het funderingstype. Sommige documenten -- een QuickScan of
+Fase 0-rapport, een funderingsrisicorapport, een taxatiebijlage -- vermelden een
+funderingstype dat zij NIET zelf hebben vastgesteld, maar hebben overgenomen uit
+een database (vaak FunderMaps) of uit een eerder rapport. Herken dat aan zinnen
+als "wijze van vaststelling", "vermoeden inspecteur", "bron: archief of
+FunderMaps", of aan een risicoklasse die zonder eigen onderzoek wordt getoond.
+
+Is dat het geval, antwoord dan "onbekend" -- ook al staat het type er duidelijk.
+Wij zouden dan onze eigen gegevens terugkrijgen. Alleen wat in dit document zelf
+is waargenomen of vastgelegd telt.
+
+
 Regels voor het bewijs:
 - Citeer letterlijk uit het document. Het bewijs moet de waarde zelf bevatten of
   die onmiskenbaar benoemen.
@@ -241,6 +253,18 @@ export async function readDrawing(pages: string[]): Promise<DrawingRead> {
 const EXTRACT_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek,
 opgesteld door een ingenieursbureau. Haal de volgende gegevens eruit. Staat een veld er
 niet in, geef dan null. Verzin niets.
+
+
+Let op de herkomst van het funderingstype. Sommige documenten -- een QuickScan of
+Fase 0-rapport, een funderingsrisicorapport, een taxatiebijlage -- vermelden een
+funderingstype dat zij NIET zelf hebben vastgesteld, maar hebben overgenomen uit
+een database (vaak FunderMaps) of uit een eerder rapport. Herken dat aan zinnen
+als "wijze van vaststelling", "vermoeden inspecteur", "bron: archief of
+FunderMaps", of aan een risicoklasse die zonder eigen onderzoek wordt getoond.
+
+Is dat het geval, antwoord dan "onbekend" -- ook al staat het type er duidelijk.
+Wij zouden dan onze eigen gegevens terugkrijgen. Alleen wat in dit document zelf
+is waargenomen of vastgelegd telt.
 
   funderingstype       een van (gebruik exact deze codes):
 ${FOUNDATION_VOCABULARY}
