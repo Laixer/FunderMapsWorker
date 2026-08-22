@@ -1,120 +1,34 @@
--- Phase A7: Fix Statistics Matviews & Related Views
+-- Entry rules for report.inquiry_sample, ruled by Yorick 2026-08-22 after the
+-- inquiry data audit (~/fundermaps-inquiry-audit on fm-devops):
 --
--- Each fix is an independent CREATE OR REPLACE / DROP + CREATE statement.
--- Run in order. Matviews need DROP + CREATE (can't ALTER definition).
-
---------------------------------------------------------------------------------
--- Fix 1: statistics_product_buildings_restored
+--  1. settlement_speed ("zakkingssnelheid") is ALWAYS entered negative
+--     (zakking = -mm/yr). Before this, Ton entered positive and the
+--     FunderConsult feed / Don / Aad negative, and both classifiers
+--     (maplayer.facade_scan, /v4/product/facade_scan) bucketed `< 0.5 -> nil`,
+--     so 1,096 of 1,277 facade-scan settlements were served as "nil".
+--     Data: 1,855 positive rows flipped to negative the same day.
+--  2. built_year is only filled when the document states it; otherwise it is
+--     left NULL and the BAG year applies. Never the document/import date.
+--     Data: 11,734 rows set to NULL (import-date stuffing, impossible/future
+--     years, report year typed as build year).
 --
--- Bug: DISTINCT ON (neighborhood_id) without ORDER BY.
--- The UNION produces rows with count > 0 (actual) and count = 0 (filler).
--- Without ORDER BY, PostgreSQL may pick the 0-count row over the real count.
---
--- Fix: LEFT JOIN + COALESCE instead of UNION + DISTINCT ON.
---------------------------------------------------------------------------------
+-- Applied to prod 2026-08-22 together with the data fixes. NOT VALID + VALIDATE
+-- keeps the lock short; the data was normalised first so VALIDATE passes.
 
-DROP MATERIALIZED VIEW IF EXISTS data.statistics_product_buildings_restored;
+BEGIN;
 
-CREATE MATERIALIZED VIEW data.statistics_product_buildings_restored AS
-SELECT
-    ba.neighborhood_id,
-    COALESCE(rs_count.count, 0) AS count
-FROM (
-    SELECT DISTINCT neighborhood_id
-    FROM geocoder.building_active
-) ba
-LEFT JOIN (
-    SELECT ba2.neighborhood_id, count(*) AS count
-    FROM report.recovery_sample rs
-    JOIN geocoder.building_active ba2 ON ba2.external_id = rs.building_id
-    GROUP BY ba2.neighborhood_id
-) rs_count ON rs_count.neighborhood_id = ba.neighborhood_id
-WITH NO DATA;
+ALTER TABLE report.inquiry_sample
+    ADD CONSTRAINT inquiry_sample_settlement_speed_nonpositive
+    CHECK (settlement_speed IS NULL OR settlement_speed <= 0) NOT VALID;
 
-CREATE UNIQUE INDEX statistics_product_buildings_restored_neighborhood_idx
-    ON data.statistics_product_buildings_restored (neighborhood_id);
+ALTER TABLE report.inquiry_sample
+    ADD CONSTRAINT inquiry_sample_built_year_not_future
+    CHECK (built_year IS NULL OR built_year <= CURRENT_DATE) NOT VALID;
 
--- Restore grants
-GRANT SELECT ON data.statistics_product_buildings_restored TO fundermaps_webapp;
-GRANT SELECT ON data.statistics_product_buildings_restored TO fundermaps_webservice;
+ALTER TABLE report.inquiry_sample VALIDATE CONSTRAINT inquiry_sample_settlement_speed_nonpositive;
+ALTER TABLE report.inquiry_sample VALIDATE CONSTRAINT inquiry_sample_built_year_not_future;
 
---------------------------------------------------------------------------------
--- Fix 2: statistics_product_incident_municipality
---
--- Bug: Uses geocoder.building (includes inactive) instead of
--- geocoder.building_active. The neighborhood-level equivalent
--- (statistics_product_incidents) uses building_active.
---
--- Fix: Change to building_active for consistency.
---------------------------------------------------------------------------------
-
-DROP MATERIALIZED VIEW IF EXISTS data.statistics_product_incident_municipality;
-
-CREATE MATERIALIZED VIEW data.statistics_product_incident_municipality AS
-SELECT
-    m.id AS municipality_id,
-    date_part('year', i.create_date)::integer AS year,
-    count(i.id) AS count
-FROM report.incident i
-JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
-JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
-JOIN geocoder.district d ON d.id = n.district_id
-JOIN geocoder.municipality m ON m.id = d.municipality_id
-GROUP BY m.id, date_part('year', i.create_date)::integer
-WITH NO DATA;
-
-CREATE UNIQUE INDEX statistics_product_incident_municipality_municipality_year_idx
-    ON data.statistics_product_incident_municipality (municipality_id, year);
-
--- Restore grants (check schema.sql for current grants)
-GRANT SELECT ON data.statistics_product_incident_municipality TO fundermaps_webapp;
-GRANT SELECT ON data.statistics_product_incident_municipality TO fundermaps_webservice;
-
---------------------------------------------------------------------------------
--- Fix 3: statistics_product_inquiry_municipality
---
--- Bug: Uses is2.create_date (inquiry_sample creation timestamp) instead of
--- i.document_date (inquiry document date). The neighborhood-level equivalent
--- (statistics_product_inquiries) uses i.document_date.
---
--- Fix: JOIN to inquiry table and use i.document_date.
---------------------------------------------------------------------------------
-
-DROP MATERIALIZED VIEW IF EXISTS data.statistics_product_inquiry_municipality;
-
-CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
-SELECT
-    m.id AS municipality_id,
-    date_part('year', i.document_date)::integer AS year,
-    count(is2.id) AS count
-FROM report.inquiry_sample is2
-JOIN report.inquiry i ON i.id = is2.inquiry_id
-JOIN geocoder.building_active ba ON ba.external_id = is2.building_id::text
-JOIN geocoder.neighborhood n ON n.id = ba.neighborhood_id
-JOIN geocoder.district d ON d.id = n.district_id
-JOIN geocoder.municipality m ON m.id = d.municipality_id
-GROUP BY m.id, date_part('year', i.document_date)::integer
-WITH NO DATA;
-
-CREATE UNIQUE INDEX statistics_product_inquiry_municipality_municipality_year_idx
-    ON data.statistics_product_inquiry_municipality (municipality_id, year);
-
--- Restore grants
-GRANT SELECT ON data.statistics_product_inquiry_municipality TO fundermaps_webapp;
-GRANT SELECT ON data.statistics_product_inquiry_municipality TO fundermaps_webservice;
-
---------------------------------------------------------------------------------
--- Fix 4: facade_scan settlement_speed dead branch
---
--- Bug: Line 5370 has `>= 3 AND < 3` which is always false.
--- Values in [3,4) get NULL instead of 'big'.
---
--- Fix: Change to `>= 3 AND < 4`.
---
--- Also: DISTINCT ON without ORDER BY — add ORDER BY create_date DESC
--- to deterministically pick the most recent sample per building.
---------------------------------------------------------------------------------
-
+-- Classifier on the magnitude (sql/model/fix_statistics.sql, Fix 4 block).
 CREATE OR REPLACE VIEW maplayer.facade_scan AS
 SELECT
     inputz.external_id,
@@ -231,9 +145,4 @@ LEFT JOIN data.risk_table_priority rtp
     ON rtp.risk = mg.risk
    AND rtp.settlement_speed = inputz.settlement_speed;
 
---------------------------------------------------------------------------------
--- Fix 5 (removed 2026-07-24): analysis_monitoring
---
--- The view was dropped in sql/migrate/drop_analysis_tile_views.sql after the
--- Martin cutover retired its static tileset — do not recreate it.
---------------------------------------------------------------------------------
+COMMIT;

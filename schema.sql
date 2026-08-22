@@ -4776,11 +4776,11 @@ CREATE VIEW maplayer.facade_scan AS
                     ELSE NULL::report.crack_type
                 END)) AS facade_type,
                 CASE
-                    WHEN (is2.settlement_speed < (0.5)::double precision) THEN 'nil'::report.rotation_type
-                    WHEN ((is2.settlement_speed >= (0.5)::double precision) AND (is2.settlement_speed < (2)::double precision)) THEN 'small'::report.rotation_type
-                    WHEN ((is2.settlement_speed >= (2)::double precision) AND (is2.settlement_speed < (3)::double precision)) THEN 'mediocre'::report.rotation_type
-                    WHEN ((is2.settlement_speed >= (3)::double precision) AND (is2.settlement_speed < (4)::double precision)) THEN 'big'::report.rotation_type
-                    WHEN (is2.settlement_speed >= (4)::double precision) THEN 'very_big'::report.rotation_type
+                    WHEN (abs(is2.settlement_speed) < (0.5)::double precision) THEN 'nil'::report.rotation_type
+                    WHEN ((abs(is2.settlement_speed) >= (0.5)::double precision) AND (abs(is2.settlement_speed) < (2)::double precision)) THEN 'small'::report.rotation_type
+                    WHEN ((abs(is2.settlement_speed) >= (2)::double precision) AND (abs(is2.settlement_speed) < (3)::double precision)) THEN 'mediocre'::report.rotation_type
+                    WHEN ((abs(is2.settlement_speed) >= (3)::double precision) AND (abs(is2.settlement_speed) < (4)::double precision)) THEN 'big'::report.rotation_type
+                    WHEN (abs(is2.settlement_speed) >= (4)::double precision) THEN 'very_big'::report.rotation_type
                     ELSE NULL::report.rotation_type
                 END AS settlement_speed,
             is2.facade_scan_risk,
@@ -6305,6 +6305,22 @@ ALTER TABLE ONLY report.inquiry
 
 ALTER TABLE ONLY report.inquiry_sample
     ADD CONSTRAINT inquiry_sample_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inquiry_sample inquiry_sample_built_year_not_future; Type: CHECK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE report.inquiry_sample
+    ADD CONSTRAINT inquiry_sample_built_year_not_future CHECK (((built_year IS NULL) OR (built_year <= CURRENT_DATE))) NOT VALID;
+
+
+--
+-- Name: inquiry_sample inquiry_sample_settlement_speed_nonpositive; Type: CHECK CONSTRAINT; Schema: report; Owner: -
+--
+
+ALTER TABLE report.inquiry_sample
+    ADD CONSTRAINT inquiry_sample_settlement_speed_nonpositive CHECK (((settlement_speed IS NULL) OR (settlement_speed <= (0)::double precision))) NOT VALID;
 
 
 --
