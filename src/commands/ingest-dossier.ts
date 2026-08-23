@@ -76,7 +76,22 @@ export async function ingestDossier(payload: {
       await s3.downloadFile(localPath, storageKey);
     } else {
       await Bun.write(localPath, Bun.file(file));
-      storageKey = `dataops/${basename(file)}`;
+
+      // Upload it. A dossier whose storage_key points at nothing is worse than
+      // no dossier: the review screen mints a signed URL, the reviewer gets a
+      // 404, and there is no way to check a citation against the page it came
+      // from. An earlier version computed the key without ever putting the file
+      // there, and every one of 891 artifacts pointed into the void.
+      //
+      // Keyed by uuid like inquiry-report/, with the original name kept on the
+      // artifact row: two people send "Funderingsrapport.pdf" in the same week.
+      const ext = (file.split(".").pop() ?? "bin").toLowerCase();
+      storageKey = `dataops/${crypto.randomUUID()}.${ext}`;
+      log.step(`Uploading to ${storageKey}`);
+      const mime = (await pdf.fileKind(localPath)) === "pdf"
+        ? "application/pdf"
+        : `image/${ext === "jpg" ? "jpeg" : ext}`;
+      await s3.uploadFile(localPath, storageKey, undefined, { ContentType: mime });
     }
 
     const kind = await pdf.fileKind(localPath);

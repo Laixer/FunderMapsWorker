@@ -11,7 +11,12 @@ const envSchema = z.object({
   // S3
   FUNDERMAPS_S3_ENDPOINT: z.string(),
   FUNDERMAPS_S3_REGION: z.string().default("ams3"),
-  FUNDERMAPS_S3_BUCKET: z.string().default("fundermaps-development"),
+  // No default. A worker that writes production documents into whichever
+  // bucket happened to be compiled in is how 891 artifact rows came to point at
+  // objects that were never created: the record looked fine, the API signed a
+  // URL against `fundermaps`, and every reviewer got a 404. Fail loudly on a
+  // missing bucket instead of writing somewhere plausible.
+  FUNDERMAPS_S3_BUCKET: z.string(),
   FUNDERMAPS_S3_ACCESS_KEY: z.string(),
   FUNDERMAPS_S3_SECRET_KEY: z.string(),
 
