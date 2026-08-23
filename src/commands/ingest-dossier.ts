@@ -34,6 +34,22 @@ export interface IngestResult {
   autoAccepted: number;
 }
 
+/**
+ * Everything the pipeline stores lives under this prefix, and nothing it stores
+ * lives anywhere else.
+ *
+ * `inquiry-report/` holds the documents behind report.inquiry -- 30,814 files
+ * that customers, the risk model and seven years of survey work depend on. The
+ * pipeline reads from it and must never write to it: a machine that can add,
+ * replace or overwrite objects there can corrupt the record it is supposed to
+ * be reading. Keeping the two prefixes disjoint means a mistake in this command
+ * can cost at worst a re-ingest, never a lost survey.
+ *
+ * On acceptance a document is COPIED into inquiry-report/ through the ordinary
+ * inquiry path, with its own key. It is never referenced across the boundary.
+ */
+const DATAOPS_PREFIX = "dataops/";
+
 /** Material classes that carry no foundation information worth paying to read. */
 const BARREN = new Set(["photo", "blank", "map"]);
 
@@ -71,6 +87,9 @@ export async function ingestDossier(payload: {
     // -- fetch ---------------------------------------------------------------
     let storageKey = file;
     if (file.startsWith("s3://")) {
+      // Reading from inquiry-report/ is normal -- that is where the historical
+      // corpus lives. The row then points at the original object and no copy is
+      // made, so nothing in that prefix is touched.
       storageKey = file.replace("s3://", "");
       log.step("Downloading from S3");
       await s3.downloadFile(localPath, storageKey);
@@ -86,7 +105,16 @@ export async function ingestDossier(payload: {
       // Keyed by uuid like inquiry-report/, with the original name kept on the
       // artifact row: two people send "Funderingsrapport.pdf" in the same week.
       const ext = (file.split(".").pop() ?? "bin").toLowerCase();
-      storageKey = `dataops/${crypto.randomUUID()}.${ext}`;
+      storageKey = `${DATAOPS_PREFIX}${crypto.randomUUID()}.${ext}`;
+      // Belt and braces. The key is built above and cannot currently escape the
+      // prefix, but this command will be edited by someone who does not know
+      // what inquiry-report/ costs to lose.
+      if (!storageKey.startsWith(DATAOPS_PREFIX)) {
+        throw new Error(
+          `refusing to write outside ${DATAOPS_PREFIX}: ${storageKey}. ` +
+            `inquiry-report/ is the survey record and the pipeline never writes there.`,
+        );
+      }
       log.step(`Uploading to ${storageKey}`);
       const mime = (await pdf.fileKind(localPath)) === "pdf"
         ? "application/pdf"
