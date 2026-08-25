@@ -21,7 +21,22 @@ import { tmpdir } from "node:os";
  * one groundwater level in 39 was fabricated, at ordinary confidence, and was
  * indistinguishable from the real ones until someone opened the report.
  *
+ * Two ways in, and they differ only at the front:
+ *
+ *   --file      a document we are bringing in ourselves. Upload it, open a
+ *               dossier (or attach to one), then read it.
+ *   --dossier   a submission that already exists. The public form has already
+ *               written the dossier and its artifacts and put the bytes in
+ *               Spaces, so there is nothing to upload and nothing to insert --
+ *               only the reading half is left.
+ *
+ * The second exists because the review queue joins through `extraction`. A
+ * dossier nobody has read has no extraction, so it never appears, and a
+ * submission can sit correctly stored and completely invisible.
+ *
  *   bun run src/commands/ingest-dossier.ts --file <path|s3://key> [--dry-run]
+ *   bun run src/commands/ingest-dossier.ts --dossier <id> [--dry-run]
+ *   bun run src/commands/ingest-dossier.ts --reference FM2026-000042 [--dry-run]
  */
 
 export interface IngestResult {
@@ -66,6 +81,23 @@ export async function ingestDossier(payload: {
    * paper trail.
    */
   dossier_id?: number;
+  /**
+   * Read an artifact row that already exists rather than creating one.
+   *
+   * Set for anything the public form delivered: the API wrote the row and the
+   * browser put the bytes in `intake/` before this command ever runs. Creating
+   * a second row would give the reviewer the same document twice and leave the
+   * first copy forever unread.
+   */
+  artifact_id?: number;
+  /**
+   * What the sender said the document is. Bounds what may be concluded from it
+   * -- a `quickscan` cannot establish a foundation type, because the type in a
+   * QuickScan is our own data coming back. Never overrides classification.
+   */
+  declared_category?: string;
+  /** The sender's filename, when `file` is a uuid key that says nothing. */
+  display_name?: string;
   channel?: "email" | "upload" | "bulk_drop" | "api" | "invoer_app";
   subject?: string;
   external_ref?: string;
@@ -93,6 +125,9 @@ export async function ingestDossier(payload: {
       storageKey = file.replace("s3://", "");
       log.step("Downloading from S3");
       await s3.downloadFile(localPath, storageKey);
+    } else if (payload.artifact_id) {
+      // Should not be reachable: an existing artifact always carries an s3 key.
+      throw new Error("--dossier mode expects artifacts with an s3 storage_key");
     } else {
       await Bun.write(localPath, Bun.file(file));
 
@@ -181,14 +216,25 @@ export async function ingestDossier(payload: {
     }
 
     if (!dry_run) {
-      const [a] = await sql<{ id: number }[]>`
-        INSERT INTO dataops.artifact
-          (dossier_id, storage_key, original_filename, mime_type, size_bytes, page_count, lane)
-        VALUES (${result.dossierId}, ${storageKey}, ${basename(file)},
-                ${kind === "pdf" ? "application/pdf" : "image/jpeg"},
-                ${size}, ${pages}, ${result.lane})
-        RETURNING id`;
-      result.artifactId = a!.id;
+      if (payload.artifact_id) {
+        // The row is the form's; only what reading it taught us is ours to
+        // write. Filename, size and mime stay as the sender sent them.
+        result.artifactId = payload.artifact_id;
+        await sql`
+          UPDATE dataops.artifact
+             SET lane = ${result.lane}, page_count = ${pages}
+           WHERE id = ${payload.artifact_id}`;
+        log.step(`reading existing artifact #${payload.artifact_id}`);
+      } else {
+        const [a] = await sql<{ id: number }[]>`
+          INSERT INTO dataops.artifact
+            (dossier_id, storage_key, original_filename, mime_type, size_bytes, page_count, lane)
+          VALUES (${result.dossierId}, ${storageKey}, ${basename(file)},
+                  ${kind === "pdf" ? "application/pdf" : "image/jpeg"},
+                  ${size}, ${pages}, ${result.lane})
+          RETURNING id`;
+        result.artifactId = a!.id;
+      }
     }
 
     // -- redact + classify ---------------------------------------------------
@@ -302,7 +348,15 @@ export async function ingestDossier(payload: {
       result.lane === "text"
         ? await pdf.documentText(localPath, 1, annotationPages)
         : annotations.join(" ");
-    const adm = mayEstablishFoundationType(sourceText, file);
+    // The sender's own label is the strongest signal available for a scan, and
+    // the only one on a document whose filename is a uuid. Passing `file` alone
+    // here would silently disarm the QuickScan check for everything the public
+    // form delivers.
+    const adm = mayEstablishFoundationType(
+      sourceText,
+      payload.display_name ?? file,
+      payload.declared_category,
+    );
     if (!adm.ok) {
       log.warn(`bron niet toelaatbaar voor funderingstype`, { reden: adm.reason?.slice(0, 90) });
       fields = fields.map(f =>
@@ -376,6 +430,72 @@ export async function ingestDossier(payload: {
   }
 }
 
+/**
+ * Read a submission that already exists.
+ *
+ * The public form writes the dossier, the artifact rows and the bytes before
+ * this command ever runs, so there is nothing to acquire — only the reading
+ * half of the pipeline is left to do.
+ *
+ * Only artifacts with no extraction are touched, which makes the command safe
+ * to re-run: a submission that failed halfway resumes, and one already read is
+ * a no-op rather than a second set of proposals for the same document.
+ */
+export async function readSubmission(payload: {
+  dossier_id?: number;
+  reference?: string;
+  /** Read artifacts that already have an extraction as well. Off by default. */
+  again?: boolean;
+  dry_run?: boolean;
+}): Promise<IngestResult[]> {
+  const [d] = await sql<{ id: number; reference: string | null; subject: string | null }[]>`
+    SELECT id, reference, subject FROM dataops.dossier
+     WHERE ${payload.dossier_id ? sql`id = ${payload.dossier_id}` : sql`reference = ${payload.reference ?? null}`}
+     LIMIT 1`;
+  if (!d) throw new Error(`no dossier for ${payload.dossier_id ?? payload.reference}`);
+
+  const artifacts = await sql<
+    { id: number; storage_key: string; original_filename: string | null; declared_category: string | null }[]
+  >`
+    SELECT a.id, a.storage_key, a.original_filename, a.declared_category
+      FROM dataops.artifact a
+     WHERE a.dossier_id = ${d.id}
+       ${payload.again ? sql`` : sql`AND NOT EXISTS (SELECT 1 FROM dataops.extraction e WHERE e.artifact_id = a.id)`}
+     ORDER BY a.id`;
+
+  log.info(`dossier #${d.id}${d.reference ? ` (${d.reference})` : ""}`, {
+    onderwerp: d.subject ?? "-",
+    "te lezen": artifacts.length,
+  });
+  if (artifacts.length === 0) {
+    log.warn("nothing to read — every artifact already has an extraction");
+    return [];
+  }
+
+  const results: IngestResult[] = [];
+  for (const [i, a] of artifacts.entries()) {
+    log.step(`${ACCENT.type}[${i + 1}/${artifacts.length}]${RESET} ${a.original_filename ?? a.storage_key}` +
+      (a.declared_category ? ` ${ACCENT.muted}(sender: ${a.declared_category})${RESET}` : ""));
+    try {
+      results.push(
+        await ingestDossier({
+          file: `s3://${a.storage_key}`,
+          dossier_id: d.id,
+          artifact_id: a.id,
+          declared_category: a.declared_category ?? undefined,
+          display_name: a.original_filename ?? undefined,
+          dry_run: payload.dry_run,
+        }),
+      );
+    } catch (e) {
+      // One unreadable file must not strand the rest of a submission. The
+      // artifact keeps no extraction, so a later run picks it up again.
+      log.error(`  ${a.original_filename ?? a.storage_key}: ${String(e)}`);
+    }
+  }
+  return results;
+}
+
 if (import.meta.main) {
   const argv = process.argv.slice(2);
   const arg = (k: string) => {
@@ -384,22 +504,48 @@ if (import.meta.main) {
   };
 
   const file = arg("file");
-  if (!file) {
+  const dossierArg = arg("dossier");
+  const reference = arg("reference");
+
+  if (!file && !dossierArg && !reference) {
     console.error(
-      "usage: ingest-dossier --file <path|s3://key> [--dossier <id>] [--channel upload] [--subject ...] [--ref ...] [--dry-run]\n" +
-        "       --dossier attaches the file to an existing submission instead of opening a new one"
+      "usage:\n" +
+        "  bring a document in:\n" +
+        "    ingest-dossier --file <path|s3://key> [--dossier <id>] [--channel upload]\n" +
+        "                   [--subject ...] [--ref ...] [--dry-run]\n" +
+        "    --dossier attaches the file to an existing submission instead of opening a new one\n" +
+        "\n" +
+        "  read a submission that already exists (the public form writes these):\n" +
+        "    ingest-dossier --dossier <id> [--again] [--dry-run]\n" +
+        "    ingest-dossier --reference FM2026-000042 [--again] [--dry-run]\n" +
+        "    reads only artifacts with no extraction, so it is safe to re-run"
     );
     process.exit(1);
   }
 
   log.banner("Data Ops — ingest dossier");
   try {
+    if (!file) {
+      const rs = await readSubmission({
+        dossier_id: dossierArg ? Number(dossierArg) : undefined,
+        reference,
+        again: argv.includes("--again"),
+        dry_run: argv.includes("--dry-run"),
+      });
+      log.info("done", {
+        documenten: rs.length,
+        velden: rs.reduce((n, r) => n + r.fields, 0),
+        auto: rs.reduce((n, r) => n + r.autoAccepted, 0),
+      });
+      process.exit(0);
+    }
+
     const r = await ingestDossier({
       file,
       channel: (arg("channel") as any) ?? "upload",
       subject: arg("subject"),
       external_ref: arg("ref"),
-      dossier_id: arg("dossier") ? Number(arg("dossier")) : undefined,
+      dossier_id: dossierArg ? Number(dossierArg) : undefined,
       dry_run: argv.includes("--dry-run"),
     });
     log.info("done", { ...r });

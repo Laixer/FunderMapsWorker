@@ -299,6 +299,35 @@ Why auto-accept needs evidence as well as confidence: in the extraction run one
 groundwater level in 39 was fabricated at ordinary confidence and was
 indistinguishable from the 38 real ones until someone opened the report.
 
+### 5.1b Two ways in
+
+The command has two front halves and one back half.
+
+```
+--file <path|s3://key>   acquire ─ upload ─ open dossier ─┐
+                                                          ├─ classify ─ read ─ propose
+--dossier <id>           (the form already did all that) ─┘
+--reference FM2026-…
+```
+
+`--file` is the operator bringing a document in. `--dossier` / `--reference` is
+a submission that already exists: the public form wrote the dossier, the
+artifact rows and the bytes before this command ran, so there is nothing to
+acquire and nothing to insert — only the reading is left.
+
+The second mode exists because **the review queue joins through `extraction`**.
+A dossier nobody has read has no extraction, so it never appears, and a
+submission can sit correctly stored and completely invisible. It reads only
+artifacts with no extraction, which makes it safe to re-run: a half-failed
+submission resumes, and a finished one is a no-op rather than a second set of
+proposals for the same document. `--again` overrides that.
+
+It also carries `artifact.declared_category` into
+`mayEstablishFoundationType`. Without it, everything the form delivers arrives
+with a uuid for a filename and the QuickScan check has nothing to work with.
+
+---
+
 ### 5.2 Where it sits
 
 ```
