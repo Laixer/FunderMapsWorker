@@ -65,6 +65,58 @@ All channels converge on `dataops.dossier` + `dataops.artifact`.
 | **Bulk drop** | Spaces prefix watch | The `feedback-verwerkt-*` zips land here; one dossier per `melding-XXXX/` folder. |
 | **API** | `POST /dataops/dossier` | For anything programmatic later. |
 | **Invoer app form** | Direct authoring | Structured already — enters at stage 5, skips extraction. |
+| **Public form** | `FunderMapsIntake` → `POST /api/intake/dossier` | The terugmeldformulier. Unauthenticated; a shared secret guards the lane. The melder states the building, so stage 4 is answered before the document is opened. |
+
+### 3.1 The public form is not an incident channel
+
+The terugmeldformulier receives four kinds of document — archive drawing,
+QuickScan, funderingsonderzoek, herstelbewijs — and two kinds of remark: "your
+risk class is wrong" and "I have a question". Only the second pair is a melding.
+
+The first version of the intake route wrote all six straight to
+`report.incident`, which is wrong twice over. It calls a bureau report an
+incident, and — worse — **nothing consumes `report.incident`**: two read-only
+GET endpoints across nine repositories, no Studio route, no worker, no Windmill
+flow. A funderingsonderzoek delivered that way would sit in a table nobody works
+from and never reach the review queue.
+
+§2 already had the answer. A dossier **resolves to** one of incident, report or
+recovery, and that choice belongs to stage 10 (COMMIT), made by a person. So:
+
+```
+  form submission ──→ ONE dossier (channel = upload)
+                        ├── artifacts, if documents were attached
+                        └── payload, what the melder claims
+                              │
+                        review decides
+                              ▼
+                  INCIDENT · REPORT · RECOVERY
+```
+
+A submission with no attachment is still a dossier — one with no artifacts. It
+reaches a human through the same queue, and the reviewer is the one who decides
+it is a melding. Nothing about "is this an incident" is settled at the front
+door, because the front door cannot know.
+
+**What a form supplies that a bulk drop cannot.** The melder names the building.
+That is better evidence than stage 4 can derive from a document, and it arrives
+before the document is opened — so `resolution_status` is `resolved` from the
+start, and stage 4 becomes a re-check rather than a search. It also means a
+stale-BAG failure (issue #992) is visible immediately instead of after
+extraction.
+
+**One reference per submission.** `dossier.reference` (`FM2026-000042`) is what
+the melder is given, whatever their submission turns into. They should not have
+to know that their drawing became an inquiry and their complaint an incident.
+The code is sequential and therefore trivially enumerable, so anything reading
+by reference must also match the submitting email — and must answer a wrong
+email exactly as it answers a code that does not exist.
+
+**Contact details sit in their own column,** not inside `payload`. An erasure
+request has to be able to find personal data without parsing everything else the
+form sent.
+
+---
 
 **Sniff content, do not trust the extension.** Batch 1 of the feedback corpus
 already contains a `.png` with a soft hyphen in the filename, `.json` files of
@@ -325,6 +377,21 @@ day one rather than being retrofitted.
 | `dataops.extraction` | one model pass: model, prompt version, lane, cost |
 | `dataops.extraction_field` | one proposed value with its evidence and state |
 | `dataops.verdict` | what the human decided — the training set |
+
+Columns added for the public form (`sql/migrate/add_dataops_public_intake.sql`,
+all nullable — the 891 bulk_drop dossiers are untouched):
+
+| column | holds |
+|---|---|
+| `reference` | melder-facing code, `FM2026-000042` — sequential, not a credential |
+| `bag_id` / `building_id` / `resolution_status` | what the melder named, what it resolved to, and how well |
+| `submitter` | contact details; isolated so erasure can find them |
+| `payload` | the melder's claim: topic, answers, form version, provenance |
+| `outcome` / `outcome_note` / `outcome_at` | the dossier-level decision, in words a melder can read |
+
+`outcome` is not `review_state`. A dossier can be accepted while three of its
+eight proposed values were corrected; per-value decisions stay in
+`dataops.verdict`.
 
 Raw payloads still belong in a `jsonb` column alongside typed columns when the
 email and JSON channels land. Schema drift is guaranteed: feedback batch 1 alone
