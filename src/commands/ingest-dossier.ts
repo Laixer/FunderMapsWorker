@@ -512,7 +512,9 @@ if (import.meta.main) {
       "usage:\n" +
         "  bring a document in:\n" +
         "    ingest-dossier --file <path|s3://key> [--dossier <id>] [--channel upload]\n" +
-        "                   [--subject ...] [--ref ...] [--dry-run]\n" +
+        "                   [--subject ...] [--ref ...] [--category <label>] [--dry-run]\n" +
+        "    --category says what the document is, as the sender would label it\n" +
+        "               (quickscan | foundationresearch | archieveresearch | herstelbewijs | foto)\n" +
         "    --dossier attaches the file to an existing submission instead of opening a new one\n" +
         "\n" +
         "  read a submission that already exists (the public form writes these):\n" +
@@ -546,6 +548,9 @@ if (import.meta.main) {
       subject: arg("subject"),
       external_ref: arg("ref"),
       dossier_id: dossierArg ? Number(dossierArg) : undefined,
+      // An operator ingesting by hand knows what they are holding, and the
+      // pipeline should be told for the same reason the form asks.
+      declared_category: arg("category"),
       dry_run: argv.includes("--dry-run"),
     });
     log.info("done", { ...r });
