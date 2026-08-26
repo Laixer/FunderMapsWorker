@@ -73,7 +73,7 @@ CREATE TYPE dataops.read_lane AS ENUM ('vision', 'text', 'none');
 -- Where a proposed value is in its life.
 CREATE TYPE dataops.review_state AS ENUM (
     'pending',          -- waiting for a human
-    'auto_accepted',    -- cleared the confidence gate, no human looked
+    'auto_accepted',    -- legacy: cleared a confidence gate that no longer exists (gone 2026-08-26); treat as pending
     'confirmed',        -- a human looked and agreed
     'corrected',        -- a human looked and changed it   <- the useful label
     'rejected',         -- a human says the document does not support any value

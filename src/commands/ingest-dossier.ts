@@ -9,17 +9,26 @@ import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { tmpdir } from "node:os";
 
+/** Where the old auto-accept gate sat. Now only a label in the log. */
+const HIGH_CONFIDENCE = 0.95;
+
 /**
  * Walk one document through the Data Ops front door.
  *
  *   sniff -> redact -> classify every page -> pick a lane -> read -> propose
  *
  * Nothing here decides anything. Every value lands in dataops.extraction_field
- * as 'pending' for a person to confirm, or as 'auto_accepted' when it clears
- * the confidence gate AND carries the passage it came from. The gate without
- * the evidence requirement would be worth little: in the extraction benchmark
- * one groundwater level in 39 was fabricated, at ordinary confidence, and was
- * indistinguishable from the real ones until someone opened the report.
+ * as 'pending' for a person to confirm -- every one, whatever it scored. There
+ * used to be a confidence gate that marked >=0.95 values 'auto_accepted'; it
+ * went on 2026-08-26 (Yorick): 100% of what comes in through the portal is
+ * reviewed by a person, and the model's job is to make that review faster,
+ * not (yet) to replace it. The score is still stored, so the reviewer sees
+ * which values the model was sure of. The reason a gate would be dangerous
+ * anyway: in the extraction benchmark one groundwater level in 39 was
+ * fabricated, at ordinary confidence, and was indistinguishable from the real
+ * ones until someone opened the report -- and on the first real submissions a
+ * 102-page report about a 1924 Rotterdam street cleared it against a 2008
+ * Schiedam new-build, because nothing compared the document to the address.
  *
  * Two ways in, and they differ only at the front:
  *
@@ -46,7 +55,8 @@ export interface IngestResult {
   pages: number;
   redactedPages: number;
   fields: number;
-  autoAccepted: number;
+  /** Values the model scored >= 0.95 with a quote and no inference. Informational only. */
+  highConfidence: number;
 }
 
 /**
@@ -112,7 +122,7 @@ export async function ingestDossier(payload: {
   const localPath = join(workDir, basename(file));
   const result: IngestResult = {
     dossierId: null, artifactId: null, lane: "none",
-    pages: 0, redactedPages: 0, fields: 0, autoAccepted: 0,
+    pages: 0, redactedPages: 0, fields: 0, highConfidence: 0,
   };
 
   try {
@@ -368,19 +378,15 @@ export async function ingestDossier(payload: {
 
     result.fields = fields.length;
 
-    // Decide the gate here, not inside the write path: a --dry-run has to
-    // report exactly what a real run would do, or it is not a rehearsal.
-    // Inference is allowed and often right, but it is not the same as reading a
-    // value off the page, and the two were previously indistinguishable at the
-    // gate. The prompt now makes the model mark an inferred value with
-    // "afgeleid:"; anything so marked goes to a human whatever it scores.
+    // Inference is allowed and often right, but it is not the same as reading
+    // a value off the page. The prompt makes the model mark an inferred value
+    // with "afgeleid:" so the reviewer can tell the two apart.
     const inferred = (f: vision.FieldRead) => /^\s*afgeleid\s*:/i.test(f.evidence ?? "");
-    const cleared = (f: vision.FieldRead) =>
-      !f.rejected &&
-      (f.confidence ?? 0) >= env.DATAOPS_AUTO_ACCEPT &&
-      !!f.evidence?.trim() &&
-      !inferred(f);
-    result.autoAccepted = fields.filter(cleared).length;
+    // Not a gate any more -- a count for the log and the summary line. Every
+    // value is written 'pending' regardless.
+    const sure = (f: vision.FieldRead) =>
+      !f.rejected && (f.confidence ?? 0) >= HIGH_CONFIDENCE && !!f.evidence?.trim() && !inferred(f);
+    result.highConfidence = fields.filter(sure).length;
 
     if (!dry_run && result.artifactId !== null) {
       const [ex] = await sql<{ id: number }[]>`
@@ -393,8 +399,6 @@ export async function ingestDossier(payload: {
         RETURNING id`;
 
       for (const f of fields) {
-        // Auto-accept needs BOTH a high score and a passage to point at.
-        const auto = cleared(f);
         // A value from an inadmissible source is kept, not discarded: the
         // reviewer should see what the document said and why we will not take
         // it. 'rejected' plus the reason in the evidence makes that legible.
@@ -403,25 +407,25 @@ export async function ingestDossier(payload: {
             (extraction_id, field, value, confidence, evidence, state)
           VALUES (${ex!.id}, ${f.field}, ${f.value}, ${f.confidence},
                   ${f.rejected ? `${f.rejected}\n\nCitaat uit het document: ${f.evidence ?? ""}` : f.evidence},
-                  ${f.rejected ? "rejected" : auto ? "auto_accepted" : "pending"})`;
+                  ${f.rejected ? "rejected" : "pending"})`;
       }
     }
 
     for (const f of fields) {
       const gate = f.rejected
         ? `${ACCENT.fail}geweigerd${RESET}`
-        : cleared(f)
-        ? `${ACCENT.ok}auto${RESET}`
         : inferred(f)
-          ? `${ACCENT.muted}human(afgeleid)${RESET}`
-          : `${ACCENT.muted}human${RESET}`;
+          ? `${ACCENT.muted}afgeleid${RESET}`
+          : sure(f)
+            ? `${ACCENT.ok}zeker${RESET}`
+            : `${ACCENT.muted}onzeker${RESET}`;
       log.step(
         `  ${f.field} = ${ACCENT.type}${f.value}${RESET} ` +
           `(${f.confidence ?? "?"}) ${gate}  ${ACCENT.muted}${(f.evidence ?? "no evidence").slice(0, 70)}${RESET}`
       );
     }
     log.step(
-      `${result.fields} field(s) proposed, ${result.autoAccepted} cleared the gate`,
+      `${result.fields} field(s) proposed (${result.highConfidence} high-confidence), all pending review`,
       Date.now() - started
     );
     return result;
@@ -537,7 +541,7 @@ if (import.meta.main) {
       log.info("done", {
         documenten: rs.length,
         velden: rs.reduce((n, r) => n + r.fields, 0),
-        auto: rs.reduce((n, r) => n + r.autoAccepted, 0),
+        zeker: rs.reduce((n, r) => n + r.highConfidence, 0),
       });
       process.exit(0);
     }

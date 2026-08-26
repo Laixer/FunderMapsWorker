@@ -35,9 +35,6 @@ const envSchema = z.object({
   DATAOPS_CLASSIFY_MODEL: z.string().default("google/gemini-3.7-flash"),
   DATAOPS_VISION_MODEL: z.string().default("google/gemini-3.7-flash"),
   DATAOPS_TEXT_MODEL: z.string().default("google/gemini-3.7-flash"),
-  // Nothing is auto-accepted below this, and nothing without an evidence quote.
-  // At >=0.95 the archive benchmark cleared 46% of the queue at 97.3%.
-  DATAOPS_AUTO_ACCEPT: z.coerce.number().default(0.95),
 
   // Worker
   POLL_INTERVAL: z.coerce.number().default(30),
