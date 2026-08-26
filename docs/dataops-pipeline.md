@@ -279,15 +279,18 @@ superseded.
                    +----------------+-----------------+
                                     v
                        .----------------------------.
-                       |  confidence >= 0.95        |
-                       |        AND                 |
-                       |  evidence quote present    |   <- both, always
-                       '------+---------------+-----'
-                         yes  |               |  no
-                   +----------v-----+   +-----v----------+
-                   | auto_accepted  |   |    pending     |
-                   +----------------+   +----------------+
+                       |  every value -> pending    |   <- no gate
+                       |  (confidence + quote kept  |
+                       |   for the reviewer to see) |
+                       '----------------------------'
 ```
+
+There is no confidence gate (since 2026-08-26). 100% of what arrives is looked
+at by a person; the model's job is to make that look faster. A dossier the
+model could read nothing from -- a photo of a cat, a blank scan -- still goes
+to the queue, so a person can throw it out. `auto_accepted` remains in the
+`review_state` enum for rows written before that date; the API treats it
+exactly like `pending`.
 
 Why the lane split is not cosmetic: on a scan the text layer is whatever the
 preparer typed on top, so it must be removed; on a bureau report the text layer
@@ -295,9 +298,12 @@ preparer typed on top, so it must be removed; on a bureau report the text layer
 got this backwards and leaked the answer into 166 of its 198 documents, scoring
 95% against its own handwriting.
 
-Why auto-accept needs evidence as well as confidence: in the extraction run one
+Why a gate would have been dangerous anyway: in the extraction run one
 groundwater level in 39 was fabricated at ordinary confidence and was
-indistinguishable from the 38 real ones until someone opened the report.
+indistinguishable from the 38 real ones until someone opened the report; and on
+the first real portal submissions a 102-page report about a 1924 Rotterdam
+street scored 0.95 on six fields against a 2008 Schiedam new-build, because
+nothing compared the document to the address it was filed under.
 
 ### 5.1b Two ways in
 
