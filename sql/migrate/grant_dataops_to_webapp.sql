@@ -34,5 +34,11 @@ TO fundermaps_webapp;
 GRANT INSERT ON dataops.verdict TO fundermaps_webapp;
 GRANT UPDATE (state) ON dataops.extraction_field TO fundermaps_webapp;
 
+-- closing a dossier as a whole (POST /dataops/dossier/:id/outcome, API #115).
+-- Column-scoped on purpose: the API may say what became of a submission, and
+-- nothing else about it. Applied to prod 2026-08-27 after the first reviewer
+-- hit "permission denied for table dossier" on the first real close.
+GRANT UPDATE (outcome, outcome_note, outcome_at) ON dataops.dossier TO fundermaps_webapp;
+
 -- and the same for tables a later migration adds
 ALTER DEFAULT PRIVILEGES IN SCHEMA dataops GRANT SELECT ON TABLES TO fundermaps_webapp;
