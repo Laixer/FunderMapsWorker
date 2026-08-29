@@ -343,29 +343,8 @@ Voorbeelden van goed bewijs, uit echte rapporten (waarde <- citaat):
 Een tabelcitaat draagt altijd de kop of het rijlabel mee; een getal zonder context is
 geen bewijs.
 
-Een rapport beschrijft vaak meerdere adressen. De velden hierboven gelden voor het
-rapport als geheel (of het hoofdadres). Geef DAARNAAST per adres dat het rapport
-onderzoekt een object in "addresses", met de gegevens die het rapport voor DAT adres
-vastlegt -- meestal uit de inmeettabellen en de schade-opname. Sleutels per adres:
-
-  address                  het adres zoals het rapport het schrijft ("Adamshofstraat 93A")
-  foundation_type, foundation_quality, built_year, wood_level, pile_head_level,
-  pile_tip_level, groundwater_level, groundlevel, pile_diameter_top,
-  wood_penetration_depth   zelfde betekenis en eenheid als hierboven, maar voor dit adres
-  crack_facade_front_type  scheurvorming voorgevel, een van: none (geen), small (licht),
-                           mediocre (matig), big (ernstig)
-  crack_facade_back_type   idem achtergevel
-  crack_indoor_type        idem inpandig
-  skewed_parallel          scheefstand evenwijdig aan de gevel (lintvoegmeting), als
-                           getal zoals het rapport het geeft, in mm/m of als 1:N -> N
-  skewed_perpendicular     scheefstand haaks op de gevel (loodmeting), als getal
-  threshold_front_level    dorpelhoogte voorzijde in meters t.o.v. NAP
-  threshold_back_level     dorpelhoogte achterzijde in meters t.o.v. NAP
-  settlement_speed         zakkingssnelheid in mm per jaar, NEGATIEF voor zakking
-  evidence                 per gevuld veld het citaat, met het adres en de tabelkop erin
-
-Laat een sleutel weg (of null) als het rapport die voor dat adres niet geeft. Verzin
-geen adressen: alleen adressen die het rapport zelf noemt.
+Een rapport beschrijft vaak meerdere adressen. Geef dan de waarde voor het adres dat
+het rapport als hoofdadres of eerste adres noemt, en zet het adres in het citaat.
 
 De WAARDE van een veld is alleen het getal, de code, true/false of het jaartal --
 nooit het citaat. Het citaat hoort uitsluitend onder "evidence", met dezelfde
@@ -381,10 +360,7 @@ Antwoord met alleen JSON, met exact deze sleutels:
  "wood_type": null, "wood_penetration_depth": null, "wood_encroachment": null,
  "foundation_depth": null, "groundlevel": null,
  "damage_cause": [], "damage_characteristics": [],
- "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0,
- "addresses": [{"address": "...", "foundation_type": null, "wood_level": null,
-                "crack_facade_front_type": null, "skewed_parallel": null,
-                "evidence": {"wood_level": "..."}}]}`;
+ "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0}`;
 
 /**
  * Field keys are the `report.inquiry_sample` column names (English, like all
@@ -483,6 +459,82 @@ const ADDRESS_NUMERIC = new Set([
   "skewed_perpendicular", "threshold_front_level", "threshold_back_level", "settlement_speed",
 ]);
 
+const ADDRESS_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek dat meerdere
+adressen kan beschrijven. Haal PER ADRES dat het rapport onderzoekt de gegevens eruit
+die het rapport voor dat adres vastlegt -- meestal uit de inmeettabellen (hoogtes,
+palen), de lintvoeg-/loodmetingen en de schade-opname. Verzin geen adressen: alleen
+adressen die het rapport zelf noemt. Staat een gegeven er voor een adres niet, laat
+de sleutel dan weg.
+
+Sleutels per adres (eenheden exact zo):
+  address                  het adres zoals het rapport het schrijft, bijv. "Adamshofstraat 93A"
+  foundation_type          een van de codes hieronder
+  foundation_quality       bad | mediocre | tolerable | good | mediocre_good | mediocre_bad
+  built_year               bouwjaar als het rapport dat voor dit adres vaststelt (niet uit BAG)
+  wood_level               bovenkant hout/langshout, m t.o.v. NAP
+  pile_head_level          bovenkant paal, m t.o.v. NAP
+  pile_tip_level           paalpunt, m t.o.v. NAP
+  groundwater_level        grondwaterstand, m t.o.v. NAP
+  groundlevel              maaiveld, m t.o.v. NAP
+  pile_diameter_top        paaldiameter kop, mm
+  wood_penetration_depth   indringing hout (priktest), mm
+  crack_facade_front_type  scheuren voorgevel: none | small | mediocre | big
+  crack_facade_back_type   scheuren achtergevel: none | small | mediocre | big
+  crack_indoor_type        scheuren inpandig: none | small | mediocre | big
+  skewed_parallel          lintvoegmeting, het getal zoals het rapport het geeft (mm/m, of 1:N -> N)
+  skewed_perpendicular     loodmeting, idem
+  threshold_front_level    dorpel voorzijde, m t.o.v. NAP
+  threshold_back_level     dorpel achterzijde, m t.o.v. NAP
+  settlement_speed         zakkingssnelheid, mm/jaar, negatief voor zakking
+  evidence                 object: per gevuld veld het citaat met adres en tabelkop erin
+
+Funderingstype-codes:
+${FOUNDATION_VOCABULARY}
+
+Regels: citeer letterlijk; een tabelwaarde altijd met de kop of het rijlabel erbij;
+afgeleide waarden beginnen met "afgeleid: ". Getallen met een punt als decimaalteken.
+
+Antwoord met alleen JSON:
+{"addresses": [{"address": "...", "wood_level": -2.47, "crack_facade_front_type": "small",
+                "evidence": {"wood_level": "Tabel 9.3 ... | Adamshofstraat 93A | -2,47"}}],
+ "confidence": 0.0}`;
+
+/**
+ * The per-address pass. Its own call, its own output budget: folded into the
+ * document-level prompt it was emitted last and got truncated (phase-B run 1:
+ * 25 address rows for 121 known addresses, and the trailing document fields
+ * collapsed with it).
+ */
+export async function extractAddressRows(reportText: string): Promise<FieldRead[]> {
+  const j = await ask({
+    model: env.DATAOPS_TEXT_MODEL,
+    temperature: 0,
+    max_tokens: 24000,
+    messages: [{ role: "user", content: `${ADDRESS_PROMPT}\n\n=== RAPPORT ===\n${reportText}` }],
+  });
+  const a = parseJson(j.choices?.[0]?.message?.content ?? "", ["addresses"]);
+  if (!a) return [];
+  const conf = norm01(a["confidence"]);
+  const out: FieldRead[] = [];
+  const addresses = Array.isArray(a["addresses"]) ? (a["addresses"] as Record<string, unknown>[]) : [];
+  for (const row of addresses.slice(0, 60)) {
+    const address = String(row?.["address"] ?? "").trim();
+    if (!address) continue;
+    const rev = (row["evidence"] ?? {}) as Record<string, string>;
+    for (const f of ADDRESS_FIELDS) {
+      const v = row[f];
+      if (v === null || v === undefined || v === "" || v === "onbekend") continue;
+      let value = String(v).trim().toLowerCase();
+      if (f.startsWith("crack_")) { if (!CRACK_TYPES.has(value)) continue; }
+      else if (f === "foundation_quality") { value = QUALITY_CODES.has(value) ? value : (QUALITY_FROM_DUTCH[value.replace(/\s+/g, "_")] ?? ""); if (!value) continue; }
+      else if (ADDRESS_NUMERIC.has(f)) { const n = normaliseNumeric(String(v), rev[f] ?? null); if (!n) continue; value = n.value; }
+      else value = String(v).trim();
+      out.push({ field: f, value, evidence: rev[f] ?? null, confidence: conf, address });
+    }
+  }
+  return out;
+}
+
 export interface FieldRead {
   field: string;
   value: string;
@@ -510,24 +562,6 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
   if (!a) return [];
   const ev = (a["evidence"] ?? {}) as Record<string, string>;
   const conf = norm01(a["confidence"]);
-
-  const perAddress: FieldRead[] = [];
-  const addresses = Array.isArray(a["addresses"]) ? (a["addresses"] as Record<string, unknown>[]) : [];
-  for (const row of addresses.slice(0, 40)) {
-    const address = String(row?.["address"] ?? "").trim();
-    if (!address) continue;
-    const rev = (row["evidence"] ?? {}) as Record<string, string>;
-    for (const f of ADDRESS_FIELDS) {
-      const v = row[f];
-      if (v === null || v === undefined || v === "" || v === "onbekend") continue;
-      let value = String(v).trim().toLowerCase();
-      if (f.startsWith("crack_")) { if (!CRACK_TYPES.has(value)) continue; }
-      else if (f === "foundation_quality") { value = QUALITY_CODES.has(value) ? value : (QUALITY_FROM_DUTCH[value.replace(/\s+/g, "_")] ?? ""); if (!value) continue; }
-      else if (ADDRESS_NUMERIC.has(f)) { const n = normaliseNumeric(String(v), rev[f] ?? null); if (!n) continue; value = n.value; }
-      else value = String(v).trim();
-      perAddress.push({ field: f, value, evidence: rev[f] ?? null, confidence: conf, address });
-    }
-  }
 
   return [...EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
     let v = a[f];
@@ -566,5 +600,5 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
       return [{ field: f, value: code, evidence: `${String(v)} jaar -- ${ev[f] ?? ""}`.trim(), confidence: conf }];
     }
     return [{ field: f, value: String(v), evidence: ev[f] ?? null, confidence: conf }];
-  }), ...perAddress];
+  }), ...(await extractAddressRows(reportText))];
 }
