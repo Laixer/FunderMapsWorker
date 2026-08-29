@@ -37,10 +37,11 @@ const DECLARED_PROVENANCE: RegExp[] = [
   /funderingsrisico\s?rapport/i,      // the NWWI attachment title
   /risico\s+op\s+droogstandsproblematiek/i, // our own risk model's wording
   /\bfunder\s?maps\b/i,               // named as the source
+  /funderingsattest/i,                // the attest re-states BAG year + our risk class
 ];
 
 /** Only trusted in a filename, where it names the document rather than mentions it. */
-const NAMES_ITSELF = /quick\s?scan|fase[\s._-]?0|funderingsrisico/i;
+const NAMES_ITSELF = /quick\s?scan|fase[\s._-]?0|funderingsrisico|funderingsattest/i;
 
 /**
  * Look only at the opening of the document. These reports declare their source
@@ -81,7 +82,7 @@ export function mayEstablishFoundationType(
     return {
       ok: false,
       reason:
-        `bron niet toelaatbaar voor funderingstype: de indiener heeft dit bestand ` +
+        `bron niet toelaatbaar: de indiener heeft dit bestand ` +
         `gelabeld als "${declaredCategory}". Het funderingstype in een QuickScan ` +
         `is FunderMaps-data die naar ons terugkomt.`,
     };
@@ -95,7 +96,7 @@ export function mayEstablishFoundationType(
       return {
         ok: false,
         reason:
-          `bron niet toelaatbaar voor funderingstype: het document noemt zijn eigen ` +
+          `bron niet toelaatbaar: het document noemt zijn eigen ` +
           `herkomst ("${m[0]}") in de kop. QuickScans (Fase 0) en NWWI-risicorapporten ` +
           `tonen FunderMaps-data; het funderingstype daarin is onze eigen uitkomst.`,
       };
@@ -107,7 +108,7 @@ export function mayEstablishFoundationType(
     return {
       ok: false,
       reason:
-        `bron niet toelaatbaar voor funderingstype: de bestandsnaam ("${name}") ` +
+        `bron niet toelaatbaar: de bestandsnaam ("${name}") ` +
         `duidt op een QuickScan of funderingsrisicorapport. Het funderingstype ` +
         `daarin is FunderMaps-data die naar ons terugkomt.`,
     };
@@ -117,8 +118,16 @@ export function mayEstablishFoundationType(
 }
 
 /**
- * Only the foundation type is suspect. A QuickScan's own measurements -- crack
- * observations, skew, the KCAF outcome, groundwater -- are genuine work by
- * someone on site, and stay admissible.
+ * Every field the text lane extracts. This used to be the foundation type
+ * alone, on the theory that a QuickScan's own measurements were genuine work
+ * by someone on site. Don's verdicts on 2026-08-28/29 said otherwise: of 20
+ * rejections, 16 were values quoted back from our own output, and they were
+ * the bouwjaar (BAG, via us), the grondwaterstand (our model's) and the
+ * herstel advice as often as the type. A document that declares FunderMaps as
+ * its source establishes nothing; it goes to the reviewer with every value
+ * marked, and the reviewer can still take one over by hand.
  */
-export const FIELDS_REQUIRING_ADMISSIBLE_SOURCE = new Set(["funderingstype"]);
+export const FIELDS_REQUIRING_ADMISSIBLE_SOURCE = new Set([
+  "funderingstype", "bouwjaar", "funderingskwaliteit",
+  "herstel_geadviseerd", "handhavingstermijn", "grondwaterstand",
+]);
