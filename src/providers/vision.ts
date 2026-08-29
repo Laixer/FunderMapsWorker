@@ -538,7 +538,6 @@ export async function extractAddressRows(reportText: string): Promise<FieldRead[
       if (v === null || v === undefined || v === "" || v === "onbekend") continue;
       let value = String(v).trim().toLowerCase();
       if (f.startsWith("crack_")) { if (!CRACK_TYPES.has(value)) continue; }
-      else if (f === "foundation_quality") { value = QUALITY_CODES.has(value) ? value : (QUALITY_FROM_DUTCH[value.replace(/\s+/g, "_")] ?? ""); if (!value) continue; }
       else if (ADDRESS_NUMERIC.has(f)) { const n = normaliseNumeric(String(v), rev[f] ?? null); if (!n) continue; value = n.value; }
       else value = String(v).trim();
       if (f === "skewed_parallel" || f === "skewed_perpendicular") value = skewFromCitation(value, rev[f]);
