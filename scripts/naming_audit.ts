@@ -1,7 +1,7 @@
 // Naming convention audit. Reproducible — re-run after any rename migration
 // to confirm no new drift was introduced.
 //
-// When auditing C#/SQL callers around a column rename, ALSO grep for
+// When auditing SQL callers around a column rename (the C# monolith is retired), ALSO grep for
 // `= <alias>.<col>` (JOIN-on-right) patterns, not just `<alias>.<col>`
 // standalone. We learned this the hard way during Phase D — three JOIN
 // clauses survived a clean grep because the column was on the right

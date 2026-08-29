@@ -1209,82 +1209,6 @@ $$;
 
 
 --
--- Name: refresh_clusters(); Type: PROCEDURE; Schema: data; Owner: -
---
-
-CREATE PROCEDURE data.refresh_clusters()
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    local_cluster text[];
-    neighbors text[];
-    counter integer := 0;
-    cluster_id uuid;
-BEGIN
-    DROP TABLE IF EXISTS building_all;
-    CREATE TEMP TABLE building_all (
-        building_id text NOT NULL,
-        CONSTRAINT building_all_pkey PRIMARY KEY (building_id)
-    );
-
-    INSERT INTO building_all
-    SELECT ba.external_id FROM geocoder.building_active AS ba
-    EXCEPT
-    SELECT c.building_id FROM data.building_cluster AS c;
-
-    TRUNCATE data.building_cluster;
-
-    LOOP
-        SELECT INTO cluster_id uuid_generate_v4();
-        SELECT INTO local_cluster ARRAY[building_id] FROM building_all LIMIT 1;
-
-        EXIT WHEN local_cluster IS NULL;
-
-        neighbors := local_cluster;
-
-        LOOP
-            SELECT array_agg(b2.external_id) INTO neighbors
-            FROM geocoder.building_active b
-            JOIN geocoder.building_active b2
-                ON st_intersects(b.geom, b2.geom)
-                AND b.built_year = b2.built_year
-                AND b2.external_id <> all(local_cluster)
-            WHERE b.built_year IS NOT NULL
-            AND b.external_id = any(neighbors);
-
-            EXIT WHEN neighbors IS NULL;
-
-            local_cluster := local_cluster || neighbors;
-        END LOOP;
-
-        IF array_length(local_cluster, 1) > 1 THEN
-            INSERT INTO data.building_cluster
-            SELECT unnest(local_cluster), cluster_id
-            ON CONFLICT DO NOTHING;
-        END IF;
-
-        DELETE FROM building_all
-        WHERE building_id = any(local_cluster);
-
-        IF counter % 1000 = 0 THEN
-            RAISE NOTICE 'Counter %', counter;
-            COMMIT;
-        END IF;
-
-        IF counter % 50000 = 0 AND counter > 0 THEN
-            RAISE NOTICE 'Reindex %', counter;
-            REINDEX INDEX data.building_all_pk;
-        END IF;
-
-        counter := counter + 1;
-    END LOOP;
-
-    DROP TABLE building_all;
-END;
-$$;
-
-
---
 -- Name: geocoder_generate_id(); Type: FUNCTION; Schema: geocoder; Owner: -
 --
 
@@ -1621,23 +1545,6 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
 
     ANALYZE maplayer.building_tiles;
 $$;
-
-
---
--- Name: fir_generate_id(integer); Type: FUNCTION; Schema: report; Owner: -
---
-
-CREATE FUNCTION report.fir_generate_id(client_id integer) RETURNS text
-    LANGUAGE sql
-    AS $_$select 'FIR' || lpad($1::text, 2, '0') || date_part('year', CURRENT_DATE) || '-' || nextval('report.incident_id_seq');
-$_$;
-
-
---
--- Name: FUNCTION fir_generate_id(client_id integer); Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON FUNCTION report.fir_generate_id(client_id integer) IS 'Generate a new FIR identifier.';
 
 
 --
@@ -4008,18 +3915,6 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
 
 
 --
--- Name: address_building; Type: VIEW; Schema: geocoder; Owner: -
---
-
-CREATE VIEW geocoder.address_building AS
- SELECT addr.id AS address_id,
-    ba.external_id AS building_id,
-    ba.geom
-   FROM (geocoder.address addr
-     JOIN geocoder.building_active ba ON (((addr.building_id)::text = ba.external_id)));
-
-
---
 -- Name: residence; Type: TABLE; Schema: geocoder; Owner: -
 --
 
@@ -4383,18 +4278,6 @@ ALTER TABLE report.dossier_event ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: incident_id_seq; Type: SEQUENCE; Schema: report; Owner: -
---
-
-CREATE SEQUENCE report.incident_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
 
 
 --

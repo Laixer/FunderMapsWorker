@@ -1,4 +1,6 @@
--- !! REVERTED 2026-07-23 — DO NOT RE-RUN before C# Webservice EOL (Aug 2026).
+-- !! REVERTED 2026-07-23. BLOCKER LIFTED 2026-08-29: the C# Webservice (the MapEnum/Dapper
+-- reader below) was deleted from production, so this can be re-run after re-checking
+-- how FunderMapsApi (Drizzle/Better Auth) reads organization_user.role.
 -- The "Verified 2026-07-20" claim below was wrong: the live Webservice reads
 -- organization_user.role on every API-key sign-in (SignInService.
 -- CreateClaimsIdentityAsync → GetOrganizationRoleByUserIdAsync), and this
