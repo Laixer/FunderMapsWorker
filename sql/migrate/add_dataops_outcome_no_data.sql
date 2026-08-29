@@ -1,0 +1,11 @@
+-- A fourth way for a dossier to leave the review queue.
+--
+-- Don closed 30 logos and home.jpg files on 2026-08-28 as 'accepted' with the
+-- note "promotie materiaal, bevat geen relevante funderingsinformatie", because
+-- Afgehandeld was the only one-click close. For a bulk drop that is harmless;
+-- for a portal melder 'accepted' reads as "uw gegevens zijn verwerkt", which
+-- is a lie about a photo of a logo. 'no_data' says what happened: we looked,
+-- there was nothing to take, nothing changed, nobody is at fault.
+--
+-- Applied to prod 2026-08-29 (doadmin owns the type).
+ALTER TYPE dataops.dossier_outcome ADD VALUE IF NOT EXISTS 'no_data';
