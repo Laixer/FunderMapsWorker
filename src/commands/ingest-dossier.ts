@@ -48,6 +48,46 @@ const HIGH_CONFIDENCE = 0.95;
  *   bun run src/commands/ingest-dossier.ts --reference FM2026-000042 [--dry-run]
  */
 
+/**
+ * "Adamshofstraat 93A" -> geocoder.address.id, or null.
+ *
+ * Street + number, exact on the number (93A is not 93), case-insensitive on
+ * the street; when the dossier already names a building, its city breaks a
+ * tie between the many Kerkstraten. Nothing fuzzier: a wrong address on a
+ * sample is worse than none, and the reviewer sees the raw text either way.
+ */
+async function resolveAddress(text: string, dossierId: number | null): Promise<string | null> {
+  const m = text.trim().match(/^(.+?)\s+(\d+)\s*([a-zA-Z]?)\b/);
+  if (!m) return null;
+  const street = m[1]!.trim();
+  const number = `${m[2]}${(m[3] ?? "").toUpperCase()}`;
+  let rows: { id: string; city: string }[] = await sql<{ id: string; city: string }[]>`
+    SELECT a.id, a.city FROM geocoder.address a
+     WHERE lower(a.street) = lower(${street}) AND upper(a.building_number) = ${number}
+     LIMIT 20`;
+  if (rows.length === 0 && !m[3]) {
+    // "93" in the report, "93A" / "93B" in the BAG: the report addresses the
+    // pand. Accept the units of that number when they all sit on one building,
+    // and take the first unit -- the invoer convention for the same reports.
+    const units = await sql<{ id: string; city: string; building_id: string | null }[]>`
+      SELECT a.id, a.city, a.building_id FROM geocoder.address a
+       WHERE lower(a.street) = lower(${street}) AND a.building_number ~ ${`^${m[2]}[A-Za-z]`}
+       ORDER BY a.building_number LIMIT 20`;
+    const buildings = new Set(units.map((u) => u.building_id));
+    if (units.length && buildings.size === 1) rows = [units[0]!];
+  }
+  if (rows.length === 1) return rows[0]!.id;
+  if (rows.length === 0) return null;
+  if (dossierId) {
+    const [d] = await sql<{ city: string | null }[]>`
+      SELECT a.city FROM dataops.dossier d JOIN geocoder.address a ON a.building_id = d.building_id
+       WHERE d.id = ${dossierId} LIMIT 1`;
+    const inCity = rows.filter((r) => d?.city && r.city === d.city);
+    if (inCity.length === 1) return inCity[0]!.id;
+  }
+  return null;
+}
+
 export interface IngestResult {
   dossierId: number | null;
   artifactId: number | null;
@@ -398,16 +438,26 @@ export async function ingestDossier(payload: {
                 ${result.lane === "text" ? pages : cleanPages.length}, now())
         RETURNING id`;
 
+      // Per-address values: resolve what the report wrote to a geocoder row
+      // once per distinct address. Unresolved is fine -- the text is kept and
+      // the reviewer sees it -- but a resolved id is what commit needs.
+      const addressIds = new Map<string, string | null>();
+      for (const f of fields) {
+        if (!f.address || addressIds.has(f.address)) continue;
+        addressIds.set(f.address, await resolveAddress(f.address, payload.dossier_id ?? result.dossierId));
+      }
       for (const f of fields) {
         // A value from an inadmissible source is kept, not discarded: the
         // reviewer should see what the document said and why we will not take
         // it. 'rejected' plus the reason in the evidence makes that legible.
         await sql`
           INSERT INTO dataops.extraction_field
-            (extraction_id, field, value, confidence, evidence, state)
+            (extraction_id, field, value, confidence, evidence, state, address_text, address_id)
           VALUES (${ex!.id}, ${f.field}, ${f.value}, ${f.confidence},
                   ${f.rejected ? `${f.rejected}\n\nCitaat uit het document: ${f.evidence ?? ""}` : f.evidence},
-                  ${f.rejected ? "rejected" : "pending"})`;
+                  ${f.rejected ? "rejected" : "pending"},
+                  ${f.address ?? null}, ${f.address ? (addressIds.get(f.address) ?? null) : null})
+          ON CONFLICT DO NOTHING`;
       }
     }
 

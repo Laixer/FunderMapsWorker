@@ -2,7 +2,7 @@ import { log } from "../lib/log.ts";
 import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as s3 from "../providers/s3.ts";
-import { extractFields, EXTRACT_FIELDS } from "../providers/vision.ts";
+import { extractFields, EXTRACT_FIELDS, ADDRESS_FIELDS } from "../providers/vision.ts";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -50,6 +50,15 @@ const TRUTH_SYNONYMS: Record<string, string[]> = {
 
 function matches(field: string, proposed: string, truths: Set<string>): "exact" | "family" | "no" {
   if (truths.has(proposed)) return "exact";
+  if (field.startsWith("crack_")) return truths.has("nil") && proposed === "none" ? "exact" : "no";
+  if (field === "skewed_parallel" || field === "skewed_perpendicular" || field === "settlement_speed") {
+    const p = parseFloat(proposed.replace(",", "."));
+    return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= Math.max(1, Math.abs(parseFloat(t)) * 0.1)) ? "exact" : "no";
+  }
+  if (field === "threshold_front_level" || field === "threshold_back_level") {
+    const p = parseFloat(proposed.replace(",", "."));
+    return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= 0.1) ? "exact" : "no";
+  }
   switch (field) {
     case "foundation_type":
       return [...truths].some((t) => family(t) === family(proposed)) ? "family" : "no";
@@ -103,12 +112,27 @@ const work = await mkdtemp(join(tmpdir(), "fm-bench-"));
 const rows: string[] = ["inquiry,field,proposed,truth,verdict,confidence,evidence"];
 const tally: Record<string, { hit: number; family: number; wrong: number; missed: number; unverifiable: number; truth: number }> = {};
 for (const f of EXTRACT_FIELDS) tally[f] = { hit: 0, family: 0, wrong: 0, missed: 0, unverifiable: 0, truth: 0 };
+for (const f of ADDRESS_FIELDS) tally[`@${f}`] = { hit: 0, family: 0, wrong: 0, missed: 0, unverifiable: 0, truth: 0 };
+let addrRowsProposed = 0, addrRowsResolved = 0, addrRowsTruth = 0;
+
+/** "Adamshofstraat 93 A" -> "adamshofstraat|93a". Good enough to pair report rows with samples. */
+function addrKey(street: string, number: string): string {
+  return `${street.toLowerCase().replace(/[^a-z]/g, "")}|${number.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+}
+function parseAddr(text: string): string | null {
+  const m = text.trim().match(/^(.+?)\s+(\d+\s*[a-zA-Z]?(?:[-/]\d+)?)\s*,?/);
+  return m ? addrKey(m[1]!, m[2]!.replace(/\s+/g, "")) : null;
+}
 const csvq = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""').replace(/\s+/g, " ").slice(0, 200)}"`;
 
 let done = 0, skipped = 0;
 for (const inq of inquiries) {
   const samples = await sql<Record<string, unknown>[]>`
-    SELECT foundation_type::text, extract(year FROM built_year)::int::text AS built_year,
+    SELECT ga.street AS _street, ga.building_number AS _number,
+           s.crack_facade_front_type::text, s.crack_facade_back_type::text, s.crack_indoor_type::text,
+           s.skewed_parallel::text, s.skewed_perpendicular::text,
+           s.threshold_front_level::text, s.threshold_back_level::text, s.settlement_speed::text,
+           foundation_type::text, extract(year FROM built_year)::int::text AS built_year,
            overall_quality::text AS foundation_quality, recovery_advised::text,
            enforcement_term::text, groundwater_level_temp::text AS groundwater_level,
            wood_level::text, pile_head_level::text, pile_tip_level::text, concrete_charger_length::text,
@@ -116,7 +140,8 @@ for (const inq of inquiries) {
            wood_type::text, wood_penetration_depth::text, wood_encroachment::text,
            mason_level::text AS mason_level, foundation_depth::text, groundlevel::text,
            damage_cause::text, damage_characteristics::text
-    FROM report.inquiry_sample WHERE inquiry_id = ${inq.id}`;
+    FROM report.inquiry_sample s LEFT JOIN geocoder.address ga ON ga.id = s.address
+    WHERE s.inquiry_id = ${inq.id}`;
   const truth: Truth = {};
   for (const f of EXTRACT_FIELDS) {
     const cols = [f, ...(TRUTH_SYNONYMS[f] ?? [])];
@@ -150,8 +175,46 @@ for (const inq of inquiries) {
       const p = ps[0];
       rows.push([inq.id, f, csvq(ps.map((x) => x.value).join("|")), csvq([...t].join("|")), verdict, p?.confidence ?? "", csvq(p?.evidence)].join(","));
     }
+    // ---- per-address rows -------------------------------------------------
+    const truthByAddr = new Map<string, Record<string, unknown>>();
+    for (const smp of samples) if (smp["_street"]) truthByAddr.set(addrKey(String(smp["_street"]), String(smp["_number"])), smp);
+    addrRowsTruth += truthByAddr.size;
+    const perAddr = fields.filter((f) => f.address);
+    const byAddr = new Map<string, typeof perAddr>();
+    for (const f of perAddr) byAddr.set(f.address!, [...(byAddr.get(f.address!) ?? []), f]);
+    addrRowsProposed += byAddr.size;
+    // Exact first; then the same street + house number ignoring the BAG unit
+    // letter ("93" vs "93A": the report addresses the pand, the sample a unit).
+    const bareKey = (k: string) => k.replace(/\|(\d+).*$/, "|$1");
+    const truthByBare = new Map<string, Record<string, unknown>>();
+    for (const [k, v] of truthByAddr) if (!truthByBare.has(bareKey(k))) truthByBare.set(bareKey(k), v);
+    for (const [addrText, fs] of byAddr) {
+      const key = parseAddr(addrText);
+      const smp = key ? (truthByAddr.get(key) ?? truthByBare.get(bareKey(key))) : undefined;
+      if (smp) addrRowsResolved++;
+      for (const af of ADDRESS_FIELDS) {
+        const ps = fs.filter((f) => f.field === af);
+        const tv = smp?.[af];
+        const t = new Set(tv != null && tv !== "" ? [String(tv)] : []);
+        if (!ps.length && !t.size) continue;
+        let verdict: string;
+        if (!ps.length) verdict = "missed";
+        else if (!smp || !t.size) verdict = "unverifiable";
+        else { const ms = ps.map((p) => matches(af, p.value, t)); verdict = ms.includes("exact") ? "hit" : ms.includes("family") ? "family" : "wrong"; }
+        (tally[`@${af}`] as Record<string, number>)[verdict]!++;
+        rows.push([inq.id, `@${af} ${addrText}`, csvq(ps.map((x) => x.value).join("|")), csvq([...t].join("|")), verdict, ps[0]?.confidence ?? "", csvq(ps[0]?.evidence)].join(","));
+      }
+    }
+    // truth rows the model never produced an address for
+    for (const [key, smp] of truthByAddr) {
+      if ([...byAddr.keys()].some((a) => { const k = parseAddr(a); return k === key || (k && bareKey(k) === bareKey(key)); })) continue;
+      for (const af of ADDRESS_FIELDS) { const tv = smp[af]; if (tv != null && tv !== "") tally[`@${af}`]!.missed++; }
+    }
+    // truth per address row, so recall is per row like the hits are
+    for (const smp of truthByAddr.values()) for (const af of ADDRESS_FIELDS) { if (smp[af] != null && smp[af] !== "") tally[`@${af}`]!.truth++; }
+
     done++;
-    log.step(`#${inq.id} ${fields.length} proposed`);
+    log.step(`#${inq.id} ${fields.length - perAddr.length} proposed, ${byAddr.size} address rows`);
   } catch (e) {
     skipped++;
     log.warn(`#${inq.id} skipped: ${String(e).slice(0, 80)}`);
@@ -162,9 +225,10 @@ for (const inq of inquiries) {
 await rm(work, { recursive: true, force: true }).catch(() => {});
 await writeFile(OUT, rows.join("\n") + "\n");
 
-console.log(`\ndocuments: ${done} scored, ${skipped} skipped\n`);
+console.log(`\ndocuments: ${done} scored, ${skipped} skipped`);
+console.log(`address rows: ${addrRowsProposed} proposed, ${addrRowsResolved} matched a sample address, ${addrRowsTruth} sample addresses in truth\n`);
 console.log("field                     truth  hit  fam  wrong  missed  unverif   precision  recall");
-for (const f of EXTRACT_FIELDS) {
+for (const f of [...EXTRACT_FIELDS, ...ADDRESS_FIELDS.map((x) => `@${x}`)]) {
   const t = tally[f]!;
   const proposedOnTruth = t.hit + t.family + t.wrong;
   const precision = proposedOnTruth ? ((t.hit + t.family) / proposedOnTruth) : NaN;

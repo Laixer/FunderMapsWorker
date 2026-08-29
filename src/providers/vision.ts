@@ -443,11 +443,117 @@ const QUALITY_FROM_DUTCH: Record<string, string> = {
   matig_tot_goed: "mediocre_good", matig_tot_slecht: "mediocre_bad",
 };
 
+/** Fields a report gives per address (report.inquiry_sample is per address too). */
+export const ADDRESS_FIELDS = [
+  // Kept after phase-B run 3 (2026-08-29, 50 docs, 108/121 addresses matched):
+  // type 100/96, built_year 100/82, pile_head 91/75, groundwater 89/77,
+  // groundlevel 87/70, penetration 88/66, wood_level 83/66, diameter 83/64,
+  // skew 76/67 & 74/65, cracks 50-67 (one severity step off -- a fast human call).
+  // Dropped: foundation_quality (54%, tolerable<->good; document-level is 93%),
+  // threshold levels (25%), settlement_speed (50%), pile_tip_level (nothing).
+  "foundation_type", "built_year", "wood_level", "pile_head_level",
+  "groundwater_level", "groundlevel", "pile_diameter_top", "wood_penetration_depth",
+  "crack_facade_front_type", "crack_facade_back_type", "crack_indoor_type",
+  "skewed_parallel", "skewed_perpendicular",
+] as const;
+
+const CRACK_TYPES = new Set(["none", "nil", "small", "mediocre", "big"]);
+const ADDRESS_NUMERIC = new Set([
+  "built_year", "wood_level", "pile_head_level", "pile_tip_level", "groundwater_level",
+  "groundlevel", "pile_diameter_top", "wood_penetration_depth", "skewed_parallel",
+  "skewed_perpendicular", "threshold_front_level", "threshold_back_level", "settlement_speed",
+]);
+
+const ADDRESS_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek dat meerdere
+adressen kan beschrijven. Haal PER ADRES dat het rapport onderzoekt de gegevens eruit
+die het rapport voor dat adres vastlegt -- meestal uit de inmeettabellen (hoogtes,
+palen), de lintvoeg-/loodmetingen en de schade-opname. Verzin geen adressen: alleen
+adressen die het rapport zelf noemt. Staat een gegeven er voor een adres niet, laat
+de sleutel dan weg.
+
+Sleutels per adres (eenheden exact zo):
+  address                  het adres zoals het rapport het schrijft, bijv. "Adamshofstraat 93A"
+  foundation_type          een van de codes hieronder
+  built_year               bouwjaar als het rapport dat voor dit adres vaststelt (niet uit BAG)
+  wood_level               bovenkant hout/langshout, m t.o.v. NAP
+  pile_head_level          bovenkant paal, m t.o.v. NAP
+  groundwater_level        grondwaterstand, m t.o.v. NAP
+  groundlevel              maaiveld, m t.o.v. NAP
+  pile_diameter_top        paaldiameter kop, mm
+  wood_penetration_depth   indringing hout (priktest), mm
+  crack_facade_front_type  scheuren voorgevel: none | small | mediocre | big
+  crack_facade_back_type   scheuren achtergevel: none | small | mediocre | big
+  crack_indoor_type        scheuren inpandig: none | small | mediocre | big
+  skewed_parallel          lintvoegmeting, het getal zoals het rapport het geeft (mm/m, of 1:N -> N)
+  skewed_perpendicular     loodmeting, idem
+  evidence                 object: per gevuld veld het citaat met adres en tabelkop erin
+
+Funderingstype-codes:
+${FOUNDATION_VOCABULARY}
+
+Regels: citeer letterlijk; een tabelwaarde altijd met de kop of het rijlabel erbij;
+afgeleide waarden beginnen met "afgeleid: ". Getallen met een punt als decimaalteken.
+
+Antwoord met alleen JSON:
+{"addresses": [{"address": "...", "wood_level": -2.47, "crack_facade_front_type": "small",
+                "evidence": {"wood_level": "Tabel 9.3 ... | Adamshofstraat 93A | -2,47"}}],
+ "confidence": 0.0}`;
+
+/**
+ * Invoer convention for a skew given as a range: "1:200 tot 1:100" is entered
+ * as 150, the midpoint of the two denominators (measured against Don's and
+ * Ton's entries on the 2026-08-29 benchmark). A single "1:N" is N.
+ */
+function skewFromCitation(value: string, citation: string | undefined): string {
+  const ns = [...(citation ?? "").matchAll(/1\s*:\s*(\d+(?:[.,]\d+)?)/g)].map((m) => parseFloat(m[1]!.replace(",", ".")));
+  if (ns.length >= 2) return String((ns[0]! + ns[1]!) / 2);
+  if (ns.length === 1) return String(ns[0]);
+  return value;
+}
+
+/**
+ * The per-address pass. Its own call, its own output budget: folded into the
+ * document-level prompt it was emitted last and got truncated (phase-B run 1:
+ * 25 address rows for 121 known addresses, and the trailing document fields
+ * collapsed with it).
+ */
+export async function extractAddressRows(reportText: string): Promise<FieldRead[]> {
+  const j = await ask({
+    model: env.DATAOPS_TEXT_MODEL,
+    temperature: 0,
+    max_tokens: 24000,
+    messages: [{ role: "user", content: `${ADDRESS_PROMPT}\n\n=== RAPPORT ===\n${reportText}` }],
+  });
+  const a = parseJson(j.choices?.[0]?.message?.content ?? "", ["addresses"]);
+  if (!a) return [];
+  const conf = norm01(a["confidence"]);
+  const out: FieldRead[] = [];
+  const addresses = Array.isArray(a["addresses"]) ? (a["addresses"] as Record<string, unknown>[]) : [];
+  for (const row of addresses.slice(0, 60)) {
+    const address = String(row?.["address"] ?? "").trim();
+    if (!address) continue;
+    const rev = (row["evidence"] ?? {}) as Record<string, string>;
+    for (const f of ADDRESS_FIELDS) {
+      const v = row[f];
+      if (v === null || v === undefined || v === "" || v === "onbekend") continue;
+      let value = String(v).trim().toLowerCase();
+      if (f.startsWith("crack_")) { if (!CRACK_TYPES.has(value)) continue; }
+      else if (ADDRESS_NUMERIC.has(f)) { const n = normaliseNumeric(String(v), rev[f] ?? null); if (!n) continue; value = n.value; }
+      else value = String(v).trim();
+      if (f === "skewed_parallel" || f === "skewed_perpendicular") value = skewFromCitation(value, rev[f]);
+      out.push({ field: f, value, evidence: rev[f] ?? null, confidence: conf, address });
+    }
+  }
+  return out;
+}
+
 export interface FieldRead {
   field: string;
   value: string;
   evidence: string | null;
   confidence: number | null;
+  /** The address as the report wrote it, for per-address values; absent = document-level. */
+  address?: string;
   /**
    * Set when the document is not allowed to establish this field -- a QuickScan
    * or NWWI risk report stating a foundation type it read off FunderMaps.
@@ -469,7 +575,7 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
   const ev = (a["evidence"] ?? {}) as Record<string, string>;
   const conf = norm01(a["confidence"]);
 
-  return EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
+  return [...EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
     let v = a[f];
     if (v === null || v === undefined || v === "" || v === "onbekend") return [];
     if (f === "foundation_quality") {
@@ -506,5 +612,5 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
       return [{ field: f, value: code, evidence: `${String(v)} jaar -- ${ev[f] ?? ""}`.trim(), confidence: conf }];
     }
     return [{ field: f, value: String(v), evidence: ev[f] ?? null, confidence: conf }];
-  });
+  }), ...(await extractAddressRows(reportText))];
 }
