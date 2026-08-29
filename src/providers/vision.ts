@@ -271,7 +271,10 @@ ${FOUNDATION_VOCABULARY}
   built_year               bouwjaar van het pand, als jaartal. ALLEEN als het rapport
                            dat zelf vaststelt; een bouwjaar dat uit de BAG of uit
                            FunderMaps is overgenomen telt niet -- geef dan null.
-  foundation_quality       een van (gebruik exact deze codes):
+  foundation_quality       het eindoordeel over de fundering zoals het rapport dat
+                           letterlijk geeft (goed/redelijk/matig/slecht); kies
+                           tolerable alleen als er "redelijk" staat, en good als er
+                           "goed" of "voldoende" staat. Een van (exact deze codes):
                              bad            slecht
                              mediocre       matig
                              tolerable      redelijk
@@ -291,6 +294,31 @@ ${FOUNDATION_VOCABULARY}
   pile_head_level          bovenkant paal in meters t.o.v. NAP, als getal
   pile_tip_level           punt van de paal (paalpuntniveau) in meters t.o.v. NAP
   concrete_charger_length  lengte van de betonnen oplanger in meters, als getal
+  pile_diameter_top        paaldiameter aan de kop in MILLIMETERS, als geheel getal
+  pile_diameter_bottom     paaldiameter aan de punt in millimeters, als geheel getal
+  pile_distance_length     hart-op-hart paalafstand in meters, als getal
+  wood_type                houtsoort van de palen: pine (grenen) of spruce (vuren)
+  wood_penetration_depth   indringingsdiepte / aantasting van het hout in millimeters
+                           (bijv. uit een priktest), als getal
+  wood_encroachment        aantasting van het hout, een van: fungus_infection
+                           (schimmel), bio_infection (bacterieel), bio_fungus_infection
+  foundation_depth         aanlegniveau / onderkant fundering in meters t.o.v. NAP
+  groundlevel              maaiveldhoogte in meters t.o.v. NAP, als getal
+  damage_cause             de oorzaak of oorzaken van de schade zoals het rapport die
+                           concludeert, als LIJST van maximaal 3 codes, belangrijkste
+                           eerst (een rapport noemt er vaak meer dan een), uit:
+                           drainage, construction_flaw,
+                           drystand (droogstand), overcharge (overbelasting),
+                           negative_cling (negatieve kleef), overcharge_negative_cling,
+                           bio_infection, fungus_infection, bio_fungus_infection,
+                           foundation_flaw, construction_heave, subsidence (zetting),
+                           vegetation, gas, vibrations, partial_foundation_recovery,
+                           japanese_knotweed, groundwater_level_reduction
+  damage_characteristics   waargenomen schadebeeld(en), als LIJST van maximaal 3 codes,
+                           uit: jamming_door_window
+                           (klemmende deuren/ramen), crack (scheuren), skewed
+                           (scheefstand), crawlspace_flooding, threshold_above_subsurface,
+                           threshold_below_subsurface, crooked_floor_wall
 
 Geef bij elk veld dat je invult het citaat uit het rapport waar het vandaan komt.
 
@@ -303,11 +331,35 @@ Regels voor het bewijs:
 - Staat de waarde er niet letterlijk maar leid je die af, begin het bewijs dan
   met "afgeleid: " en beschrijf waaruit. Afleiden mag -- het verzwijgen niet.
 
+Voorbeelden van goed bewijs, uit echte rapporten (waarde <- citaat):
+- foundation_type = wood_rotterdam <- "De fundering van de panden in de bouweenheid
+  Adamshofstraat 81 t/m 105 is opgebouwd uit een houten paalfundering met langshout,
+  een Rotterdamse fundering"
+- built_year = 1911 <- "Tabel 4.1: bouweenheid en bouwjaar | Adamshofstraat 81 t/m 105 | 1911"
+- wood_level = -2.47 <- "Tabel 9.3: inmeetgegevens fundering | Adamshofstraat 93 |
+  achtergevel 93/91 | 14-9-2022 | -1,25 | -2,43 | -2,47" (kolom bovenkant hout)
+- groundwater_level = -2.94 <- "Tabel 15: ... | West Sidelinge 88 | Grondwater (m t.o.v. NAP): -2,94"
+- enforcement_term = "1-5" <- "indicatieve funderingstechnische handhavingstermijn van 1 tot 5 jaar"
+Een tabelcitaat draagt altijd de kop of het rijlabel mee; een getal zonder context is
+geen bewijs.
+
+Een rapport beschrijft vaak meerdere adressen. Geef dan de waarde voor het adres dat
+het rapport als hoofdadres of eerste adres noemt, en zet het adres in het citaat.
+
+De WAARDE van een veld is alleen het getal, de code, true/false of het jaartal --
+nooit het citaat. Het citaat hoort uitsluitend onder "evidence", met dezelfde
+sleutel. Dus: "built_year": 1910 en "evidence": {"built_year": "Tabel 3: bouwjaar |
+Wilhelminakade 59 | 1910"}.
+
 Antwoord met alleen JSON, met exact deze sleutels:
 {"foundation_type": null, "built_year": null, "foundation_quality": null,
  "recovery_advised": null, "recovery_note": null, "enforcement_term": null,
  "groundwater_level": null, "wood_level": null, "pile_head_level": null,
  "pile_tip_level": null, "concrete_charger_length": null,
+ "pile_diameter_top": null, "pile_diameter_bottom": null, "pile_distance_length": null,
+ "wood_type": null, "wood_penetration_depth": null, "wood_encroachment": null,
+ "foundation_depth": null, "groundlevel": null,
+ "damage_cause": [], "damage_characteristics": [],
  "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0}`;
 
 /**
@@ -320,20 +372,68 @@ export const EXTRACT_FIELDS = [
   "foundation_type", "built_year", "foundation_quality",
   "recovery_advised", "recovery_note", "enforcement_term", "groundwater_level",
   "wood_level", "pile_head_level", "pile_tip_level", "concrete_charger_length",
+  // Phase A, Don 2026-08-29: "uit de funderingsonderzoeken kan meer worden gehaald".
+  // Document-level only; per-address values (cracks, skew) are phase B.
+  "pile_diameter_top", "pile_diameter_bottom", "pile_distance_length",
+  "wood_type", "wood_penetration_depth", "wood_encroachment",
+  // mason_level deliberately absent: in a Rotterdam foundation the masonry
+  // sits on the langshout, so "onderkant metselwerk" IS wood_level -- asking
+  // for both scored 25% (2026-08-29 run 4) and only doubled the reviewer's work.
+  "foundation_depth", "groundlevel",
+  "damage_cause", "damage_characteristics",
 ] as const;
+
+/** Enum-typed fields: a value outside the PG enum is dropped, never stored. */
+const ENUM_VALUES: Record<string, Set<string>> = {
+  wood_type: new Set(["pine", "spruce"]),
+  wood_encroachment: new Set(["fungus_infection", "bio_fungus_infection", "bio_infection"]),
+  damage_cause: new Set([
+    "drainage", "construction_flaw", "drystand", "overcharge", "overcharge_negative_cling",
+    "negative_cling", "bio_infection", "fungus_infection", "bio_fungus_infection",
+    "foundation_flaw", "construction_heave", "subsidence", "vegetation", "gas", "vibrations",
+    "partial_foundation_recovery", "japanese_knotweed", "groundwater_level_reduction",
+  ]),
+  damage_characteristics: new Set([
+    "jamming_door_window", "crack", "skewed", "crawlspace_flooding",
+    "threshold_above_subsurface", "threshold_below_subsurface", "crooked_floor_wall",
+  ]),
+};
 
 /** Map a term in years (a number or a "15-25" range) onto report.enforcement_term. */
 export function enforcementTermCode(raw: string): string | null {
-  const m = String(raw).match(/-?\d+(?:[.,]\d+)?/);
-  if (!m) return null;
-  const years = parseFloat(m[0].replace(",", "."));
+  const nums = String(raw).match(/\d+(?:[.,]\d+)?/g); // unsigned: "15-25" is a range, not a negative
+  if (!nums || nums.length === 0) return null;
+  // The UPPER bound of a range. The invoer convention (measured on the
+  // 2026-08-29 benchmark: every one of 9 mismatches was one bucket low with
+  // the lower bound) is that "15-25 jaar" is entered as term25. A bare ">25"
+  // is a 25.
+  const years = Math.max(...nums.map((n) => parseFloat(n.replace(",", "."))));
   if (!Number.isFinite(years) || years < 0) return null;
-  // The lower bound of a range: an enforcement term is a promise about the
-  // earliest date something must happen, so "15-25" is a 15.
   for (const [cap, code] of [[5, "term5"], [10, "term10"], [15, "term15"], [20, "term20"], [25, "term25"], [30, "term30"]] as const) {
     if (years <= cap) return code;
   }
   return "term40";
+}
+
+const NUMERIC_FIELDS = new Set([
+  "built_year", "groundwater_level", "wood_level", "pile_head_level", "pile_tip_level",
+  "concrete_charger_length", "pile_diameter_top", "pile_diameter_bottom",
+  "pile_distance_length", "wood_penetration_depth", "foundation_depth", "groundlevel",
+]);
+
+/**
+ * The value slot sometimes carries the citation ("Tabel 3: bouwjaar | ... | 1910")
+ * despite the prompt. A numeric field keeps only its number -- the LAST one in
+ * the string, because a table citation ends in its cell -- and the rest of the
+ * text is moved to the evidence so nothing is lost. Measured on the 2026-08-29
+ * benchmark: 18 of ~700 values arrived this way.
+ */
+function normaliseNumeric(raw: string, evidence: string | null): { value: string; evidence: string | null } | null {
+  const trimmed = raw.trim().replace(/,(\d)/g, ".$1");
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return { value: trimmed, evidence };
+  const nums = trimmed.match(/-?\d+(?:\.\d+)?/g);
+  if (!nums || nums.length === 0) return null;
+  return { value: nums[nums.length - 1]!, evidence: evidence?.trim() ? evidence : raw };
 }
 
 const QUALITY_CODES = new Set(["bad", "mediocre", "tolerable", "good", "mediocre_good", "mediocre_bad"]);
@@ -376,6 +476,27 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
       const code = QUALITY_CODES.has(String(v)) ? String(v) : QUALITY_FROM_DUTCH[String(v).toLowerCase().replace(/\s+/g, "_")];
       if (!code) return [];
       v = code;
+    }
+    if (Array.isArray(v)) {
+      // Candidate lists (damage_cause, damage_characteristics): each becomes
+      // its own proposal, so the reviewer picks rather than the model.
+      const allowed = ENUM_VALUES[f];
+      return v
+        .map((x) => String(x).toLowerCase())
+        .filter((x, i, arr) => x && arr.indexOf(x) === i && (!allowed || allowed.has(x)))
+        .slice(0, 3)
+        .map((x) => ({ field: f, value: x, evidence: ev[f] ?? null, confidence: conf }));
+    }
+    if (ENUM_VALUES[f] && !ENUM_VALUES[f]!.has(String(v).toLowerCase())) return [];
+    if (f === "recovery_advised") {
+      const b = String(v).trim().toLowerCase();
+      if (b !== "true" && b !== "false") return [];
+      v = b;
+    }
+    if (NUMERIC_FIELDS.has(f)) {
+      const n = normaliseNumeric(String(v), ev[f] ?? null);
+      if (!n) return [];
+      return [{ field: f, value: n.value, evidence: n.evidence, confidence: conf }];
     }
     if (f === "enforcement_term") {
       const code = enforcementTermCode(String(v));

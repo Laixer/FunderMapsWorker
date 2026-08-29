@@ -38,6 +38,16 @@ function family(t: string): string {
   return t;
 }
 
+/**
+ * In a Rotterdam wood foundation the masonry sits directly on the langshout, so
+ * "onderkant metselwerk" and "bovenkant hout" are one measurement that invoerders
+ * entered under either name (2026-08-29 run 2: 17 of 18 mason_level misses were
+ * the model's wood_level to the centimetre). Truth for one counts for the other.
+ */
+const TRUTH_SYNONYMS: Record<string, string[]> = {
+  wood_level: ["mason_level"],
+};
+
 function matches(field: string, proposed: string, truths: Set<string>): "exact" | "family" | "no" {
   if (truths.has(proposed)) return "exact";
   switch (field) {
@@ -49,10 +59,20 @@ function matches(field: string, proposed: string, truths: Set<string>): "exact" 
     case "wood_level":
     case "pile_head_level":
     case "pile_tip_level":
-    case "concrete_charger_length": {
+    case "concrete_charger_length":
+    case "pile_distance_length":
+    case "foundation_depth":
+    case "groundlevel": {
       const p = parseFloat(proposed.replace(",", "."));
       return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= 0.1) ? "exact" : "no";
     }
+    case "pile_diameter_top":
+    case "pile_diameter_bottom":
+    case "wood_penetration_depth": {
+      const p = parseFloat(proposed.replace(",", "."));
+      return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= 10) ? "exact" : "no";
+    }
+
     case "built_year":
       return [...truths].some((t) => Math.abs(parseInt(t) - parseInt(proposed)) <= 1) ? "exact" : "no";
     default:
@@ -91,11 +111,16 @@ for (const inq of inquiries) {
     SELECT foundation_type::text, extract(year FROM built_year)::int::text AS built_year,
            overall_quality::text AS foundation_quality, recovery_advised::text,
            enforcement_term::text, groundwater_level_temp::text AS groundwater_level,
-           wood_level::text, pile_head_level::text, pile_tip_level::text, concrete_charger_length::text
+           wood_level::text, pile_head_level::text, pile_tip_level::text, concrete_charger_length::text,
+           pile_diameter_top::text, pile_diameter_bottom::text, pile_distance_length::text,
+           wood_type::text, wood_penetration_depth::text, wood_encroachment::text,
+           mason_level::text AS mason_level, foundation_depth::text, groundlevel::text,
+           damage_cause::text, damage_characteristics::text
     FROM report.inquiry_sample WHERE inquiry_id = ${inq.id}`;
   const truth: Truth = {};
   for (const f of EXTRACT_FIELDS) {
-    truth[f] = new Set(samples.map((s) => s[f]).filter((v): v is string => v != null && v !== ""));
+    const cols = [f, ...(TRUTH_SYNONYMS[f] ?? [])];
+    truth[f] = new Set(samples.flatMap((s) => cols.map((c) => s[c])).filter((v): v is string => v != null && v !== ""));
     if (truth[f].size) tally[f]!.truth++;
   }
 
@@ -106,17 +131,24 @@ for (const inq of inquiries) {
     const text = await pdf.documentText(local, 1);
     if (text.trim().length < 500) throw new Error("scanned, no text layer");
     const fields = await extractFields(text.slice(0, 250_000));
-    const proposed = new Map(fields.map((f) => [f.field, f]));
+    // A field may carry several candidates (damage_cause, damage_characteristics
+    // return a list); it counts as a hit when any candidate matches the truth.
+    const proposed = new Map<string, typeof fields>();
+    for (const f of fields) proposed.set(f.field, [...(proposed.get(f.field) ?? []), f]);
     for (const f of EXTRACT_FIELDS) {
-      const p = proposed.get(f);
+      const ps = proposed.get(f) ?? [];
       const t = truth[f]!;
       let verdict: string;
-      if (!p && !t.size) continue;
-      if (!p) verdict = "missed";
+      if (!ps.length && !t.size) continue;
+      if (!ps.length) verdict = "missed";
       else if (!t.size) verdict = "unverifiable";
-      else { const m = matches(f, p.value, t); verdict = m === "no" ? "wrong" : m === "family" ? "family" : "hit"; }
+      else {
+        const ms = ps.map((p) => matches(f, p.value, t));
+        verdict = ms.includes("exact") ? "hit" : ms.includes("family") ? "family" : "wrong";
+      }
       (tally[f] as Record<string, number>)[verdict]!++;
-      rows.push([inq.id, f, csvq(p?.value), csvq([...t].join("|")), verdict, p?.confidence ?? "", csvq(p?.evidence)].join(","));
+      const p = ps[0];
+      rows.push([inq.id, f, csvq(ps.map((x) => x.value).join("|")), csvq([...t].join("|")), verdict, p?.confidence ?? "", csvq(p?.evidence)].join(","));
     }
     done++;
     log.step(`#${inq.id} ${fields.length} proposed`);
