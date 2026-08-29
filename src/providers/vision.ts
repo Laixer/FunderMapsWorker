@@ -218,7 +218,7 @@ Regels voor het bewijs:
   oude tekening is dat vaak de enige manier -- het verzwijgen niet.
 
 Antwoord met alleen JSON:
-{"funderingstype": "...", "zekerheid": 0.0, "bewijs": "wat je op de tekening ziet waaruit dit blijkt", "pagina": 1}`;
+{"foundation_type": "...", "confidence": 0.0, "evidence": "wat je op de tekening ziet waaruit dit blijkt", "page": 1}`;
 
 export interface DrawingRead {
   foundationType: string | null;
@@ -235,14 +235,14 @@ export async function readDrawing(pages: string[]): Promise<DrawingRead> {
     messages: [{ role: "user", content: [{ type: "text", text: READ_PROMPT }, ...pages.map(asImage)] }],
   });
   const a = parseJson(j.choices?.[0]?.message?.content ?? "", [
-    "funderingstype", "zekerheid", "bewijs", "pagina",
+    "foundation_type", "confidence", "evidence", "page",
   ]);
-  const ft = (a?.["funderingstype"] as string) ?? null;
+  const ft = (a?.["foundation_type"] as string) ?? null;
   return {
     foundationType: ft && ft !== "onbekend" ? ft : null,
-    confidence: norm01(a?.["zekerheid"]),
-    evidence: (a?.["bewijs"] as string) ?? null,
-    page: typeof a?.["pagina"] === "number" ? (a["pagina"] as number) : null,
+    confidence: norm01(a?.["confidence"]),
+    evidence: (a?.["evidence"] as string) ?? null,
+    page: typeof a?.["page"] === "number" ? (a["page"] as number) : null,
   };
 }
 
@@ -266,14 +266,31 @@ Is dat het geval, antwoord dan "onbekend" -- ook al staat het type er duidelijk.
 Wij zouden dan onze eigen gegevens terugkrijgen. Alleen wat in dit document zelf
 is waargenomen of vastgelegd telt.
 
-  funderingstype       een van (gebruik exact deze codes):
+  foundation_type          een van (gebruik exact deze codes):
 ${FOUNDATION_VOCABULARY}
-  bouwjaar             bouwjaar van het pand, als jaartal
-  funderingskwaliteit  een van: slecht, matig, redelijk, goed, matig_tot_goed, matig_tot_slecht
-  herstel_geadviseerd  true als het rapport funderingsherstel adviseert, false als
-                       expliciet geen herstel nodig is
-  handhavingstermijn   resterende levensduur in jaren, als getal of bereik "5-10"
-  grondwaterstand      gemeten grondwaterstand in meters t.o.v. NAP, als getal
+  built_year               bouwjaar van het pand, als jaartal. ALLEEN als het rapport
+                           dat zelf vaststelt; een bouwjaar dat uit de BAG of uit
+                           FunderMaps is overgenomen telt niet -- geef dan null.
+  foundation_quality       een van (gebruik exact deze codes):
+                             bad            slecht
+                             mediocre       matig
+                             tolerable      redelijk
+                             good           goed
+                             mediocre_good  matig tot goed
+                             mediocre_bad   matig tot slecht
+  recovery_advised         true als het rapport funderingsherstel adviseert, false als
+                           expliciet geen herstel nodig is
+  recovery_note            het advies letterlijk, in een zin, als het genuanceerder is
+                           dan ja/nee ("direct herstel niet nodig, maar monitoren")
+  enforcement_term         resterende handhavingstermijn / levensduur in jaren, als
+                           getal of bereik "15-25"
+  groundwater_level        gemeten grondwaterstand in meters t.o.v. NAP, als getal
+                           (bijv. -2.32)
+  wood_level               bovenkant houten paalfundering / langshout in meters
+                           t.o.v. NAP, als getal
+  pile_head_level          bovenkant paal in meters t.o.v. NAP, als getal
+  pile_tip_level           punt van de paal (paalpuntniveau) in meters t.o.v. NAP
+  concrete_charger_length  lengte van de betonnen oplanger in meters, als getal
 
 Geef bij elk veld dat je invult het citaat uit het rapport waar het vandaan komt.
 
@@ -286,15 +303,45 @@ Regels voor het bewijs:
 - Staat de waarde er niet letterlijk maar leid je die af, begin het bewijs dan
   met "afgeleid: " en beschrijf waaruit. Afleiden mag -- het verzwijgen niet.
 
-Antwoord met alleen JSON:
-{"funderingstype": null, "bouwjaar": null, "funderingskwaliteit": null,
- "herstel_geadviseerd": null, "handhavingstermijn": null, "grondwaterstand": null,
- "bewijs": {"funderingstype": "", "bouwjaar": ""}, "zekerheid": 0.0}`;
+Antwoord met alleen JSON, met exact deze sleutels:
+{"foundation_type": null, "built_year": null, "foundation_quality": null,
+ "recovery_advised": null, "recovery_note": null, "enforcement_term": null,
+ "groundwater_level": null, "wood_level": null, "pile_head_level": null,
+ "pile_tip_level": null, "concrete_charger_length": null,
+ "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0}`;
 
+/**
+ * Field keys are the `report.inquiry_sample` column names (English, like all
+ * identifiers -- Yorick 2026-08-28), except `recovery_note`, which has no
+ * column and exists because a boolean lost the nuance Don kept finding
+ * ("direct herstel niet nodig, maar ...").
+ */
 export const EXTRACT_FIELDS = [
-  "funderingstype", "bouwjaar", "funderingskwaliteit",
-  "herstel_geadviseerd", "handhavingstermijn", "grondwaterstand",
+  "foundation_type", "built_year", "foundation_quality",
+  "recovery_advised", "recovery_note", "enforcement_term", "groundwater_level",
+  "wood_level", "pile_head_level", "pile_tip_level", "concrete_charger_length",
 ] as const;
+
+/** Map a term in years (a number or a "15-25" range) onto report.enforcement_term. */
+export function enforcementTermCode(raw: string): string | null {
+  const m = String(raw).match(/-?\d+(?:[.,]\d+)?/);
+  if (!m) return null;
+  const years = parseFloat(m[0].replace(",", "."));
+  if (!Number.isFinite(years) || years < 0) return null;
+  // The lower bound of a range: an enforcement term is a promise about the
+  // earliest date something must happen, so "15-25" is a 15.
+  for (const [cap, code] of [[5, "term5"], [10, "term10"], [15, "term15"], [20, "term20"], [25, "term25"], [30, "term30"]] as const) {
+    if (years <= cap) return code;
+  }
+  return "term40";
+}
+
+const QUALITY_CODES = new Set(["bad", "mediocre", "tolerable", "good", "mediocre_good", "mediocre_bad"]);
+/** The model was told the codes; a Dutch word slipping through is mapped, not stored. */
+const QUALITY_FROM_DUTCH: Record<string, string> = {
+  slecht: "bad", matig: "mediocre", redelijk: "tolerable", goed: "good",
+  matig_tot_goed: "mediocre_good", matig_tot_slecht: "mediocre_bad",
+};
 
 export interface FieldRead {
   field: string;
@@ -319,12 +366,24 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
   });
   const a = parseJson(j.choices?.[0]?.message?.content ?? "", [...EXTRACT_FIELDS]);
   if (!a) return [];
-  const ev = (a["bewijs"] ?? {}) as Record<string, string>;
-  const conf = norm01(a["zekerheid"]);
+  const ev = (a["evidence"] ?? {}) as Record<string, string>;
+  const conf = norm01(a["confidence"]);
 
-  return EXTRACT_FIELDS.flatMap((f) => {
-    const v = a[f];
+  return EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
+    let v = a[f];
     if (v === null || v === undefined || v === "" || v === "onbekend") return [];
+    if (f === "foundation_quality") {
+      const code = QUALITY_CODES.has(String(v)) ? String(v) : QUALITY_FROM_DUTCH[String(v).toLowerCase().replace(/\s+/g, "_")];
+      if (!code) return [];
+      v = code;
+    }
+    if (f === "enforcement_term") {
+      const code = enforcementTermCode(String(v));
+      if (!code) return [];
+      // Keep what the document said next to the code: "term15" alone hides
+      // that the report wrote "15-25".
+      return [{ field: f, value: code, evidence: `${String(v)} jaar -- ${ev[f] ?? ""}`.trim(), confidence: conf }];
+    }
     return [{ field: f, value: String(v), evidence: ev[f] ?? null, confidence: conf }];
   });
 }

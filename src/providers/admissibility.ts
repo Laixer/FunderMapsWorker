@@ -128,6 +128,7 @@ export function mayEstablishFoundationType(
  * marked, and the reviewer can still take one over by hand.
  */
 export const FIELDS_REQUIRING_ADMISSIBLE_SOURCE = new Set([
-  "funderingstype", "bouwjaar", "funderingskwaliteit",
-  "herstel_geadviseerd", "handhavingstermijn", "grondwaterstand",
+  "foundation_type", "built_year", "foundation_quality",
+  "recovery_advised", "recovery_note", "enforcement_term", "groundwater_level",
+  "wood_level", "pile_head_level", "pile_tip_level", "concrete_charger_length",
 ]);
