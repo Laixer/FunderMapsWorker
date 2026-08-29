@@ -445,11 +445,16 @@ const QUALITY_FROM_DUTCH: Record<string, string> = {
 
 /** Fields a report gives per address (report.inquiry_sample is per address too). */
 export const ADDRESS_FIELDS = [
-  "foundation_type", "foundation_quality", "built_year", "wood_level", "pile_head_level",
-  "pile_tip_level", "groundwater_level", "groundlevel", "pile_diameter_top",
-  "wood_penetration_depth", "crack_facade_front_type", "crack_facade_back_type",
-  "crack_indoor_type", "skewed_parallel", "skewed_perpendicular",
-  "threshold_front_level", "threshold_back_level", "settlement_speed",
+  // Kept after phase-B run 3 (2026-08-29, 50 docs, 108/121 addresses matched):
+  // type 100/96, built_year 100/82, pile_head 91/75, groundwater 89/77,
+  // groundlevel 87/70, penetration 88/66, wood_level 83/66, diameter 83/64,
+  // skew 76/67 & 74/65, cracks 50-67 (one severity step off -- a fast human call).
+  // Dropped: foundation_quality (54%, tolerable<->good; document-level is 93%),
+  // threshold levels (25%), settlement_speed (50%), pile_tip_level (nothing).
+  "foundation_type", "built_year", "wood_level", "pile_head_level",
+  "groundwater_level", "groundlevel", "pile_diameter_top", "wood_penetration_depth",
+  "crack_facade_front_type", "crack_facade_back_type", "crack_indoor_type",
+  "skewed_parallel", "skewed_perpendicular",
 ] as const;
 
 const CRACK_TYPES = new Set(["none", "nil", "small", "mediocre", "big"]);
@@ -469,11 +474,9 @@ de sleutel dan weg.
 Sleutels per adres (eenheden exact zo):
   address                  het adres zoals het rapport het schrijft, bijv. "Adamshofstraat 93A"
   foundation_type          een van de codes hieronder
-  foundation_quality       bad | mediocre | tolerable | good | mediocre_good | mediocre_bad
   built_year               bouwjaar als het rapport dat voor dit adres vaststelt (niet uit BAG)
   wood_level               bovenkant hout/langshout, m t.o.v. NAP
   pile_head_level          bovenkant paal, m t.o.v. NAP
-  pile_tip_level           paalpunt, m t.o.v. NAP
   groundwater_level        grondwaterstand, m t.o.v. NAP
   groundlevel              maaiveld, m t.o.v. NAP
   pile_diameter_top        paaldiameter kop, mm
@@ -483,9 +486,6 @@ Sleutels per adres (eenheden exact zo):
   crack_indoor_type        scheuren inpandig: none | small | mediocre | big
   skewed_parallel          lintvoegmeting, het getal zoals het rapport het geeft (mm/m, of 1:N -> N)
   skewed_perpendicular     loodmeting, idem
-  threshold_front_level    dorpel voorzijde, m t.o.v. NAP
-  threshold_back_level     dorpel achterzijde, m t.o.v. NAP
-  settlement_speed         zakkingssnelheid, mm/jaar, negatief voor zakking
   evidence                 object: per gevuld veld het citaat met adres en tabelkop erin
 
 Funderingstype-codes:

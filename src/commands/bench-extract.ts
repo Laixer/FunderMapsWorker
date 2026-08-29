@@ -210,7 +210,8 @@ for (const inq of inquiries) {
       if ([...byAddr.keys()].some((a) => { const k = parseAddr(a); return k === key || (k && bareKey(k) === bareKey(key)); })) continue;
       for (const af of ADDRESS_FIELDS) { const tv = smp[af]; if (tv != null && tv !== "") tally[`@${af}`]!.missed++; }
     }
-    for (const af of ADDRESS_FIELDS) { if ([...truthByAddr.values()].some((smp) => smp[af] != null && smp[af] !== "")) tally[`@${af}`]!.truth++; }
+    // truth per address row, so recall is per row like the hits are
+    for (const smp of truthByAddr.values()) for (const af of ADDRESS_FIELDS) { if (smp[af] != null && smp[af] !== "") tally[`@${af}`]!.truth++; }
 
     done++;
     log.step(`#${inq.id} ${fields.length - perAddr.length} proposed, ${byAddr.size} address rows`);
