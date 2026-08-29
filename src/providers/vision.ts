@@ -281,10 +281,14 @@ ${FOUNDATION_VOCABULARY}
                              good           goed
                              mediocre_good  matig tot goed
                              mediocre_bad   matig tot slecht
-  recovery_advised         true als het rapport funderingsherstel adviseert, false als
+  recovery_advised         true als het rapport FUNDERINGSHERSTEL adviseert, false als
                            expliciet geen herstel nodig is
-  recovery_note            het advies letterlijk, in een zin, als het genuanceerder is
-                           dan ja/nee ("direct herstel niet nodig, maar monitoren")
+  recovery_note            het hersteladvies letterlijk, in een zin -- alleen als het
+                           over herstel van de fundering gaat (partieel/volledig herstel,
+                           verstevigen, onderkelderen)
+  follow_up_note           het vervolgadvies letterlijk, in een zin: nader onderzoek,
+                           monitoring, meetbouten, herhaalde inspectie, vloerwaterpassing.
+                           Dit is GEEN hersteladvies en hoort niet in recovery_note.
   enforcement_term         resterende handhavingstermijn / levensduur in jaren, als
                            getal of bereik "15-25"
   groundwater_level        gemeten grondwaterstand in meters t.o.v. NAP, als getal
@@ -353,7 +357,7 @@ Wilhelminakade 59 | 1910"}.
 
 Antwoord met alleen JSON, met exact deze sleutels:
 {"foundation_type": null, "built_year": null, "foundation_quality": null,
- "recovery_advised": null, "recovery_note": null, "enforcement_term": null,
+ "recovery_advised": null, "recovery_note": null, "follow_up_note": null, "enforcement_term": null,
  "groundwater_level": null, "wood_level": null, "pile_head_level": null,
  "pile_tip_level": null, "concrete_charger_length": null,
  "pile_diameter_top": null, "pile_diameter_bottom": null, "pile_distance_length": null,
@@ -364,13 +368,16 @@ Antwoord met alleen JSON, met exact deze sleutels:
 
 /**
  * Field keys are the `report.inquiry_sample` column names (English, like all
- * identifiers -- Yorick 2026-08-28), except `recovery_note`, which has no
- * column and exists because a boolean lost the nuance Don kept finding
- * ("direct herstel niet nodig, maar ...").
+ * identifiers -- Yorick 2026-08-28), except `recovery_note` and
+ * `follow_up_note`, which have no column. The first exists because a boolean
+ * lost the nuance Don kept finding ("direct herstel niet nodig, maar ...");
+ * the second because Don rejected notes that were advice for *follow-up*
+ * (nader onderzoek, monitoring) filed as advice for *repair* (2026-08-29:
+ * "dit is geen hersteladvies, dit is een algemeen advies voor vervolg").
  */
 export const EXTRACT_FIELDS = [
   "foundation_type", "built_year", "foundation_quality",
-  "recovery_advised", "recovery_note", "enforcement_term", "groundwater_level",
+  "recovery_advised", "recovery_note", "follow_up_note", "enforcement_term", "groundwater_level",
   "wood_level", "pile_head_level", "pile_tip_level", "concrete_charger_length",
   // Phase A, Don 2026-08-29: "uit de funderingsonderzoeken kan meer worden gehaald".
   // Document-level only; per-address values (cracks, skew) are phase B.
