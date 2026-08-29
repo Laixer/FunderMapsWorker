@@ -524,6 +524,17 @@ The `autonomy` / `reversible` / `riskWeight` vocabulary in the existing
 
 ---
 
+### 7.1 Extraction benchmark (repeatable)
+
+`bun run src/commands/bench-extract.ts --n 50` scores the live text-lane prompt
+against human-entered `report.inquiry_sample` rows on a deterministic set of
+foundation_research inquiries (ordered by md5 of the id, so two prompts see the
+same documents). Per field: hit / family-hit / wrong / missed / unverifiable
+(proposed where no human ever entered the field -- recovered or fabricated, a
+person has to look). Writes a per-row CSV; touches nothing in the database.
+Results live in `~/fundermaps-inquiry-audit/bench/` on the ops VM; the
+2026-08-29 run (first English-key prompt) is the baseline.
+
 ## 8. Windmill flows
 
 Windmill is still **single-worker instance-wide** — all flow parallelism
