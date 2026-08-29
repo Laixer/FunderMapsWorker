@@ -343,8 +343,29 @@ Voorbeelden van goed bewijs, uit echte rapporten (waarde <- citaat):
 Een tabelcitaat draagt altijd de kop of het rijlabel mee; een getal zonder context is
 geen bewijs.
 
-Een rapport beschrijft vaak meerdere adressen. Geef dan de waarde voor het adres dat
-het rapport als hoofdadres of eerste adres noemt, en zet het adres in het citaat.
+Een rapport beschrijft vaak meerdere adressen. De velden hierboven gelden voor het
+rapport als geheel (of het hoofdadres). Geef DAARNAAST per adres dat het rapport
+onderzoekt een object in "addresses", met de gegevens die het rapport voor DAT adres
+vastlegt -- meestal uit de inmeettabellen en de schade-opname. Sleutels per adres:
+
+  address                  het adres zoals het rapport het schrijft ("Adamshofstraat 93A")
+  foundation_type, foundation_quality, built_year, wood_level, pile_head_level,
+  pile_tip_level, groundwater_level, groundlevel, pile_diameter_top,
+  wood_penetration_depth   zelfde betekenis en eenheid als hierboven, maar voor dit adres
+  crack_facade_front_type  scheurvorming voorgevel, een van: none (geen), small (licht),
+                           mediocre (matig), big (ernstig)
+  crack_facade_back_type   idem achtergevel
+  crack_indoor_type        idem inpandig
+  skewed_parallel          scheefstand evenwijdig aan de gevel (lintvoegmeting), als
+                           getal zoals het rapport het geeft, in mm/m of als 1:N -> N
+  skewed_perpendicular     scheefstand haaks op de gevel (loodmeting), als getal
+  threshold_front_level    dorpelhoogte voorzijde in meters t.o.v. NAP
+  threshold_back_level     dorpelhoogte achterzijde in meters t.o.v. NAP
+  settlement_speed         zakkingssnelheid in mm per jaar, NEGATIEF voor zakking
+  evidence                 per gevuld veld het citaat, met het adres en de tabelkop erin
+
+Laat een sleutel weg (of null) als het rapport die voor dat adres niet geeft. Verzin
+geen adressen: alleen adressen die het rapport zelf noemt.
 
 De WAARDE van een veld is alleen het getal, de code, true/false of het jaartal --
 nooit het citaat. Het citaat hoort uitsluitend onder "evidence", met dezelfde
@@ -360,7 +381,10 @@ Antwoord met alleen JSON, met exact deze sleutels:
  "wood_type": null, "wood_penetration_depth": null, "wood_encroachment": null,
  "foundation_depth": null, "groundlevel": null,
  "damage_cause": [], "damage_characteristics": [],
- "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0}`;
+ "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0,
+ "addresses": [{"address": "...", "foundation_type": null, "wood_level": null,
+                "crack_facade_front_type": null, "skewed_parallel": null,
+                "evidence": {"wood_level": "..."}}]}`;
 
 /**
  * Field keys are the `report.inquiry_sample` column names (English, like all
@@ -443,11 +467,29 @@ const QUALITY_FROM_DUTCH: Record<string, string> = {
   matig_tot_goed: "mediocre_good", matig_tot_slecht: "mediocre_bad",
 };
 
+/** Fields a report gives per address (report.inquiry_sample is per address too). */
+export const ADDRESS_FIELDS = [
+  "foundation_type", "foundation_quality", "built_year", "wood_level", "pile_head_level",
+  "pile_tip_level", "groundwater_level", "groundlevel", "pile_diameter_top",
+  "wood_penetration_depth", "crack_facade_front_type", "crack_facade_back_type",
+  "crack_indoor_type", "skewed_parallel", "skewed_perpendicular",
+  "threshold_front_level", "threshold_back_level", "settlement_speed",
+] as const;
+
+const CRACK_TYPES = new Set(["none", "nil", "small", "mediocre", "big"]);
+const ADDRESS_NUMERIC = new Set([
+  "built_year", "wood_level", "pile_head_level", "pile_tip_level", "groundwater_level",
+  "groundlevel", "pile_diameter_top", "wood_penetration_depth", "skewed_parallel",
+  "skewed_perpendicular", "threshold_front_level", "threshold_back_level", "settlement_speed",
+]);
+
 export interface FieldRead {
   field: string;
   value: string;
   evidence: string | null;
   confidence: number | null;
+  /** The address as the report wrote it, for per-address values; absent = document-level. */
+  address?: string;
   /**
    * Set when the document is not allowed to establish this field -- a QuickScan
    * or NWWI risk report stating a foundation type it read off FunderMaps.
@@ -469,7 +511,25 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
   const ev = (a["evidence"] ?? {}) as Record<string, string>;
   const conf = norm01(a["confidence"]);
 
-  return EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
+  const perAddress: FieldRead[] = [];
+  const addresses = Array.isArray(a["addresses"]) ? (a["addresses"] as Record<string, unknown>[]) : [];
+  for (const row of addresses.slice(0, 40)) {
+    const address = String(row?.["address"] ?? "").trim();
+    if (!address) continue;
+    const rev = (row["evidence"] ?? {}) as Record<string, string>;
+    for (const f of ADDRESS_FIELDS) {
+      const v = row[f];
+      if (v === null || v === undefined || v === "" || v === "onbekend") continue;
+      let value = String(v).trim().toLowerCase();
+      if (f.startsWith("crack_")) { if (!CRACK_TYPES.has(value)) continue; }
+      else if (f === "foundation_quality") { value = QUALITY_CODES.has(value) ? value : (QUALITY_FROM_DUTCH[value.replace(/\s+/g, "_")] ?? ""); if (!value) continue; }
+      else if (ADDRESS_NUMERIC.has(f)) { const n = normaliseNumeric(String(v), rev[f] ?? null); if (!n) continue; value = n.value; }
+      else value = String(v).trim();
+      perAddress.push({ field: f, value, evidence: rev[f] ?? null, confidence: conf, address });
+    }
+  }
+
+  return [...EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
     let v = a[f];
     if (v === null || v === undefined || v === "" || v === "onbekend") return [];
     if (f === "foundation_quality") {
@@ -506,5 +566,5 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
       return [{ field: f, value: code, evidence: `${String(v)} jaar -- ${ev[f] ?? ""}`.trim(), confidence: conf }];
     }
     return [{ field: f, value: String(v), evidence: ev[f] ?? null, confidence: conf }];
-  });
+  }), ...perAddress];
 }
