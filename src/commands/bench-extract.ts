@@ -49,10 +49,22 @@ function matches(field: string, proposed: string, truths: Set<string>): "exact" 
     case "wood_level":
     case "pile_head_level":
     case "pile_tip_level":
-    case "concrete_charger_length": {
+    case "concrete_charger_length":
+    case "pile_distance_length":
+    case "mason_level":
+    case "foundation_depth":
+    case "groundlevel": {
       const p = parseFloat(proposed.replace(",", "."));
       return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= 0.1) ? "exact" : "no";
     }
+    case "pile_diameter_top":
+    case "pile_diameter_bottom":
+    case "wood_penetration_depth": {
+      const p = parseFloat(proposed.replace(",", "."));
+      return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= 10) ? "exact" : "no";
+    }
+    case "cpt":
+      return [...truths].some((t) => t.toLowerCase().replace(/\s+/g, "") === proposed.toLowerCase().replace(/\s+/g, "")) ? "exact" : "no";
     case "built_year":
       return [...truths].some((t) => Math.abs(parseInt(t) - parseInt(proposed)) <= 1) ? "exact" : "no";
     default:
@@ -91,7 +103,11 @@ for (const inq of inquiries) {
     SELECT foundation_type::text, extract(year FROM built_year)::int::text AS built_year,
            overall_quality::text AS foundation_quality, recovery_advised::text,
            enforcement_term::text, groundwater_level_temp::text AS groundwater_level,
-           wood_level::text, pile_head_level::text, pile_tip_level::text, concrete_charger_length::text
+           wood_level::text, pile_head_level::text, pile_tip_level::text, concrete_charger_length::text,
+           pile_diameter_top::text, pile_diameter_bottom::text, pile_distance_length::text,
+           wood_type::text, wood_penetration_depth::text, wood_encroachment::text,
+           mason_level::text, foundation_depth::text, groundlevel::text, cpt::text,
+           damage_cause::text, damage_characteristics::text
     FROM report.inquiry_sample WHERE inquiry_id = ${inq.id}`;
   const truth: Truth = {};
   for (const f of EXTRACT_FIELDS) {

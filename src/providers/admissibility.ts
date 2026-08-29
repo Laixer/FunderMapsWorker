@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import { EXTRACT_FIELDS } from "./vision.ts";
 
 /**
  * Is this document allowed to establish a foundation type?
@@ -127,8 +128,4 @@ export function mayEstablishFoundationType(
  * its source establishes nothing; it goes to the reviewer with every value
  * marked, and the reviewer can still take one over by hand.
  */
-export const FIELDS_REQUIRING_ADMISSIBLE_SOURCE = new Set([
-  "foundation_type", "built_year", "foundation_quality",
-  "recovery_advised", "recovery_note", "enforcement_term", "groundwater_level",
-  "wood_level", "pile_head_level", "pile_tip_level", "concrete_charger_length",
-]);
+export const FIELDS_REQUIRING_ADMISSIBLE_SOURCE = new Set<string>(EXTRACT_FIELDS);

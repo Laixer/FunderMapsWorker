@@ -291,6 +291,29 @@ ${FOUNDATION_VOCABULARY}
   pile_head_level          bovenkant paal in meters t.o.v. NAP, als getal
   pile_tip_level           punt van de paal (paalpuntniveau) in meters t.o.v. NAP
   concrete_charger_length  lengte van de betonnen oplanger in meters, als getal
+  pile_diameter_top        paaldiameter aan de kop in MILLIMETERS, als geheel getal
+  pile_diameter_bottom     paaldiameter aan de punt in millimeters, als geheel getal
+  pile_distance_length     hart-op-hart paalafstand in meters, als getal
+  wood_type                houtsoort van de palen: pine (grenen) of spruce (vuren)
+  wood_penetration_depth   indringingsdiepte / aantasting van het hout in millimeters
+                           (bijv. uit een priktest), als getal
+  wood_encroachment        aantasting van het hout, een van: fungus_infection
+                           (schimmel), bio_infection (bacterieel), bio_fungus_infection
+  mason_level              onderkant metselwerk in meters t.o.v. NAP, als getal
+  foundation_depth         aanlegniveau / onderkant fundering in meters t.o.v. NAP
+  groundlevel              maaiveldhoogte in meters t.o.v. NAP, als getal
+  cpt                      kenmerk van de sondering (bijv. "DKM1", "S3") als tekst
+  damage_cause             oorzaak van de schade, een van: drainage, construction_flaw,
+                           drystand (droogstand), overcharge (overbelasting),
+                           negative_cling (negatieve kleef), overcharge_negative_cling,
+                           bio_infection, fungus_infection, bio_fungus_infection,
+                           foundation_flaw, construction_heave, subsidence (zetting),
+                           vegetation, gas, vibrations, partial_foundation_recovery,
+                           japanese_knotweed, groundwater_level_reduction
+  damage_characteristics   waargenomen schadebeeld, een van: jamming_door_window
+                           (klemmende deuren/ramen), crack (scheuren), skewed
+                           (scheefstand), crawlspace_flooding, threshold_above_subsurface,
+                           threshold_below_subsurface, crooked_floor_wall
 
 Geef bij elk veld dat je invult het citaat uit het rapport waar het vandaan komt.
 
@@ -303,11 +326,30 @@ Regels voor het bewijs:
 - Staat de waarde er niet letterlijk maar leid je die af, begin het bewijs dan
   met "afgeleid: " en beschrijf waaruit. Afleiden mag -- het verzwijgen niet.
 
+Voorbeelden van goed bewijs, uit echte rapporten (waarde <- citaat):
+- foundation_type = wood_rotterdam <- "De fundering van de panden in de bouweenheid
+  Adamshofstraat 81 t/m 105 is opgebouwd uit een houten paalfundering met langshout,
+  een Rotterdamse fundering"
+- built_year = 1911 <- "Tabel 4.1: bouweenheid en bouwjaar | Adamshofstraat 81 t/m 105 | 1911"
+- wood_level = -2.47 <- "Tabel 9.3: inmeetgegevens fundering | Adamshofstraat 93 |
+  achtergevel 93/91 | 14-9-2022 | -1,25 | -2,43 | -2,47" (kolom bovenkant hout)
+- groundwater_level = -2.94 <- "Tabel 15: ... | West Sidelinge 88 | Grondwater (m t.o.v. NAP): -2,94"
+- enforcement_term = "1-5" <- "indicatieve funderingstechnische handhavingstermijn van 1 tot 5 jaar"
+Een tabelcitaat draagt altijd de kop of het rijlabel mee; een getal zonder context is
+geen bewijs.
+
+Een rapport beschrijft vaak meerdere adressen. Geef dan de waarde voor het adres dat
+het rapport als hoofdadres of eerste adres noemt, en zet het adres in het citaat.
+
 Antwoord met alleen JSON, met exact deze sleutels:
 {"foundation_type": null, "built_year": null, "foundation_quality": null,
  "recovery_advised": null, "recovery_note": null, "enforcement_term": null,
  "groundwater_level": null, "wood_level": null, "pile_head_level": null,
  "pile_tip_level": null, "concrete_charger_length": null,
+ "pile_diameter_top": null, "pile_diameter_bottom": null, "pile_distance_length": null,
+ "wood_type": null, "wood_penetration_depth": null, "wood_encroachment": null,
+ "mason_level": null, "foundation_depth": null, "groundlevel": null, "cpt": null,
+ "damage_cause": null, "damage_characteristics": null,
  "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0}`;
 
 /**
@@ -320,7 +362,29 @@ export const EXTRACT_FIELDS = [
   "foundation_type", "built_year", "foundation_quality",
   "recovery_advised", "recovery_note", "enforcement_term", "groundwater_level",
   "wood_level", "pile_head_level", "pile_tip_level", "concrete_charger_length",
+  // Phase A, Don 2026-08-29: "uit de funderingsonderzoeken kan meer worden gehaald".
+  // Document-level only; per-address values (cracks, skew) are phase B.
+  "pile_diameter_top", "pile_diameter_bottom", "pile_distance_length",
+  "wood_type", "wood_penetration_depth", "wood_encroachment",
+  "mason_level", "foundation_depth", "groundlevel", "cpt",
+  "damage_cause", "damage_characteristics",
 ] as const;
+
+/** Enum-typed fields: a value outside the PG enum is dropped, never stored. */
+const ENUM_VALUES: Record<string, Set<string>> = {
+  wood_type: new Set(["pine", "spruce"]),
+  wood_encroachment: new Set(["fungus_infection", "bio_fungus_infection", "bio_infection"]),
+  damage_cause: new Set([
+    "drainage", "construction_flaw", "drystand", "overcharge", "overcharge_negative_cling",
+    "negative_cling", "bio_infection", "fungus_infection", "bio_fungus_infection",
+    "foundation_flaw", "construction_heave", "subsidence", "vegetation", "gas", "vibrations",
+    "partial_foundation_recovery", "japanese_knotweed", "groundwater_level_reduction",
+  ]),
+  damage_characteristics: new Set([
+    "jamming_door_window", "crack", "skewed", "crawlspace_flooding",
+    "threshold_above_subsurface", "threshold_below_subsurface", "crooked_floor_wall",
+  ]),
+};
 
 /** Map a term in years (a number or a "15-25" range) onto report.enforcement_term. */
 export function enforcementTermCode(raw: string): string | null {
@@ -377,6 +441,7 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
       if (!code) return [];
       v = code;
     }
+    if (ENUM_VALUES[f] && !ENUM_VALUES[f]!.has(String(v).toLowerCase())) return [];
     if (f === "enforcement_term") {
       const code = enforcementTermCode(String(v));
       if (!code) return [];
