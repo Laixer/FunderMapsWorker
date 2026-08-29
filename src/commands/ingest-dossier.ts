@@ -341,7 +341,7 @@ export async function ingestDossier(payload: {
       const read = await vision.readDrawing(cleanPages.map((p) => p.b64));
       if (read.foundationType) {
         fields = [{
-          field: "funderingstype",
+          field: "foundation_type",
           value: read.foundationType,
           evidence: read.evidence,
           confidence: read.confidence,
@@ -368,7 +368,7 @@ export async function ingestDossier(payload: {
       payload.declared_category,
     );
     if (!adm.ok) {
-      log.warn(`bron niet toelaatbaar voor funderingstype`, { reden: adm.reason?.slice(0, 90) });
+      log.warn(`source not admissible`, { reason: adm.reason?.slice(0, 90) });
       fields = fields.map(f =>
         FIELDS_REQUIRING_ADMISSIBLE_SOURCE.has(f.field)
           ? { ...f, rejected: adm.reason }
@@ -415,10 +415,10 @@ export async function ingestDossier(payload: {
       const gate = f.rejected
         ? `${ACCENT.fail}geweigerd${RESET}`
         : inferred(f)
-          ? `${ACCENT.muted}afgeleid${RESET}`
+          ? `${ACCENT.muted}inferred${RESET}`
           : sure(f)
-            ? `${ACCENT.ok}zeker${RESET}`
-            : `${ACCENT.muted}onzeker${RESET}`;
+            ? `${ACCENT.ok}sure${RESET}`
+            : `${ACCENT.muted}unsure${RESET}`;
       log.step(
         `  ${f.field} = ${ACCENT.type}${f.value}${RESET} ` +
           `(${f.confidence ?? "?"}) ${gate}  ${ACCENT.muted}${(f.evidence ?? "no evidence").slice(0, 70)}${RESET}`
@@ -539,9 +539,9 @@ if (import.meta.main) {
         dry_run: argv.includes("--dry-run"),
       });
       log.info("done", {
-        documenten: rs.length,
-        velden: rs.reduce((n, r) => n + r.fields, 0),
-        zeker: rs.reduce((n, r) => n + r.highConfidence, 0),
+        documents: rs.length,
+        fields: rs.reduce((n, r) => n + r.fields, 0),
+        sure: rs.reduce((n, r) => n + r.highConfidence, 0),
       });
       process.exit(0);
     }
