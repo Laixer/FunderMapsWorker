@@ -2775,7 +2775,6 @@ CREATE TABLE application."user" (
     job_title text,
     phone_number application.phone,
     role application.role DEFAULT 'user'::application.role NOT NULL,
-    last_login timestamp with time zone,
     name text,
     email_verified boolean DEFAULT false NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
