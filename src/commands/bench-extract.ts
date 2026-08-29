@@ -63,8 +63,7 @@ function matches(field: string, proposed: string, truths: Set<string>): "exact" 
       const p = parseFloat(proposed.replace(",", "."));
       return [...truths].some((t) => Math.abs(parseFloat(t) - p) <= 10) ? "exact" : "no";
     }
-    case "cpt":
-      return [...truths].some((t) => t.toLowerCase().replace(/\s+/g, "") === proposed.toLowerCase().replace(/\s+/g, "")) ? "exact" : "no";
+
     case "built_year":
       return [...truths].some((t) => Math.abs(parseInt(t) - parseInt(proposed)) <= 1) ? "exact" : "no";
     default:
@@ -106,7 +105,7 @@ for (const inq of inquiries) {
            wood_level::text, pile_head_level::text, pile_tip_level::text, concrete_charger_length::text,
            pile_diameter_top::text, pile_diameter_bottom::text, pile_distance_length::text,
            wood_type::text, wood_penetration_depth::text, wood_encroachment::text,
-           mason_level::text, foundation_depth::text, groundlevel::text, cpt::text,
+           mason_level::text, foundation_depth::text, groundlevel::text,
            damage_cause::text, damage_characteristics::text
     FROM report.inquiry_sample WHERE inquiry_id = ${inq.id}`;
   const truth: Truth = {};

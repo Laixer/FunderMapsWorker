@@ -302,7 +302,6 @@ ${FOUNDATION_VOCABULARY}
   mason_level              onderkant metselwerk in meters t.o.v. NAP, als getal
   foundation_depth         aanlegniveau / onderkant fundering in meters t.o.v. NAP
   groundlevel              maaiveldhoogte in meters t.o.v. NAP, als getal
-  cpt                      kenmerk van de sondering (bijv. "DKM1", "S3") als tekst
   damage_cause             oorzaak van de schade, een van: drainage, construction_flaw,
                            drystand (droogstand), overcharge (overbelasting),
                            negative_cling (negatieve kleef), overcharge_negative_cling,
@@ -341,6 +340,11 @@ geen bewijs.
 Een rapport beschrijft vaak meerdere adressen. Geef dan de waarde voor het adres dat
 het rapport als hoofdadres of eerste adres noemt, en zet het adres in het citaat.
 
+De WAARDE van een veld is alleen het getal, de code, true/false of het jaartal --
+nooit het citaat. Het citaat hoort uitsluitend onder "evidence", met dezelfde
+sleutel. Dus: "built_year": 1910 en "evidence": {"built_year": "Tabel 3: bouwjaar |
+Wilhelminakade 59 | 1910"}.
+
 Antwoord met alleen JSON, met exact deze sleutels:
 {"foundation_type": null, "built_year": null, "foundation_quality": null,
  "recovery_advised": null, "recovery_note": null, "enforcement_term": null,
@@ -348,7 +352,7 @@ Antwoord met alleen JSON, met exact deze sleutels:
  "pile_tip_level": null, "concrete_charger_length": null,
  "pile_diameter_top": null, "pile_diameter_bottom": null, "pile_distance_length": null,
  "wood_type": null, "wood_penetration_depth": null, "wood_encroachment": null,
- "mason_level": null, "foundation_depth": null, "groundlevel": null, "cpt": null,
+ "mason_level": null, "foundation_depth": null, "groundlevel": null,
  "damage_cause": null, "damage_characteristics": null,
  "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0}`;
 
@@ -366,7 +370,7 @@ export const EXTRACT_FIELDS = [
   // Document-level only; per-address values (cracks, skew) are phase B.
   "pile_diameter_top", "pile_diameter_bottom", "pile_distance_length",
   "wood_type", "wood_penetration_depth", "wood_encroachment",
-  "mason_level", "foundation_depth", "groundlevel", "cpt",
+  "mason_level", "foundation_depth", "groundlevel",
   "damage_cause", "damage_characteristics",
 ] as const;
 
@@ -398,6 +402,28 @@ export function enforcementTermCode(raw: string): string | null {
     if (years <= cap) return code;
   }
   return "term40";
+}
+
+const NUMERIC_FIELDS = new Set([
+  "built_year", "groundwater_level", "wood_level", "pile_head_level", "pile_tip_level",
+  "concrete_charger_length", "pile_diameter_top", "pile_diameter_bottom",
+  "pile_distance_length", "wood_penetration_depth", "mason_level", "foundation_depth",
+  "groundlevel",
+]);
+
+/**
+ * The value slot sometimes carries the citation ("Tabel 3: bouwjaar | ... | 1910")
+ * despite the prompt. A numeric field keeps only its number -- the LAST one in
+ * the string, because a table citation ends in its cell -- and the rest of the
+ * text is moved to the evidence so nothing is lost. Measured on the 2026-08-29
+ * benchmark: 18 of ~700 values arrived this way.
+ */
+function normaliseNumeric(raw: string, evidence: string | null): { value: string; evidence: string | null } | null {
+  const trimmed = raw.trim().replace(/,(\d)/g, ".$1");
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return { value: trimmed, evidence };
+  const nums = trimmed.match(/-?\d+(?:\.\d+)?/g);
+  if (!nums || nums.length === 0) return null;
+  return { value: nums[nums.length - 1]!, evidence: evidence?.trim() ? evidence : raw };
 }
 
 const QUALITY_CODES = new Set(["bad", "mediocre", "tolerable", "good", "mediocre_good", "mediocre_bad"]);
@@ -442,6 +468,16 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
       v = code;
     }
     if (ENUM_VALUES[f] && !ENUM_VALUES[f]!.has(String(v).toLowerCase())) return [];
+    if (f === "recovery_advised") {
+      const b = String(v).trim().toLowerCase();
+      if (b !== "true" && b !== "false") return [];
+      v = b;
+    }
+    if (NUMERIC_FIELDS.has(f)) {
+      const n = normaliseNumeric(String(v), ev[f] ?? null);
+      if (!n) return [];
+      return [{ field: f, value: n.value, evidence: n.evidence, confidence: conf }];
+    }
     if (f === "enforcement_term") {
       const code = enforcementTermCode(String(v));
       if (!code) return [];
