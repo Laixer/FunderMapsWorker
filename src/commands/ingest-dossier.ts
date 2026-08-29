@@ -481,16 +481,34 @@ export async function readSubmission(payload: {
     log.step(`${ACCENT.type}[${i + 1}/${artifacts.length}]${RESET} ${a.original_filename ?? a.storage_key}` +
       (a.declared_category ? ` ${ACCENT.muted}(sender: ${a.declared_category})${RESET}` : ""));
     try {
-      results.push(
-        await ingestDossier({
-          file: `s3://${a.storage_key}`,
-          dossier_id: d.id,
-          artifact_id: a.id,
-          declared_category: a.declared_category ?? undefined,
-          display_name: a.original_filename ?? undefined,
-          dry_run: payload.dry_run,
-        }),
-      );
+      const r = await ingestDossier({
+        file: `s3://${a.storage_key}`,
+        dossier_id: d.id,
+        artifact_id: a.id,
+        declared_category: a.declared_category ?? undefined,
+        display_name: a.original_filename ?? undefined,
+        dry_run: payload.dry_run,
+      });
+      results.push(r);
+      // A re-read replaces the previous reading. Every value from an older
+      // extraction that no person has judged is marked superseded, so the
+      // reviewer sees one set of proposals, not two. Anything with a verdict
+      // is a decision already taken and stays exactly as it is.
+      if (payload.again && !payload.dry_run) {
+        const [sup] = await sql<{ n: number }[]>`
+          WITH latest AS (
+            SELECT max(id) AS id FROM dataops.extraction WHERE artifact_id = ${a.id}
+          ), done AS (
+            UPDATE dataops.extraction_field f SET state = 'superseded'
+             FROM dataops.extraction e, latest
+            WHERE e.id = f.extraction_id AND e.artifact_id = ${a.id} AND e.id <> latest.id
+              AND f.state IN ('pending', 'auto_accepted', 'rejected')
+              AND NOT EXISTS (SELECT 1 FROM dataops.verdict v WHERE v.extraction_field_id = f.id)
+            RETURNING 1
+          )
+          SELECT count(*)::int AS n FROM done`;
+        if (sup && sup.n > 0) log.step(`superseded ${sup.n} value(s) from the earlier reading`);
+      }
     } catch (e) {
       // One unreadable file must not strand the rest of a submission. The
       // artifact keeps no extraction, so a later run picks it up again.
