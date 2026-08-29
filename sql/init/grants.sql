@@ -42,7 +42,7 @@ GRANT SELECT
     ON ALL TABLES IN SCHEMA application, data, geocoder, maplayer, report
     TO fundermaps_webservice;
 
-GRANT INSERT ON application.product_tracker, application.product_tracker_mismatch
+GRANT INSERT ON application.product_tracker
     TO fundermaps_webservice;
 
 GRANT UPDATE (last_used) ON application.auth_key
