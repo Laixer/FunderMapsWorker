@@ -14,11 +14,11 @@
 BEGIN;
 
 INSERT INTO application.oauth_application
-  (id, name, client_id, client_secret, type, public, token_endpoint_auth_method,
+  (id, name, client_id, client_secret, application_type, token_endpoint_auth_method,
    skip_consent, require_pkce, disabled, enable_end_session,
    redirect_uris, post_logout_redirect_uris, grant_types, response_types, scopes)
 VALUES
-  ('managementfront', 'ManagementFront (admin)', 'managementfront', NULL, 'web', true, 'none',
+  ('managementfront', 'ManagementFront (admin)', 'managementfront', NULL, 'web', 'none',
    true, true, false, true,
    '{https://admin.fundermaps.com/auth/callback}',
    '{https://admin.fundermaps.com/login}',
@@ -26,7 +26,7 @@ VALUES
    '{openid,email,profile,offline_access}')
 ON CONFLICT (client_id) DO UPDATE SET
   name                       = EXCLUDED.name,
-  public                     = EXCLUDED.public,
+  application_type           = EXCLUDED.application_type,
   token_endpoint_auth_method = EXCLUDED.token_endpoint_auth_method,
   skip_consent               = EXCLUDED.skip_consent,
   require_pkce               = EXCLUDED.require_pkce,
