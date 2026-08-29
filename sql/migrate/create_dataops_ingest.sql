@@ -222,7 +222,7 @@ CREATE TABLE dataops.extraction_field (
 
     state           dataops.review_state NOT NULL DEFAULT 'pending',
 
-    UNIQUE (extraction_id, field)
+    UNIQUE (extraction_id, field, value)   -- was (extraction_id, field); see alter_extraction_field_candidates.sql
 );
 
 CREATE INDEX extraction_field_state_idx ON dataops.extraction_field (state)
