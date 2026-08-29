@@ -2181,7 +2181,8 @@ CREATE TABLE application.account (
     id_token text,
     password text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    issuer text DEFAULT 'local:credential'::text NOT NULL
 );
 
 
@@ -2471,7 +2472,9 @@ CREATE TABLE application.jwks (
     public_key text NOT NULL,
     private_key text NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    expires_at timestamp without time zone
+    expires_at timestamp without time zone,
+    alg text,
+    crv text
 );
 
 
@@ -2544,7 +2547,12 @@ CREATE TABLE application.oauth_access_token (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     session_id text,
     reference_id text,
-    refresh_id text
+    refresh_id text,
+    authorization_code_id text,
+    resources text[],
+    requested_user_info_claims text[],
+    revoked timestamp without time zone,
+    confirmation jsonb
 );
 
 
@@ -2559,7 +2567,7 @@ CREATE TABLE application.oauth_application (
     metadata jsonb,
     client_id text NOT NULL,
     client_secret text,
-    type text NOT NULL,
+    type text,
     disabled boolean DEFAULT false,
     user_id uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
@@ -2582,7 +2590,38 @@ CREATE TABLE application.oauth_application (
     software_version text,
     software_statement text,
     token_endpoint_auth_method text,
-    reference_id text
+    reference_id text,
+    application_type text,
+    client_credentials_scopes text[] DEFAULT '{}'::text[] NOT NULL,
+    client_discovery_id text,
+    backchannel_logout_uri text,
+    backchannel_logout_session_required boolean,
+    jwks text,
+    jwks_uri text,
+    dpop_bound_access_tokens boolean DEFAULT false
+);
+
+
+--
+-- Name: oauth_client_assertion; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_client_assertion (
+    id text NOT NULL,
+    expires_at timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: oauth_client_resource; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_client_resource (
+    id text NOT NULL,
+    client_id text NOT NULL,
+    resource_id text NOT NULL,
+    metadata jsonb,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2597,7 +2636,9 @@ CREATE TABLE application.oauth_consent (
     scopes text[] NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    reference_id text
+    reference_id text,
+    resources text[],
+    requested_user_info_claims text[]
 );
 
 
@@ -2616,7 +2657,37 @@ CREATE TABLE application.oauth_refresh_token (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     revoked timestamp without time zone,
     auth_time timestamp without time zone,
-    scopes text[] NOT NULL
+    scopes text[] NOT NULL,
+    authorization_code_id text,
+    resources text[],
+    requested_user_info_claims text[],
+    rotated_at timestamp without time zone,
+    rotation_replay_response text,
+    rotation_replay_expires_at timestamp without time zone,
+    confirmation jsonb
+);
+
+
+--
+-- Name: oauth_resource; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.oauth_resource (
+    id text NOT NULL,
+    identifier text NOT NULL,
+    name text NOT NULL,
+    access_token_ttl integer,
+    refresh_token_ttl integer,
+    signing_algorithm text,
+    signing_key_id text,
+    allowed_scopes text[],
+    custom_claims jsonb,
+    dpop_bound_access_tokens_required boolean DEFAULT false NOT NULL,
+    disabled boolean DEFAULT false NOT NULL,
+    policy_version integer DEFAULT 1 NOT NULL,
+    metadata jsonb,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -5010,6 +5081,30 @@ ALTER TABLE ONLY application.oauth_application
 
 
 --
+-- Name: oauth_client_assertion oauth_client_assertion_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_client_assertion
+    ADD CONSTRAINT oauth_client_assertion_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_client_resource oauth_client_resource_client_id_resource_id_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_client_resource
+    ADD CONSTRAINT oauth_client_resource_client_id_resource_id_key UNIQUE (client_id, resource_id);
+
+
+--
+-- Name: oauth_client_resource oauth_client_resource_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_client_resource
+    ADD CONSTRAINT oauth_client_resource_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: oauth_consent oauth_consent_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5031,6 +5126,22 @@ ALTER TABLE ONLY application.oauth_refresh_token
 
 ALTER TABLE ONLY application.oauth_refresh_token
     ADD CONSTRAINT oauth_refresh_token_token_key UNIQUE (token);
+
+
+--
+-- Name: oauth_resource oauth_resource_identifier_key; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_resource
+    ADD CONSTRAINT oauth_resource_identifier_key UNIQUE (identifier);
+
+
+--
+-- Name: oauth_resource oauth_resource_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_resource
+    ADD CONSTRAINT oauth_resource_pkey PRIMARY KEY (id);
 
 
 --
@@ -6686,6 +6797,13 @@ CREATE INDEX file_resources_status_idx ON application.file_resources USING btree
 
 
 --
+-- Name: account_issuer_account_id_key; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE UNIQUE INDEX account_issuer_account_id_key ON application.account USING btree (issuer, account_id);
+
+
+--
 -- Name: idx_account_user_id; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -6732,6 +6850,13 @@ CREATE INDEX idx_oauth_access_token_user_id ON application.oauth_access_token US
 --
 
 CREATE INDEX idx_oauth_application_user_id ON application.oauth_application USING btree (user_id);
+
+
+--
+-- Name: idx_oauth_client_assertion_expires_at; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX idx_oauth_client_assertion_expires_at ON application.oauth_client_assertion USING btree (expires_at);
 
 
 --
@@ -8453,6 +8578,22 @@ ALTER TABLE ONLY application.oauth_access_token
 
 ALTER TABLE ONLY application.oauth_application
     ADD CONSTRAINT oauth_application_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_client_resource oauth_client_resource_client_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_client_resource
+    ADD CONSTRAINT oauth_client_resource_client_id_fkey FOREIGN KEY (client_id) REFERENCES application.oauth_application(client_id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_client_resource oauth_client_resource_resource_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.oauth_client_resource
+    ADD CONSTRAINT oauth_client_resource_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES application.oauth_resource(identifier) ON DELETE CASCADE;
 
 
 --

@@ -15,17 +15,17 @@
 BEGIN;
 
 INSERT INTO application.oauth_application
-  (id, name, client_id, client_secret, type, public, token_endpoint_auth_method,
+  (id, name, client_id, client_secret, application_type, token_endpoint_auth_method,
    skip_consent, require_pkce, disabled,
    redirect_uris, grant_types, response_types, scopes)
 VALUES
-  ('clientapp', 'ClientApp', 'clientapp', NULL, 'web', true, 'none',
+  ('clientapp', 'ClientApp', 'clientapp', NULL, 'web', 'none',
    true, true, false,
    '{https://app.fundermaps.com/auth/callback}',
    '{authorization_code,refresh_token}', '{code}', '{openid,email,profile}')
 ON CONFLICT (client_id) DO UPDATE SET
   name                       = EXCLUDED.name,
-  public                     = EXCLUDED.public,
+  application_type           = EXCLUDED.application_type,
   token_endpoint_auth_method = EXCLUDED.token_endpoint_auth_method,
   skip_consent               = EXCLUDED.skip_consent,
   require_pkce               = EXCLUDED.require_pkce,
