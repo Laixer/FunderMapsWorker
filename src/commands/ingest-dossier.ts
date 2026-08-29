@@ -61,10 +61,21 @@ async function resolveAddress(text: string, dossierId: number | null): Promise<s
   if (!m) return null;
   const street = m[1]!.trim();
   const number = `${m[2]}${(m[3] ?? "").toUpperCase()}`;
-  const rows = await sql<{ id: string; city: string }[]>`
+  let rows: { id: string; city: string }[] = await sql<{ id: string; city: string }[]>`
     SELECT a.id, a.city FROM geocoder.address a
      WHERE lower(a.street) = lower(${street}) AND upper(a.building_number) = ${number}
      LIMIT 20`;
+  if (rows.length === 0 && !m[3]) {
+    // "93" in the report, "93A" / "93B" in the BAG: the report addresses the
+    // pand. Accept the units of that number when they all sit on one building,
+    // and take the first unit -- the invoer convention for the same reports.
+    const units = await sql<{ id: string; city: string; building_id: string | null }[]>`
+      SELECT a.id, a.city, a.building_id FROM geocoder.address a
+       WHERE lower(a.street) = lower(${street}) AND a.building_number ~ ${`^${m[2]}[A-Za-z]`}
+       ORDER BY a.building_number LIMIT 20`;
+    const buildings = new Set(units.map((u) => u.building_id));
+    if (units.length && buildings.size === 1) rows = [units[0]!];
+  }
   if (rows.length === 1) return rows[0]!.id;
   if (rows.length === 0) return null;
   if (dossierId) {

@@ -500,6 +500,18 @@ Antwoord met alleen JSON:
  "confidence": 0.0}`;
 
 /**
+ * Invoer convention for a skew given as a range: "1:200 tot 1:100" is entered
+ * as 150, the midpoint of the two denominators (measured against Don's and
+ * Ton's entries on the 2026-08-29 benchmark). A single "1:N" is N.
+ */
+function skewFromCitation(value: string, citation: string | undefined): string {
+  const ns = [...(citation ?? "").matchAll(/1\s*:\s*(\d+(?:[.,]\d+)?)/g)].map((m) => parseFloat(m[1]!.replace(",", ".")));
+  if (ns.length >= 2) return String((ns[0]! + ns[1]!) / 2);
+  if (ns.length === 1) return String(ns[0]);
+  return value;
+}
+
+/**
  * The per-address pass. Its own call, its own output budget: folded into the
  * document-level prompt it was emitted last and got truncated (phase-B run 1:
  * 25 address rows for 121 known addresses, and the trailing document fields
@@ -529,6 +541,7 @@ export async function extractAddressRows(reportText: string): Promise<FieldRead[
       else if (f === "foundation_quality") { value = QUALITY_CODES.has(value) ? value : (QUALITY_FROM_DUTCH[value.replace(/\s+/g, "_")] ?? ""); if (!value) continue; }
       else if (ADDRESS_NUMERIC.has(f)) { const n = normaliseNumeric(String(v), rev[f] ?? null); if (!n) continue; value = n.value; }
       else value = String(v).trim();
+      if (f === "skewed_parallel" || f === "skewed_perpendicular") value = skewFromCitation(value, rev[f]);
       out.push({ field: f, value, evidence: rev[f] ?? null, confidence: conf, address });
     }
   }

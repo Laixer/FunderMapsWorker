@@ -183,9 +183,14 @@ for (const inq of inquiries) {
     const byAddr = new Map<string, typeof perAddr>();
     for (const f of perAddr) byAddr.set(f.address!, [...(byAddr.get(f.address!) ?? []), f]);
     addrRowsProposed += byAddr.size;
+    // Exact first; then the same street + house number ignoring the BAG unit
+    // letter ("93" vs "93A": the report addresses the pand, the sample a unit).
+    const bareKey = (k: string) => k.replace(/\|(\d+).*$/, "|$1");
+    const truthByBare = new Map<string, Record<string, unknown>>();
+    for (const [k, v] of truthByAddr) if (!truthByBare.has(bareKey(k))) truthByBare.set(bareKey(k), v);
     for (const [addrText, fs] of byAddr) {
       const key = parseAddr(addrText);
-      const smp = key ? truthByAddr.get(key) : undefined;
+      const smp = key ? (truthByAddr.get(key) ?? truthByBare.get(bareKey(key))) : undefined;
       if (smp) addrRowsResolved++;
       for (const af of ADDRESS_FIELDS) {
         const ps = fs.filter((f) => f.field === af);
@@ -202,7 +207,7 @@ for (const inq of inquiries) {
     }
     // truth rows the model never produced an address for
     for (const [key, smp] of truthByAddr) {
-      if ([...byAddr.keys()].some((a) => parseAddr(a) === key)) continue;
+      if ([...byAddr.keys()].some((a) => { const k = parseAddr(a); return k === key || (k && bareKey(k) === bareKey(key)); })) continue;
       for (const af of ADDRESS_FIELDS) { const tv = smp[af]; if (tv != null && tv !== "") tally[`@${af}`]!.missed++; }
     }
     for (const af of ADDRESS_FIELDS) { if ([...truthByAddr.values()].some((smp) => smp[af] != null && smp[af] !== "")) tally[`@${af}`]!.truth++; }
