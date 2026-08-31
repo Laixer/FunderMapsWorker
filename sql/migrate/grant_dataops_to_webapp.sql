@@ -40,5 +40,12 @@ GRANT UPDATE (state) ON dataops.extraction_field TO fundermaps_webapp;
 -- hit "permission denied for table dossier" on the first real close.
 GRANT UPDATE (outcome, outcome_note, outcome_at) ON dataops.dossier TO fundermaps_webapp;
 
+-- committing a dossier (POST /dataops/dossier/:id/commit, API #120) links the
+-- inquiry it created. Applied to prod 2026-08-31 after the first real commit
+-- hit 42501 -- the second grant this file gained that way. The lesson both
+-- times: smoke-test new write paths AS fundermaps_webapp (SET ROLE), not as
+-- the table owner.
+GRANT UPDATE (inquiry_id) ON dataops.dossier TO fundermaps_webapp;
+
 -- and the same for tables a later migration adds
 ALTER DEFAULT PRIVILEGES IN SCHEMA dataops GRANT SELECT ON TABLES TO fundermaps_webapp;
