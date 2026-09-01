@@ -184,7 +184,13 @@ NIET ONDERHEID: dit zijn BESCHRIJVINGEN van wat het gebouw draagt.
   stroken, slieten, een dragende betonvloer -- kies dan de bijbehorende code.
   De beschrijving is het bewijs; er hoeft geen benaming te staan.
 - Kies no_pile alleen als vaststaat dat er geen palen zijn maar het document
-  niet zegt waar het gebouw dan op rust.`;
+  niet zegt waar het gebouw dan op rust.
+- Kolommen of muren die in een doorsnede op losse poeren, voetingen of
+  verbrede voeten staan, ZONDER paalsymbolen of paalpuntniveaus eronder, zijn
+  een fundering op staal: no_pile_masonry als de voet gemetseld is, anders
+  no_pile. Dat is af te leiden en mag als "afgeleid:" worden gegeven -- een
+  monumentale schuur of fabriek van rond 1900 op poeren is een gewoon geval,
+  geen reden voor "onbekend".`;
 
 const READ_PROMPT = `Je bekijkt pagina's uit een Nederlands bouwdossier of archiefstuk.
 Het kan gaan om oude bouwtekeningen (soms van rond 1900), handgeschreven aantekeningen,
