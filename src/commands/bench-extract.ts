@@ -94,7 +94,7 @@ const argv = process.argv.slice(2);
 const arg = (k: string) => { const i = argv.indexOf(`--${k}`); return i > -1 ? argv[i + 1] : undefined; };
 const N = Number(arg("n") ?? 50);
 const OUT = arg("out") ?? `bench-extract-${new Date().toISOString().slice(0, 10)}.csv`;
-/** `text` = the production text lane; `single` = the one-lane experiment (lib/bench-single-lane.ts). */
+/** `document` (alias `single`) = the production document lane; `text` = the legacy text lane. */
 const EXTRACTOR = arg("extractor") ?? "text";
 
 log.banner("Data Ops — bench extract");
@@ -158,7 +158,7 @@ for (const inq of inquiries) {
     await s3.downloadFile(local, `inquiry-report/${inq.document_file}`);
     if ((await pdf.fileKind(local)) !== "pdf") throw new Error("not a pdf");
     let fields;
-    if (EXTRACTOR === "single") {
+    if (EXTRACTOR === "single" || EXTRACTOR === "document") {
       fields = await extractSingleLane(local);
     } else {
       const text = await pdf.documentText(local, 1);
