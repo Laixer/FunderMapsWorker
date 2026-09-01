@@ -246,8 +246,22 @@ export async function ingestDossier(payload: {
     // pages at all. Mixed documents ultimately want both lanes and a merge;
     // until then, text wins, because that is where the evidence is.
     // An image has no text layer, so the text lane is not available to it.
-    const textLane = kind === "pdf" && totalChars >= 2000;
+    //
+    // Large-format sheets (A2 and up) are drawings whatever their text layer
+    // says: an A0 omgevingsvergunning sheet carries 200k characters of OCR'd
+    // labels and went down the text lane to produce nothing, while the
+    // doorsneden in its bottom strip showed a gemetselde funderingsvoet
+    // (FM2026-000021, 2026-09-01). The evidence on a sheet is drawn, not typed.
+    let largeFormat = false;
+    if (kind === "pdf" && pages <= 8) {
+      for (let p = 1; p <= pages; p++) {
+        const sz = await pdf.pageSize(localPath, p);
+        if (Math.max(sz.width, sz.height) >= pdf.LARGE_FORMAT_PT) { largeFormat = true; break; }
+      }
+    }
+    const textLane = kind === "pdf" && totalChars >= 2000 && !largeFormat;
     result.lane = textLane ? "text" : "vision";
+    if (largeFormat) log.step("large-format sheet: drawing lane, tiled");
     log.step(`lane: ${ACCENT.type}${result.lane}${RESET} (${totalChars} text chars, ${scanned}/${pages} pages look scanned)`);
 
     // -- rows ----------------------------------------------------------------
@@ -302,7 +316,7 @@ export async function ingestDossier(payload: {
         const r =
           kind === "image"
             ? await pdf.prepareImage(localPath, workDir)
-            : await pdf.redactPage(localPath, p, workDir);
+            : await pdf.redactPage(localPath, p, workDir, largeFormat ? 4000 : 1600);
         if (r.redacted > 0) {
           result.redactedPages++;
           annotations.push(r.annotation);
@@ -314,7 +328,16 @@ export async function ingestDossier(payload: {
         // Fail closed: a page the classifier could not vouch for, or one that
         // still shows the answer, does not go to the reader.
         const usable = verdict.leaks === false && !BARREN.has(verdict.material ?? "other");
-        if (usable) cleanPages.push({ page: p, b64, material: verdict.material });
+        if (usable) {
+          cleanPages.push({ page: p, b64, material: verdict.material });
+          // A sheet goes in as the whole plus a 3x2 grid of tiles, so the
+          // reader sees both where things are and what they say.
+          if (largeFormat) {
+            for (const t of await pdf.tileImage(r.path, workDir)) {
+              cleanPages.push({ page: p, b64: (await readFile(t)).toString("base64"), material: verdict.material });
+            }
+          }
+        }
 
         // Persist the triage. It decides the routing, it explains after the
         // fact why a page was dropped, and without it a reviewer looking at a

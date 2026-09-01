@@ -1,5 +1,5 @@
 import { spawn } from "../lib/subprocess.ts";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import { readdir, unlink, rename } from "node:fs/promises";
 
 /**
@@ -261,4 +261,29 @@ export function looksLikeCoverSheet(text: string): boolean {
 /** A page with essentially no text layer is a scan; with plenty, a typed document. */
 export function looksScanned(textChars: number): boolean {
   return textChars < 200;
+}
+
+/** A2 and up: 1684 pt long edge for A2; A3 is 1191. Architects' sheets live here. */
+export const LARGE_FORMAT_PT = 1500;
+
+/**
+ * Cut a rendered sheet into a grid of tiles. A0 drawing downscaled to one
+ * 1600 px image loses the foundation detail entirely -- the doorsneden at the
+ * bottom of an omgevingsvergunning sheet are a few hundred pixels wide at
+ * that size. Tiles of a 4000 px render keep it legible; the full sheet is
+ * still sent first so the model knows where each tile sits.
+ */
+export async function tileImage(
+  imagePath: string,
+  outDir: string,
+  cols = 3,
+  rows = 2
+): Promise<string[]> {
+  const prefix = join(outDir, `${basename(imagePath).replace(/\.[^.]+$/, "")}-tile`);
+  await spawn([
+    "convert", imagePath, "-crop", `${cols}x${rows}@`, "+repage", "-quality", "82", `${prefix}-%d.jpg`,
+  ]);
+  const out: string[] = [];
+  for (let i = 0; i < cols * rows; i++) out.push(`${prefix}-${i}.jpg`);
+  return out;
 }
