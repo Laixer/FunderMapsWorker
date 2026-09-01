@@ -31,12 +31,12 @@ export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: nu
   // The Worker reads its configuration from the environment.
   Object.assign(process.env, {
     FUNDERMAPS_DATABASE_HOST: pg.host,
-    FUNDERMAPS_DATABASE_PORT: String(pg.port ?? 25060),
-    FUNDERMAPS_DATABASE_NAME: pg.dbname ?? "fundermaps",
+    FUNDERMAPS_DATABASE_PORT: String(pg.port || 25060),
+    FUNDERMAPS_DATABASE_NAME: pg.dbname || "fundermaps",
     FUNDERMAPS_DATABASE_USER: pg.user,
     FUNDERMAPS_DATABASE_PASSWORD: pg.password,
-    FUNDERMAPS_S3_ENDPOINT: `${s3.useSSL === false ? "http" : "https"}://${(s3.endPoint ?? "ams3.digitaloceanspaces.com").replace(/^https?:\/\//, "")}`,
-    FUNDERMAPS_S3_REGION: s3.region ?? "ams3",
+    FUNDERMAPS_S3_ENDPOINT: `${s3.useSSL === false ? "http" : "https"}://${(s3.endPoint || "ams3.digitaloceanspaces.com").replace(/^https?:\/\//, "")}`,
+    FUNDERMAPS_S3_REGION: s3.region || "ams3",
     FUNDERMAPS_S3_BUCKET: BUCKET,
     FUNDERMAPS_S3_ACCESS_KEY: s3.accessKey,
     FUNDERMAPS_S3_SECRET_KEY: s3.secretKey,
@@ -44,7 +44,7 @@ export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: nu
   });
 
   const sql = postgres({
-    host: pg.host, port: pg.port ?? 25060, database: pg.dbname ?? "fundermaps",
+    host: pg.host, port: pg.port || 25060, database: pg.dbname || "fundermaps",
     username: pg.user, password: pg.password, ssl: "require", max: 1,
   });
   let pending: number[];
@@ -63,14 +63,27 @@ export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: nu
   }
   console.log(`worker at ${commit}; pending dossiers: ${pending.length}`);
 
-  const details: { dossier: number; ok: boolean; fields: number; summary: string }[] = [];
-  for (const id of pending) {
-    const run = await $`bun run src/commands/ingest-dossier.ts --dossier ${id}`.cwd(WORKER_DIR).nothrow().quiet();
-    const log = (run.stdout.toString() + run.stderr.toString()).replace(/\x1b\[[0-9;]*m/g, "");
-    const lines = log.split("\n").filter((l) => /dossier #|proposed|ERR|WRN|done/.test(l));
-    console.log(lines.join("\n"));
-    const fields = Number(/done .*fields=(\d+)/.exec(log)?.[1] ?? 0);
-    details.push({ dossier: id, ok: run.exitCode === 0 && !/\bERR\b/.test(log), fields, summary: lines.at(-1) ?? "" });
+  // Import the Worker's own function rather than spawning its CLI: same code
+  // the CLI and bench-extract run, but a real return value per dossier and no
+  // log scraping. The env above must be set BEFORE this import -- the Worker
+  // parses its configuration at load time.
+  const worker = (await import(`${WORKER_DIR}/src/commands/ingest-dossier.ts`)) as {
+    readSubmission: (p: { dossier_id: number }) => Promise<{ dossierId: number | null; lane: string; pages: number; fields: number; highConfidence: number }[]>;
+  };
+  const { sql: workerSql } = (await import(`${WORKER_DIR}/src/db.ts`)) as { sql: { end: (o?: { timeout?: number }) => Promise<void> } };
+
+  const details: { dossier: number; ok: boolean; documents: number; fields: number; error?: string }[] = [];
+  try {
+    for (const id of pending) {
+      try {
+        const rs = await worker.readSubmission({ dossier_id: id });
+        details.push({ dossier: id, ok: true, documents: rs.length, fields: rs.reduce((n, r) => n + r.fields, 0) });
+      } catch (e) {
+        details.push({ dossier: id, ok: false, documents: 0, fields: 0, error: String(e).slice(0, 300) });
+      }
+    }
+  } finally {
+    await workerSql.end({ timeout: 5 }).catch(() => {});
   }
 
   return {
