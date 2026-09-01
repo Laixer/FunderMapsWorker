@@ -256,7 +256,7 @@ export async function readDrawing(pages: string[]): Promise<DrawingRead> {
 // 3 — the text lane: lift what the bureau already wrote down
 // ---------------------------------------------------------------------------
 
-const EXTRACT_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek,
+export const EXTRACT_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek,
 opgesteld door een ingenieursbureau. Haal de volgende gegevens eruit. Staat een veld er
 niet in, geef dan null. Verzin niets.
 
@@ -477,7 +477,7 @@ const ADDRESS_NUMERIC = new Set([
   "skewed_perpendicular", "threshold_front_level", "threshold_back_level", "settlement_speed",
 ]);
 
-const ADDRESS_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek dat meerdere
+export const ADDRESS_PROMPT = `Hieronder staat de tekst van een Nederlands funderingsonderzoek dat meerdere
 adressen kan beschrijven. Haal PER ADRES dat het rapport onderzoekt de gegevens eruit
 die het rapport voor dat adres vastlegt -- meestal uit de inmeettabellen (hoogtes,
 palen), de lintvoeg-/loodmetingen en de schade-opname. Verzin geen adressen: alleen
