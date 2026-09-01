@@ -541,7 +541,8 @@ Windmill is still **single-worker instance-wide** — all flow parallelism
 serializes. Design to avoid fan-out:
 
 ```
-dataops/ingest_dossier      webhook (portal submit, email-in) → the front door, §5
+dataops/ingest_pending      LIVE 2026-09-01: cron 4x/hour (:03 :18 :33 :48), reads every open
+                            dossier with an unread document; source in windmill/dataops_ingest_pending.sh
 dataops/email_in            Mailgun inbound webhook → dossier entry + artifacts → ingest_dossier
 dataops/email_out           trigger on dossier_entry (received / question / status) → Mailgun
 dataops/findings            per dossier after ingest: address check, BAG-year check, duplicate check
@@ -549,7 +550,12 @@ dataops/validate_and_gate   pure SQL + rules, no LLM
 ```
 
 Everything that runs in the background runs in Windmill (Yorick, 2026-08-28).
-The Worker CLI stays as the manual escape hatch and as the code Windmill calls.
+The Worker CLI stays as the manual escape hatch and as the code Windmill calls:
+`ingest_pending` is a Bash script on the Windmill worker that installs
+poppler/ImageMagick/`file` if the container lacks them, clones this repo at
+`main`, and runs `ingest-dossier --dossier` per pending dossier as
+`fundermaps_windmill` (grants: sql/migrate/grant_dataops_to_windmill.sql).
+Batch rather than webhook (Yorick 2026-09-01): idempotent and self-healing.
 
 The Batches API is the right primitive twice over: 50% cheaper, and it turns
 1,537 concurrent calls into submit-poll-ingest, which one worker handles fine.
