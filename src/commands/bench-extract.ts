@@ -3,6 +3,7 @@ import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as s3 from "../providers/s3.ts";
 import { extractFields, EXTRACT_FIELDS, ADDRESS_FIELDS } from "../providers/vision.ts";
+import { extractSingleLane } from "../lib/bench-single-lane.ts";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -93,8 +94,11 @@ const argv = process.argv.slice(2);
 const arg = (k: string) => { const i = argv.indexOf(`--${k}`); return i > -1 ? argv[i + 1] : undefined; };
 const N = Number(arg("n") ?? 50);
 const OUT = arg("out") ?? `bench-extract-${new Date().toISOString().slice(0, 10)}.csv`;
+/** `document` (alias `single`) = the production document lane; `text` = the legacy text lane. */
+const EXTRACTOR = arg("extractor") ?? "text";
 
 log.banner("Data Ops — bench extract");
+log.info(`extractor: ${EXTRACTOR}`);
 
 const inquiries = await sql<{ id: number; document_file: string }[]>`
   SELECT i.id, i.document_file
@@ -153,9 +157,14 @@ for (const inq of inquiries) {
   try {
     await s3.downloadFile(local, `inquiry-report/${inq.document_file}`);
     if ((await pdf.fileKind(local)) !== "pdf") throw new Error("not a pdf");
-    const text = await pdf.documentText(local, 1);
-    if (text.trim().length < 500) throw new Error("scanned, no text layer");
-    const fields = await extractFields(text.slice(0, 250_000));
+    let fields;
+    if (EXTRACTOR === "single" || EXTRACTOR === "document") {
+      fields = await extractSingleLane(local);
+    } else {
+      const text = await pdf.documentText(local, 1);
+      if (text.trim().length < 500) throw new Error("scanned, no text layer");
+      fields = await extractFields(text.slice(0, 250_000));
+    }
     // A field may carry several candidates (damage_cause, damage_characteristics
     // return a list); it counts as a hit when any candidate matches the truth.
     const proposed = new Map<string, typeof fields>();

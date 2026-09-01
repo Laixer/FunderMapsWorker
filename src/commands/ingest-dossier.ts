@@ -91,7 +91,7 @@ async function resolveAddress(text: string, dossierId: number | null): Promise<s
 export interface IngestResult {
   dossierId: number | null;
   artifactId: number | null;
-  lane: "vision" | "text" | "none";
+  lane: "vision" | "text" | "document" | "none";
   pages: number;
   redactedPages: number;
   fields: number;
@@ -259,9 +259,27 @@ export async function ingestDossier(payload: {
         if (Math.max(sz.width, sz.height) >= pdf.LARGE_FORMAT_PT) { largeFormat = true; break; }
       }
     }
-    const textLane = kind === "pdf" && totalChars >= 2000 && !largeFormat;
-    result.lane = textLane ? "text" : "vision";
+    // The document lane is the default since 2026-09-01: the whole PDF in one
+    // call. The old text/vision split survives only as guards:
+    //   - large-format sheets read as tiled drawings (an A0's doorsneden do
+    //     not survive a document read's page resolution),
+    //   - files over MAX_PDF_BYTES do not fit one request,
+    //   - a cover sheet (historical bulk corpus) must be redacted first, and
+    //     redaction only exists in the old lanes,
+    //   - a bare image has no PDF to send.
+    let coverSheetPage = 0;
+    if (kind === "pdf" && !largeFormat) {
+      for (let p = 1; p <= pages; p++) {
+        if ((pageChars[p - 1] ?? 0) === 0) continue;
+        if (pdf.looksLikeCoverSheet(await pdf.pageText(localPath, p))) { coverSheetPage = p; break; }
+      }
+    }
+    const documentLane =
+      kind === "pdf" && !largeFormat && coverSheetPage === 0 && size <= vision.MAX_PDF_BYTES;
+    const textLane = !documentLane && kind === "pdf" && totalChars >= 2000 && !largeFormat;
+    result.lane = documentLane ? "document" : textLane ? "text" : "vision";
     if (largeFormat) log.step("large-format sheet: drawing lane, tiled");
+    if (!documentLane && coverSheetPage > 0) log.step(`cover sheet on page ${coverSheetPage}: old lanes, redacted`);
     log.step(`lane: ${ACCENT.type}${result.lane}${RESET} (${totalChars} text chars, ${scanned}/${pages} pages look scanned)`);
 
     // -- rows ----------------------------------------------------------------
@@ -310,7 +328,19 @@ export async function ingestDossier(payload: {
     const annotationPages: number[] = [];
     const cleanPages: { page: number; b64: string; material: string | null }[] = [];
 
-    if (result.lane === "vision") {
+    if (result.lane === "document") {
+      // No model triage: the reader sees every page itself. The rows keep the
+      // review screen's page panel and its "was this read" signal truthful.
+      if (!dry_run) {
+        for (let p = 1; p <= pages; p++) {
+          await sql`
+            INSERT INTO dataops.artifact_page
+              (artifact_id, page_no, material, material_conf, is_clean, redacted_boxes, text_chars)
+            VALUES (${result.artifactId}, ${p}, 'report', NULL, true, 0, ${pageChars[p - 1] ?? 0})
+            ON CONFLICT (artifact_id, page_no) DO NOTHING`;
+        }
+      }
+    } else if (result.lane === "vision") {
       const cap = Math.min(pages, 8);
       for (let p = 1; p <= cap; p++) {
         const r =
@@ -396,7 +426,9 @@ export async function ingestDossier(payload: {
     const started = Date.now();
     let fields: vision.FieldRead[] = [];
 
-    if (result.lane === "text") {
+    if (result.lane === "document") {
+      fields = await vision.extractDocument(localPath);
+    } else if (result.lane === "text") {
       fields = await vision.extractFields(
         await pdf.documentText(localPath, 1, annotationPages)
       );
@@ -418,7 +450,7 @@ export async function ingestDossier(payload: {
     // NWWI risk report states one, but it is FunderMaps data coming back to us.
     // Reading it is not extraction; it is a loop. See providers/admissibility.ts.
     const sourceText =
-      result.lane === "text"
+      result.lane === "text" || result.lane === "document"
         ? await pdf.documentText(localPath, 1, annotationPages)
         : annotations.join(" ");
     // The sender's own label is the strongest signal available for a scan, and

@@ -285,6 +285,14 @@ superseded.
                        '----------------------------'
 ```
 
+**The document lane is the default since 2026-09-01**: the whole PDF goes to the
+model in one call (`extractDocument`), text and scans together — measured equal
+or better than the text lane on the 45-document benchmark, with recall up on
+nearly every field. The text and vision lanes survive as guards only:
+large-format sheets (tiled drawing read), files over 28 MB, cover-sheet
+documents from the historical bulk corpus (redaction lives in the old lanes),
+and bare images.
+
 There is no confidence gate (since 2026-08-26). 100% of what arrives is looked
 at by a person; the model's job is to make that look faster. A dossier the
 model could read nothing from -- a photo of a cat, a blank scan -- still goes
