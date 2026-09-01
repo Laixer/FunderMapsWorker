@@ -542,7 +542,7 @@ serializes. Design to avoid fan-out:
 
 ```
 dataops/ingest_pending      LIVE 2026-09-01: cron 4x/hour (:03 :18 :33 :48), reads every open
-                            dossier with an unread document; source in windmill/dataops_ingest_pending.sh
+                            dossier with an unread document; source in windmill/dataops_ingest_pending.ts (Bun)
 dataops/email_in            Mailgun inbound webhook → dossier entry + artifacts → ingest_dossier
 dataops/email_out           trigger on dossier_entry (received / question / status) → Mailgun
 dataops/findings            per dossier after ingest: address check, BAG-year check, duplicate check
@@ -551,7 +551,7 @@ dataops/validate_and_gate   pure SQL + rules, no LLM
 
 Everything that runs in the background runs in Windmill (Yorick, 2026-08-28).
 The Worker CLI stays as the manual escape hatch and as the code Windmill calls:
-`ingest_pending` is a Bash script on the Windmill worker that installs
+`ingest_pending` is a Bun script on the Windmill worker that installs
 poppler/ImageMagick/`file` if the container lacks them, clones this repo at
 `main`, and runs `ingest-dossier --dossier` per pending dossier as
 `fundermaps_windmill` (grants: sql/migrate/grant_dataops_to_windmill.sql).
