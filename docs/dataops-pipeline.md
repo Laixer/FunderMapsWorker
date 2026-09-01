@@ -541,7 +541,7 @@ Windmill is still **single-worker instance-wide** — all flow parallelism
 serializes. Design to avoid fan-out:
 
 ```
-dataops/ingest_pending      LIVE 2026-09-01: cron 4x/hour (:03 :18 :33 :48), reads every open
+dataops/ingest_pending      LIVE 2026-09-01: cron hourly at :03 (was 4x/hour until 2026-09-01), reads every open
                             dossier with an unread document; source in windmill/dataops_ingest_pending.ts (Bun)
 dataops/email_in            Mailgun inbound webhook → dossier entry + artifacts → ingest_dossier
 dataops/email_out           trigger on dossier_entry (received / question / status) → Mailgun
