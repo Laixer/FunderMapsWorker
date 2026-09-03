@@ -23,4 +23,5 @@ psql "$DB_URL" -f sql/migrate/<file>.sql
 
 So this directory holds only migrations **not yet folded into `schema.sql`** —
 usually empty between cleanup rounds. The applied history was last pruned
-2026-05-21 (see git log for the file list).
+2026-05-21 (see git log for the file list); the Better Auth 1.7 pair was pruned
+2026-09-03 together with the first PG 18 regeneration of `schema.sql`.

@@ -771,7 +771,9 @@ Does **not** read `model_risk_static`. It queries `report.inquiry_sample` direct
 5. Spot-check downstream maplayer views (`SELECT count(*) FROM maplayer.analysis_full`).
 6. Regenerate `schema.sql`:
    ```bash
-   pg_dump --schema-only --no-owner --no-acl "$DATABASE_URL" > schema.sql
+   # pg_dump must be >= the server major (prod is PG 18: postgresql-client-18 from PGDG).
+   # _timescaledb_internal holds only hypertable chunks and is excluded on purpose.
+   pg_dump --schema-only --no-owner --no-acl --exclude-schema=_timescaledb_internal "$DATABASE_URL" > schema.sql
    ```
 7. Update this doc — column lists, CASE branches, helper-function bodies, anything that changed.
 8. Commit both `sql/model/*.sql` and `schema.sql` together so source and dump never drift.
