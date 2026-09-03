@@ -1,0 +1,28 @@
+summary: Export product usage
+description: 'Exports per-organization product usage for the previous month to
+  S3 as CSV. Output: `product/{year}/{month}/{org_id}.csv` in the
+  `fundermaps-data` bucket. Runs monthly via schedule.'
+lock: '!inline f/fundermaps/export/export_product.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    date:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    db:
+      type: object
+      description: ''
+      default: null
+      format: resource-postgresql
+    s3:
+      type: object
+      description: ''
+      default: null
+      format: resource-s3
+  required:
+    - db
+    - s3

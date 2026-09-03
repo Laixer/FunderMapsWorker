@@ -1,0 +1,11 @@
+summary: Refresh Risk Model — Midday
+args: {}
+cron_version: v2
+email: yorick@laixer.com
+enabled: true
+is_flow: true
+no_flow_overlap: false
+schedule: 0 30 12 * * *
+script_path: f/fundermaps/data/refresh_data_model
+timezone: Europe/Amsterdam
+ws_error_handler_muted: false

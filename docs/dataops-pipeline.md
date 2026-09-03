@@ -550,7 +550,7 @@ serializes. Design to avoid fan-out:
 
 ```
 dataops/ingest_pending      LIVE 2026-09-01: cron hourly at :03 (was 4x/hour until 2026-09-01), reads every open
-                            dossier with an unread document; source in windmill/dataops_ingest_pending.ts (Bun)
+                            dossier with an unread document; source in windmill/f/fundermaps/dataops/ingest_pending.ts (Bun)
 dataops/email_in            Mailgun inbound webhook → dossier entry + artifacts → ingest_dossier
 dataops/email_out           trigger on dossier_entry (received / question / status) → Mailgun
 dataops/findings            per dossier after ingest: address check, BAG-year check, duplicate check

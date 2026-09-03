@@ -1,0 +1,8 @@
+summary: Refresh Building Tiles
+description: Rebuilds `maplayer.building_tiles`, the flat source table for the
+  Martin dynamic tileserver (FunderMapsWorker
+  sql/model/create_building_tiles.sql). Runs after the risk model refresh so
+  dynamic tiles pick up tonight's model output.
+lock: ''
+kind: script
+schema: null

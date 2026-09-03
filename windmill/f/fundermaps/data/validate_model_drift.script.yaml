@@ -1,0 +1,20 @@
+summary: Validate Model Drift
+description: Reads reference buildings from S3
+  (validation/risk_model_reference.csv), compares against current
+  model_risk_dynamic_all output, and returns per-column agreement rates to
+  detect model drift.
+lock: '!inline f/fundermaps/data/validate_model_drift.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    db:
+      type: object
+      format: resource-postgresql
+    s3:
+      type: object
+      format: resource-s3
+  required:
+    - db
+    - s3

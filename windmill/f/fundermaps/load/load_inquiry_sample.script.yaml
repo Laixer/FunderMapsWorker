@@ -1,0 +1,32 @@
+summary: Load inquiry sample from S3
+description: CSV files should be loaded without header and with ','
+lock: '!inline f/fundermaps/load/load_inquiry_sample.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    db:
+      type: object
+      description: ''
+      default: null
+      format: resource-postgresql
+    inquiry_id:
+      type: number
+      description: ''
+      default: null
+    s3:
+      type: object
+      description: ''
+      default: null
+      format: resource-s3
+    s3_key:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+  required:
+    - db
+    - s3
+    - inquiry_id
+    - s3_key

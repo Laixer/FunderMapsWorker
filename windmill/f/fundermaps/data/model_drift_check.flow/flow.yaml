@@ -1,0 +1,25 @@
+summary: Model Drift Check
+description: 'Compares current risk model output against a reference dataset
+  (S3: validation/risk_model_reference.csv) to detect drift. Reports per-column
+  agreement rates for foundation type, drystand, dewatering depth, and
+  bio-infection risk.'
+value:
+  modules:
+    - id: a
+      summary: Compare Model Against Reference
+      value:
+        type: script
+        input_transforms:
+          db:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+          s3:
+            type: static
+            value: $res:f/fundermaps/s3
+        is_trigger: false
+        path: f/fundermaps/data/validate_model_drift
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties: {}
+  required: []

@@ -1,0 +1,18 @@
+summary: Refresh Risk Model
+description: Refreshes the default model version's matview. The generic name
+  `data.model_risk_static` is now a VIEW pointing at the default (see
+  docs/model-versioning.md), and a view cannot be refreshed — this must always
+  name a concrete versioned matview. When the default changes, update this line
+  too.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    database:
+      type: object
+      description: ''
+      format: resource-postgresql
+  required:
+    - database

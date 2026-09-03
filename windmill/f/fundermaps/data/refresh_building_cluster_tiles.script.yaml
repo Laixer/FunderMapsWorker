@@ -1,0 +1,8 @@
+summary: Refresh Building Cluster Tiles
+description: Rebuilds `maplayer.building_cluster_tiles`, the flat source table
+  for the Martin building_cluster (bouwkundige eenheid) tile source
+  (FunderMapsWorker sql/model/create_building_cluster_tiles.sql). Runs after the
+  building tiles refresh.
+lock: ''
+kind: script
+schema: null

@@ -1,0 +1,1 @@
+CALL maplayer.refresh_building_tiles();

@@ -1,0 +1,1 @@
+REFRESH MATERIALIZED VIEW CONCURRENTLY data.building_sample;
