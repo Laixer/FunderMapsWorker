@@ -1,0 +1,44 @@
+summary: Process Map Tilesets
+description: Fetches all enabled bundles from maplayer.bundle, then processes
+  each tileset sequentially by submitting a per-tileset worker job and waiting
+  for completion. Runs after the daily risk model refresh.
+value:
+  modules:
+    - id: a
+      summary: Get enabled bundles
+      value:
+        type: rawscript
+        content: '!inline get_enabled_bundles.inline_script.pg.sql'
+        input_transforms:
+          database:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+        lock: ''
+        language: postgresql
+    - id: b
+      summary: Process each tileset
+      value:
+        type: forloopflow
+        modules:
+          - id: c
+            summary: Process tileset
+            value:
+              type: script
+              input_transforms:
+                db:
+                  type: static
+                  value: $res:f/fundermaps/managed_pg
+                tileset:
+                  type: javascript
+                  expr: flow_input.iter.value
+              path: f/fundermaps/mapset/process_tileset
+        iterator:
+          type: javascript
+          expr: results.a.map(r => r.tileset)
+        parallel: false
+        skip_failures: false
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties: {}
+  required: []

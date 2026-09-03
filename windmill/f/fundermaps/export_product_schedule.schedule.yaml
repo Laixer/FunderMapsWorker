@@ -1,0 +1,14 @@
+summary: Export Product Usage — Monthly
+args:
+  date: ''
+  db: $res:f/fundermaps/managed_pg
+  s3: $res:f/fundermaps/s3
+cron_version: v2
+email: yorick@laixer.com
+enabled: true
+is_flow: false
+no_flow_overlap: false
+schedule: 0 30 2 1 * *
+script_path: f/fundermaps/export/export_product
+timezone: Europe/Amsterdam
+ws_error_handler_muted: false

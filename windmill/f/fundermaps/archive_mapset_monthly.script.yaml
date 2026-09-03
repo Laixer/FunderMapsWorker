@@ -1,0 +1,17 @@
+summary: Archive monthly analysis_full GPKG keeper
+description: Copies the earliest analysis_full export of the current month to
+  mapset-archive/YYYY-MM/ (kept forever). Companion to the mapset/ nightly-prune
+  retention policy.
+lock: '!inline f/fundermaps/archive_mapset_monthly.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - archive_bucket
+  properties:
+    archive_bucket:
+      type: string
+      description: Cold-storage bucket holding mapset/ and mapset-archive/
+      default: fundermaps-archive
+  required: []

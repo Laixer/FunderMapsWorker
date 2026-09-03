@@ -1,0 +1,1 @@
+REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_product_incidents;

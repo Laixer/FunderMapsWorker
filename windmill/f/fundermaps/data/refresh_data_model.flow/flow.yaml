@@ -1,0 +1,214 @@
+summary: Refresh Data Model
+description: 'Daily pipeline refreshing all risk model data, then generating map
+  tilesets. Steps: (1) sample matviews in parallel, (2) risk model static
+  matview (~13 min), (3) product statistics in 3 parallel lanes (max 3
+  concurrent matview refreshes, lanes balanced by duration), (4) refresh dynamic
+  building tiles (Martin), (5) process remaining static map tilesets
+  sequentially.'
+value:
+  modules:
+    - id: a
+      summary: ''
+      value:
+        type: branchall
+        branches:
+          - summary: Building
+            modules:
+              - id: b
+                summary: Refresh Building Sample
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_building_sample
+            expr: ''
+            parallel: true
+            skip_failure: false
+          - summary: Cluster
+            modules:
+              - id: c
+                summary: Refresh Cluster Sample
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_cluster_sample
+            expr: 'false'
+            parallel: true
+            skip_failure: false
+          - summary: Supercluster
+            modules:
+              - id: d
+                summary: Refresh Supercluster Sample
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_supercluster_sample
+            expr: 'false'
+            parallel: true
+            skip_failure: false
+        parallel: true
+    - id: e
+      summary: Calculate Risk Model
+      value:
+        type: script
+        input_transforms:
+          database:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+        is_trigger: false
+        path: f/fundermaps/data/refresh_risk_model
+    - id: g
+      summary: ''
+      value:
+        type: branchall
+        branches:
+          - summary: Product Statistics (lane 1)
+            modules:
+              - id: n
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_data_collected
+            expr: ''
+            parallel: true
+            skip_failure: false
+          - summary: Product Statistics (lane 2)
+            modules:
+              - id: m
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_foundation_risk
+              - id: q
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_inquiries
+            expr: ''
+            parallel: true
+            skip_failure: false
+          - summary: Product Statistics (lane 3)
+            modules:
+              - id: f
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_inquiry_municipality
+              - id: o
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_construction_years
+              - id: p
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_buildings_restored
+              - id: l
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_foundation_type
+              - id: h
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_incident_municipality
+              - id: r
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_statistics_product_incidents
+            expr: ''
+            parallel: true
+            skip_failure: false
+        parallel: true
+    - id: t
+      summary: Refresh Building Tiles
+      value:
+        type: script
+        input_transforms:
+          database:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+        is_trigger: false
+        path: f/fundermaps/data/refresh_building_tiles
+    - id: u
+      summary: Refresh Building Cluster Tiles
+      value:
+        type: script
+        input_transforms:
+          database:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+        is_trigger: false
+        path: f/fundermaps/data/refresh_building_cluster_tiles
+    - id: v
+      summary: Refresh Layer Tiles
+      value:
+        type: script
+        input_transforms:
+          database:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+        is_trigger: false
+        path: f/fundermaps/data/refresh_layer_tiles
+    - id: s
+      summary: Process Map Tilesets
+      value:
+        type: flow
+        input_transforms: {}
+        path: f/fundermaps/mapset/process_mapset
+  groups: []
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties: {}
+  required: []

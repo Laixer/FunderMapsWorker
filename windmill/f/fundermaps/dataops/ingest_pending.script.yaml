@@ -1,0 +1,30 @@
+summary: Data Ops — ingest pending dossiers
+description: Reads every open dossier with an unread document through
+  FunderMapsWorker readSubmission (imported, not spawned). Hourly; everything
+  lands pending for review.
+lock: '!inline f/fundermaps/dataops/ingest_pending.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - pg
+    - s3
+    - openrouter
+    - limit
+  properties:
+    limit:
+      type: integer
+      default: 40
+    openrouter:
+      type: string
+    pg:
+      type: object
+      format: resource-postgresql
+    s3:
+      type: object
+      format: resource-s3
+  required:
+    - pg
+    - s3
+    - openrouter

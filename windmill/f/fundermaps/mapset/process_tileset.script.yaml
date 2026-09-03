@@ -1,0 +1,16 @@
+summary: Process Single Tileset
+description: Submits a process_mapset worker job for a single tileset and polls
+  until completion or 3-hour timeout.
+lock: '!inline f/fundermaps/mapset/process_tileset.script.lock'
+kind: script
+schema:
+  type: object
+  properties:
+    db:
+      type: object
+      format: resource-postgresql
+    tileset:
+      type: string
+  required:
+    - db
+    - tileset

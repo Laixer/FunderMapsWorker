@@ -1,0 +1,10 @@
+summary: Refresh Layer Tiles
+description: "Rebuilds the small Martin tile source tables:
+  `maplayer.facade_scan_tiles` and the four `maplayer.incident*_tiles`
+  (FunderMapsWorker sql/model/create_facade_scan_tiles.sql +
+  create_incident_tiles.sql). Replaces the tippecanoe builds for facade_scan and
+  incident/incident_{district,municipality,neighborhood}, which cost ~40 of
+  process_mapset's ~50 minutes. Runs after the building cluster tiles refresh."
+lock: ''
+kind: script
+schema: null

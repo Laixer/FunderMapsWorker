@@ -1,0 +1,14 @@
+summary: Refresh Product Statistics — Construction Years
+description: Refreshes the `data.statistics_product_construction_years` materialized view.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    database:
+      type: object
+      description: ''
+      format: resource-postgresql
+  required:
+    - database
