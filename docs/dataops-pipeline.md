@@ -678,6 +678,18 @@ Prerequisite that is independent of all of this: **api-prod has no
 `MAILGUN_*` environment today**, so password-reset and inquiry mails are
 silently skipped. Fix first.
 
+> **As built (2026-09-03, FunderMapsApi `feat/intake-mail`, tracker #1020).**
+> Transport is Resend on `funderdata.nl`, not Mailgun. The `received` and
+> `status` (afronding) mails are sent by the API at the state transition --
+> right after the intake insert commits, and from both outcome writers
+> (`/dataops/dossier/:id/outcome` and `/commit`) -- not by a `dossier_entry`
+> row and not by the hourly cron. Idempotency is `dataops.dossier_mail`
+> (`sql/migrate/create_dataops_dossier_mail.sql`): one row per (dossier,
+> kind), claimed before the send. `question` mail, the reply route (11.3) and
+> the review-screen button are not built. Reply-To is `noreply@funderdata.nl`
+> (`INTAKE_REPLY_TO`) until an inbound route exists; the promised termijn is
+> two working days.
+
 ### 11.3 Mail in
 
 `fundermaps.com`'s MX is Microsoft 365 and stays that way -- company mail is
