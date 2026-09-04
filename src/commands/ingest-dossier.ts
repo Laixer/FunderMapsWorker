@@ -501,6 +501,19 @@ export async function ingestDossier(payload: {
         if (!f.address || addressIds.has(f.address)) continue;
         addressIds.set(f.address, await resolveAddress(f.address, payload.dossier_id ?? result.dossierId));
       }
+      // The timeline: one entry per reading, written by the pipeline itself.
+      // The structured rows above stay the source of truth; this line is what
+      // the review screen and (later) the melder's status page render.
+      await sql`
+        INSERT INTO dataops.dossier_entry
+          (dossier_id, kind, actor_kind, actor, text, body, artifact_id, extraction_id, visible_to_melder)
+        VALUES (${payload.dossier_id ?? result.dossierId}, 'extraction', 'pipeline',
+                ${result.lane === "text" ? env.DATAOPS_TEXT_MODEL : env.DATAOPS_VISION_MODEL},
+                ${`Document gelezen (${result.lane}): ${fields.filter((f) => !f.rejected).length} voorstel(len)` +
+                  (fields.some((f) => f.rejected) ? `, ${fields.filter((f) => f.rejected).length} geweigerd (bron niet toelaatbaar)` : "")},
+                ${JSON.stringify({ lane: result.lane, fields: fields.length, pages: result.pages })},
+                ${result.artifactId}, ${ex!.id}, true)`;
+
       for (const f of fields) {
         // A value from an inadmissible source is kept, not discarded: the
         // reviewer should see what the document said and why we will not take
