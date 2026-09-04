@@ -668,15 +668,14 @@ Triggered by an entry, never by application code deciding to send mail:
 | `question` | the reviewer's question, verbatim |
 | `status` | the outcome, in the words `describe()` in `routes/intake.ts` already uses |
 
-Sent through Mailgun (`fundermaps.com` already has SPF `include:mailgun.org`
-and the `email._domainkey` DKIM record). `From:` and `Reply-To:` are
-**`melding@fundermaps.com`** (decision 3). The meldcode is in the subject
-(`[FM2026-000042] ...`) and in a `References:` header, so a reply routes
-without the melder doing anything.
+Sent through **Resend on funderdata.nl** (supersedes the Mailgun design,
+2026-09-03: `services/mail.ts` in the API, `dataops.dossier_mail` as the
+idempotent send log — received + closed mails are LIVE via API #126). The
+meldcode is in the subject (`[FM2026-000042] ...`), so a reply routes without
+the melder doing anything.
 
-Prerequisite that is independent of all of this: **api-prod has no
-`MAILGUN_*` environment today**, so password-reset and inquiry mails are
-silently skipped. Fix first.
+~~Prerequisite: api-prod mail env~~ Done 2026-09-03: RESEND_API_KEY on
+api-prod, reset/inquiry/recovery mails send (API #124).
 
 > **As built (2026-09-03, FunderMapsApi `feat/intake-mail`, tracker #1020).**
 > Transport is Resend on `funderdata.nl`, not Mailgun. The `received` and
@@ -692,15 +691,16 @@ silently skipped. Fix first.
 
 ### 11.3 Mail in
 
-`fundermaps.com`'s MX is Microsoft 365 and stays that way -- company mail is
-not moving for this. So:
+`fundermaps.com`'s MX is Microsoft 365 and stays that way -- but
+**funderdata.nl's MX already points at Resend inbound**, so no M365 forward is
+needed: the sender address becomes `melding@funderdata.nl` and replies arrive
+directly.
 
 ```
- melder replies to melding@fundermaps.com
-        │  (M365 mailbox, auto-forward rule, keeps a copy)
+ melder replies to melding@funderdata.nl
+        │  (Resend inbound MX, already configured)
         ▼
- melding@in.fundermaps.com      <- Mailgun-owned subdomain, its own MX
-        │  Mailgun inbound route: match_recipient -> forward to webhook
+ Resend inbound webhook
         ▼
  POST /api/intake/email         (shared-secret lane, next to /api/intake/dossier)
         │
