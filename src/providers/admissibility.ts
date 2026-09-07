@@ -127,5 +127,8 @@ export function mayEstablishFoundationType(
  * herstel advice as often as the type. A document that declares FunderMaps as
  * its source establishes nothing; it goes to the reviewer with every value
  * marked, and the reviewer can still take one over by hand.
+ *
+ * Deliberately NOT vision.DOCUMENT_FIELDS (document_date, inquiry_type,
+ * contractor): a QuickScan states its own date, kind and author first-hand.
  */
 export const FIELDS_REQUIRING_ADMISSIBLE_SOURCE = new Set<string>(EXTRACT_FIELDS);

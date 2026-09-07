@@ -489,7 +489,7 @@ export async function ingestDossier(payload: {
           (artifact_id, model, prompt_version, lane, pages_sent, finished_at)
         VALUES (${result.artifactId},
                 ${result.lane === "text" ? env.DATAOPS_TEXT_MODEL : env.DATAOPS_VISION_MODEL},
-                'dataops-2026.1', ${result.lane},
+                'dataops-2026.2', ${result.lane},
                 ${result.lane === "text" ? pages : cleanPages.length}, now())
         RETURNING id`;
 
