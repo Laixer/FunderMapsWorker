@@ -24,7 +24,13 @@ const WORKER_REPO = "https://github.com/Laixer/FunderMapsWorker.git";
 /** Where intake and pipeline objects live; the s3 resource's own bucket is fundermaps-data. */
 const BUCKET = "fundermaps";
 
-export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: number = 20) {
+/**
+ * @param dossier_id  read this one dossier, now. The Studio's "Nieuwe
+ *                    rapportage" uploads a document and calls this through
+ *                    the API so the reviewer is not waiting for the next
+ *                    hourly sweep. Without it: the sweep, oldest first.
+ */
+export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: number = 20, dossier_id?: number) {
   await ensureTools();
   const commit = await ensureWorker();
 
@@ -54,10 +60,11 @@ export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: nu
         from dataops.dossier d
         join dataops.artifact a on a.dossier_id = d.id
        where d.inquiry_id is null and d.outcome is null
-         and d.channel in ('upload', 'email', 'api')
+         and d.channel in ('upload', 'email', 'api', 'invoer_app')
          and not exists (select 1 from dataops.extraction e where e.artifact_id = a.id)
+         ${dossier_id ? sql`and d.id = ${dossier_id}` : sql``}
        order by d.id
-       limit ${limit}`).map((r) => Number(r.id));
+       limit ${dossier_id ? 1 : limit}`).map((r) => Number(r.id));
   } finally {
     await sql.end({ timeout: 5 });
   }
