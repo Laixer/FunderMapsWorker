@@ -71,7 +71,8 @@ GRANT SELECT (id, user_id, name, last_used, created_at, updated_at, expires_at)
 -- Grafana reads the intake pipeline state (Operations board) and the daily
 -- usage rollup + refresh log in data (Usage & billing, "model refresh age").
 GRANT USAGE ON SCHEMA dataops TO grafana;
-GRANT SELECT ON dataops.dossier, dataops.extraction TO grafana;
+GRANT SELECT ON dataops.dossier, dataops.extraction, dataops.dossier_entry, dataops.dossier_mail,
+                dataops.artifact, dataops.extraction_field, dataops.verdict TO grafana;
 GRANT SELECT ON data.product_tracker_daily, data.refresh_log TO grafana;
 GRANT SELECT ON application.contractor TO grafana;
 
