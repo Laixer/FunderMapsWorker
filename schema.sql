@@ -1895,11 +1895,21 @@ COMMENT ON FUNCTION maplayer.incident_neighborhood(z integer, x integer, y integ
 --
 
 CREATE PROCEDURE maplayer.refresh_building_cluster_tiles()
-    LANGUAGE sql
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
     AS $$
-    TRUNCATE maplayer.building_cluster_tiles;
+BEGIN
+    -- Build the next generation NEXT TO the live table. Martin keeps serving
+    -- maplayer.building_cluster_tiles untouched while this runs (~6.5 min);
+    -- the old TRUNCATE + INSERT held an ACCESS EXCLUSIVE
+    -- lock for the whole rebuild and every tile request timed out (15 s)
+    -- twice a day.
+    DROP TABLE IF EXISTS maplayer.building_cluster_tiles_next;
+    CREATE TABLE maplayer.building_cluster_tiles_next
+        (LIKE maplayer.building_cluster_tiles INCLUDING DEFAULTS INCLUDING CONSTRAINTS);
 
-    INSERT INTO maplayer.building_cluster_tiles (
+    INSERT INTO maplayer.building_cluster_tiles_next (
         cluster_id, building_count, surface_area, geom, geom_simple
     )
     SELECT
@@ -1920,7 +1930,33 @@ CREATE PROCEDURE maplayer.refresh_building_cluster_tiles()
         GROUP BY bc.cluster_id
     ) u;
 
-    ANALYZE maplayer.building_cluster_tiles;
+    -- Indexes after the load (cheaper than maintaining them row by row).
+    ALTER TABLE maplayer.building_cluster_tiles_next ADD PRIMARY KEY (cluster_id);
+    CREATE INDEX building_cluster_tiles_next_geom_idx
+        ON maplayer.building_cluster_tiles_next USING gist (geom);
+    CREATE INDEX building_cluster_tiles_next_geom_simple_idx
+        ON maplayer.building_cluster_tiles_next USING gist (geom_simple);
+    ANALYZE maplayer.building_cluster_tiles_next;
+
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
+        GRANT SELECT ON maplayer.building_cluster_tiles_next TO fundermaps_tileserver;
+    END IF;
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
+        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN ON maplayer.building_cluster_tiles_next TO fundermaps_windmill;
+    END IF;
+
+    -- Swap. The only exclusive lock on the live table is taken here and
+    -- released at COMMIT a few milliseconds later. Rather than queue behind
+    -- a slow tile query (and make every request after it queue too), give
+    -- up: the old generation keeps serving and the next run rebuilds.
+    PERFORM set_config('lock_timeout', '20s', true);
+    DROP TABLE maplayer.building_cluster_tiles;
+    ALTER TABLE maplayer.building_cluster_tiles_next RENAME TO building_cluster_tiles;
+    ALTER INDEX maplayer.building_cluster_tiles_next_pkey RENAME TO building_cluster_tiles_pkey;
+    ALTER INDEX maplayer.building_cluster_tiles_next_geom_idx RENAME TO building_cluster_tiles_geom_idx;
+    ALTER INDEX maplayer.building_cluster_tiles_next_geom_simple_idx
+        RENAME TO building_cluster_tiles_geom_simple_idx;
+END;
 $$;
 
 
@@ -1929,11 +1965,21 @@ $$;
 --
 
 CREATE PROCEDURE maplayer.refresh_building_tiles()
-    LANGUAGE sql
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'public'
     AS $$
-    TRUNCATE maplayer.building_tiles;
+BEGIN
+    -- Build the next generation NEXT TO the live table. Martin keeps serving
+    -- maplayer.building_tiles untouched while this runs (~8 min for
+    -- building_tiles); the old TRUNCATE + INSERT held an ACCESS EXCLUSIVE
+    -- lock for the whole rebuild and every tile request timed out (15 s)
+    -- twice a day.
+    DROP TABLE IF EXISTS maplayer.building_tiles_next;
+    CREATE TABLE maplayer.building_tiles_next
+        (LIKE maplayer.building_tiles INCLUDING DEFAULTS INCLUDING CONSTRAINTS);
 
-    INSERT INTO maplayer.building_tiles (
+    INSERT INTO maplayer.building_tiles_next (
         building_id, neighborhood_id, district_id, municipality_id,
         address_count, construction_year, construction_year_reliability,
         foundation_type, foundation_type_reliability, restoration_costs,
@@ -1987,7 +2033,33 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
     LEFT JOIN application.contractor con ON con.id = attr.contractor_id
     WHERE bgh.geom IS NOT NULL;
 
-    ANALYZE maplayer.building_tiles;
+    -- Indexes after the load (cheaper than maintaining them row by row).
+    ALTER TABLE maplayer.building_tiles_next ADD PRIMARY KEY (building_id);
+    CREATE INDEX building_tiles_next_geom_idx
+        ON maplayer.building_tiles_next USING gist (geom);
+    CREATE INDEX building_tiles_next_geom_simple_idx
+        ON maplayer.building_tiles_next USING gist (geom_simple);
+    ANALYZE maplayer.building_tiles_next;
+
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
+        GRANT SELECT ON maplayer.building_tiles_next TO fundermaps_tileserver;
+    END IF;
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
+        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN ON maplayer.building_tiles_next TO fundermaps_windmill;
+    END IF;
+
+    -- Swap. The only exclusive lock on the live table is taken here and
+    -- released at COMMIT a few milliseconds later. Rather than queue behind
+    -- a slow tile query (and make every request after it queue too), give
+    -- up: the old generation keeps serving and the next run rebuilds.
+    PERFORM set_config('lock_timeout', '20s', true);
+    DROP TABLE maplayer.building_tiles;
+    ALTER TABLE maplayer.building_tiles_next RENAME TO building_tiles;
+    ALTER INDEX maplayer.building_tiles_next_pkey RENAME TO building_tiles_pkey;
+    ALTER INDEX maplayer.building_tiles_next_geom_idx RENAME TO building_tiles_geom_idx;
+    ALTER INDEX maplayer.building_tiles_next_geom_simple_idx
+        RENAME TO building_tiles_geom_simple_idx;
+END;
 $$;
 
 
