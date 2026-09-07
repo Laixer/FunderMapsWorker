@@ -1,4 +1,5 @@
 import { env } from "../config.ts";
+import { normaliseDocumentDate } from "../lib/util.ts";
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
@@ -332,6 +333,42 @@ ${FOUNDATION_VOCABULARY}
                            (scheefstand), crawlspace_flooding, threshold_above_subsurface,
                            threshold_below_subsurface, crooked_floor_wall
 
+Over het document zelf (dit zijn geen meetwaarden; ook een QuickScan of
+risicorapport stelt zijn eigen datum, soort en opsteller vast):
+  document_date            de datum van het rapport zoals die op het voorblad of in
+                           de kop staat (rapportdatum, "d.d.", datum definitief),
+                           als YYYY-MM-DD. NIET de datum van het veldwerk of de
+                           inmeting, en NIET de datum van een brief die het rapport
+                           begeleidt. Alleen jaar en maand bekend: neem de 1e.
+  inquiry_type             wat voor document dit is, een van (exact deze codes):
+                             foundation_research          funderingsonderzoek (Fase 1/2,
+                                                          F3O, inspectieput + inmeting)
+                             archive_research             archiefonderzoek / bouwkundige
+                                                          archiefstukken
+                             quickscan                    QuickScan / Fase 0 / funderings-
+                                                          risicorapport (geen eigen inmeting)
+                             inspectionpit                alleen een inspectieput / put-
+                                                          verslag zonder volledig rapport
+                             monitoring                   monitoring, meetbouten, herhaal-
+                                                          meting
+                             ground_water_level_research  grondwateronderzoek
+                             soil_investigation           sondering / grondonderzoek
+                             architectural_research       bouwkundig onderzoek (casco,
+                                                          scheuren, geen fundering)
+                             foundation_advice            funderingsadvies / hersteladvies
+                                                          zonder eigen onderzoek
+                             second_opinion               second opinion op een ander
+                                                          rapport
+                             demolition_research          sloop- / nieuwbouwonderzoek
+                             additional_research          aanvullend onderzoek op een
+                                                          eerder rapport
+                             note                          brief, notitie, foto's, herstel-
+                                                          bewijs, overig
+  contractor               de naam van het bureau of de instantie die het rapport
+                           heeft OPGESTELD (de opsteller, niet de opdrachtgever en
+                           niet de eigenaar), letterlijk zoals in de kop of het
+                           colofon, bijv. "Wareco Ingenieurs" of "Fugro"
+
 Geef bij elk veld dat je invult het citaat uit het rapport waar het vandaan komt.
 
 Regels voor het bewijs:
@@ -364,7 +401,8 @@ sleutel. Dus: "built_year": 1910 en "evidence": {"built_year": "Tabel 3: bouwjaa
 Wilhelminakade 59 | 1910"}.
 
 Antwoord met alleen JSON, met exact deze sleutels:
-{"foundation_type": null, "built_year": null, "foundation_quality": null,
+{"document_date": null, "inquiry_type": null, "contractor": null,
+ "foundation_type": null, "built_year": null, "foundation_quality": null,
  "recovery_advised": null, "recovery_note": null, "follow_up_note": null, "enforcement_term": null,
  "groundwater_level": null, "wood_level": null, "pile_head_level": null,
  "pile_tip_level": null, "concrete_charger_length": null,
@@ -397,6 +435,37 @@ export const EXTRACT_FIELDS = [
   "foundation_depth", "groundlevel",
   "damage_cause", "damage_characteristics",
 ] as const;
+
+/**
+ * What the document says about ITSELF: when it was written, what kind of
+ * document it is, who wrote it. These land on `report.inquiry` (document_date,
+ * type, attribution.contractor), not on a sample, and they are deliberately not
+ * in EXTRACT_FIELDS: the admissibility gate (providers/admissibility.ts) refuses
+ * every measured value from a QuickScan because those are our own data read
+ * back -- but a QuickScan's own date, kind and author are exactly what it CAN
+ * establish. Before 2026-09-07 the commit guessed all three (upload date, the
+ * melder's label, FunderMaps B.V.), and Don's precedence rule (a 5-year-old
+ * funderingsonderzoek beats a 3-year-old QuickScan) keys on document_date.
+ */
+export const DOCUMENT_FIELDS = ["document_date", "inquiry_type", "contractor"] as const;
+
+/** report.inquiry_type, minus facade_scan (never a submitted document). */
+export const INQUIRY_TYPES = new Set([
+  "monitoring", "note", "quickscan", "unknown", "demolition_research", "second_opinion",
+  "archive_research", "architectural_research", "foundation_advice", "inspectionpit",
+  "foundation_research", "additional_research", "ground_water_level_research", "soil_investigation",
+]);
+
+/** One proposal per document field; the value is the code, the date, or the bureau's name as printed. */
+function normaliseDocumentField(field: string, raw: unknown): string | null {
+  if (raw === null || raw === undefined || raw === "" || raw === "onbekend") return null;
+  const v = String(Array.isArray(raw) ? raw[0] ?? "" : raw).trim();
+  if (!v) return null;
+  if (field === "document_date") return normaliseDocumentDate(v);
+  if (field === "inquiry_type") { const c = v.toLowerCase(); return INQUIRY_TYPES.has(c) ? c : null; }
+  if (field === "contractor") { const n = v.replace(/\s+/g, " ").slice(0, 120); return n.length >= 2 ? n : null; }
+  return null;
+}
 
 /** Enum-typed fields: a value outside the PG enum is dropped, never stored. */
 const ENUM_VALUES: Record<string, Set<string>> = {
@@ -585,12 +654,16 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
     max_tokens: 4000,
     messages: [{ role: "user", content: `${EXTRACT_PROMPT}\n\n=== RAPPORT ===\n${reportText}` }],
   });
-  const a = parseJson(j.choices?.[0]?.message?.content ?? "", [...EXTRACT_FIELDS]);
+  const a = parseJson(j.choices?.[0]?.message?.content ?? "", [...DOCUMENT_FIELDS, ...EXTRACT_FIELDS]);
   if (!a) return [];
   const ev = (a["evidence"] ?? {}) as Record<string, string>;
   const conf = norm01(a["confidence"]);
 
-  return [...EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
+  const documentReads = DOCUMENT_FIELDS.flatMap((f): FieldRead[] => {
+    const v = normaliseDocumentField(f, a[f]);
+    return v ? [{ field: f, value: v, evidence: ev[f] ?? null, confidence: conf }] : [];
+  });
+  return [...documentReads, ...EXTRACT_FIELDS.flatMap((f): FieldRead[] => {
     let v = a[f];
     if (v === null || v === undefined || v === "" || v === "onbekend") return [];
     if (f === "foundation_quality") {
@@ -702,7 +775,7 @@ Geef DAARNAAST per adres dat het rapport onderzoekt een object in "addresses" me
 gegevens die het rapport voor DAT adres vastlegt (inmeettabellen, schade-opname).
 ${addrKeys}
 Antwoord met alleen JSON, met exact deze sleutels:
-{${[...EXTRACT_FIELDS].map((f) => `"${f}": null`).join(", ")},
+{${[...DOCUMENT_FIELDS, ...EXTRACT_FIELDS].map((f) => `"${f}": null`).join(", ")},
  "evidence": {"foundation_type": "", "built_year": ""}, "confidence": 0.0,
  "addresses": [{"address": "...", ${ADDRESS_FIELDS.slice(0, 3).map((f) => `"${f}": null`).join(", ")}, "evidence": {}}]}`;
 }
@@ -736,6 +809,7 @@ export async function extractDocument(pdfPath: string): Promise<FieldRead[]> {
   const conf = typeof a["confidence"] === "number" ? Math.max(0, Math.min(1, a["confidence"] as number)) : null;
   const ev = (a["evidence"] ?? {}) as Record<string, string>;
   const out: FieldRead[] = [];
+  for (const f of DOCUMENT_FIELDS) { const v = normaliseDocumentField(f, a[f]); if (v) out.push({ field: f, value: v, evidence: ev[f] ?? null, confidence: conf }); }
   for (const f of EXTRACT_FIELDS) for (const v of normalise(f, a[f], ev[f])) out.push({ field: f, value: v, evidence: ev[f] ?? null, confidence: conf });
   const addresses = Array.isArray(a["addresses"]) ? (a["addresses"] as Record<string, unknown>[]) : [];
   for (const row of addresses.slice(0, 60)) {
