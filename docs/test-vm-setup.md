@@ -5,7 +5,9 @@ schema + a Rotterdam data subset, in two steps.
 
 ## Prerequisites
 
-- Postgres 17 with PostGIS available (`apt-get install postgresql-17-postgis-3` or similar).
+- Postgres 18 with PostGIS available (`apt-get install postgresql-18-postgis-3`, or the
+  `postgis/postgis:18-3.6` container). TimescaleDB is **not** needed: the script drops
+  prod's `CREATE EXTENSION timescaledb` line and `product_tracker` becomes a plain table.
 - `bun` available locally if you need to (re)generate the seed file.
 - An empty target database. Create it as a Postgres superuser first:
 
@@ -14,6 +16,10 @@ schema + a Rotterdam data subset, in two steps.
   ```
 
 ## Step 1 — Schema and roles
+
+CI runs exactly this step on every PR (job `schema` in `.github/workflows/ci.yml`)
+against a fresh `postgis/postgis:18-3.6` service container, so a `schema.sql` that no
+longer bootstraps fails the build.
 
 ```bash
 DATABASE_URL=postgres://OWNER:PW@HOST:PORT/fundermaps \
@@ -30,7 +36,8 @@ What it does:
   `PG_WS_PASS`, `PG_GRAFANA_PASS` are set, those are used; otherwise random
   passwords are generated and printed once at the end.
 - Loads `schema.sql` (strips the pg_dump 18 `\restrict` directive that
-  breaks psql ≤ 17).
+  breaks psql ≤ 17, and the `timescaledb` extension lines).
+- Loads `sql/init/data_model_lookup_seed.sql` (static model lookup tables).
 - Applies `sql/init/grants.sql` so the four roles get prod-equivalent
   privileges.
 

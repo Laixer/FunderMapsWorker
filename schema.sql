@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict 78jk05M09uaP5i49W6qAj48tXlBg5K8V3GPpE2ciCL3To7NlcwdyPykBiY6WVHm
+\restrict XlCHfIhFhSX8N7dGg6M7LWkfYF9iwcIA07WgDaCzjDcH3886iM2C0xGoNUuh8mX
 
 -- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg24.04+2)
+-- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -267,6 +267,19 @@ CREATE TYPE data.reliability AS ENUM (
 
 
 --
+-- Name: actor_kind; Type: TYPE; Schema: dataops; Owner: -
+--
+
+CREATE TYPE dataops.actor_kind AS ENUM (
+    'melder',
+    'reviewer',
+    'pipeline',
+    'model',
+    'system'
+);
+
+
+--
 -- Name: dossier_outcome; Type: TYPE; Schema: dataops; Owner: -
 --
 
@@ -275,6 +288,22 @@ CREATE TYPE dataops.dossier_outcome AS ENUM (
     'rejected',
     'duplicate',
     'no_data'
+);
+
+
+--
+-- Name: entry_kind; Type: TYPE; Schema: dataops; Owner: -
+--
+
+CREATE TYPE dataops.entry_kind AS ENUM (
+    'received',
+    'extraction',
+    'finding',
+    'verdict',
+    'remark',
+    'question',
+    'reply',
+    'status'
 );
 
 
@@ -1895,8 +1924,7 @@ COMMENT ON FUNCTION maplayer.incident_neighborhood(z integer, x integer, y integ
 --
 
 CREATE PROCEDURE maplayer.refresh_building_cluster_tiles()
-    LANGUAGE plpgsql
-    SECURITY DEFINER
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
@@ -1965,8 +1993,7 @@ $$;
 --
 
 CREATE PROCEDURE maplayer.refresh_building_tiles()
-    LANGUAGE plpgsql
-    SECURITY DEFINER
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
@@ -4479,6 +4506,48 @@ COMMENT ON COLUMN dataops.dossier.outcome IS 'Dossier-level decision. Per-value 
 
 
 --
+-- Name: dossier_entry; Type: TABLE; Schema: dataops; Owner: -
+--
+
+CREATE TABLE dataops.dossier_entry (
+    id bigint NOT NULL,
+    dossier_id bigint NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    kind dataops.entry_kind NOT NULL,
+    actor_kind dataops.actor_kind NOT NULL,
+    actor text,
+    body jsonb DEFAULT '{}'::jsonb NOT NULL,
+    text text NOT NULL,
+    artifact_id bigint,
+    extraction_id bigint,
+    verdict_id bigint,
+    visible_to_melder boolean NOT NULL,
+    mail_message_id text
+);
+
+
+--
+-- Name: TABLE dossier_entry; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.dossier_entry IS 'Append-only timeline of a dossier. INSERT+SELECT only; an entry is never updated or deleted.';
+
+
+--
+-- Name: dossier_entry_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
+--
+
+ALTER TABLE dataops.dossier_entry ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME dataops.dossier_entry_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: dossier_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
 --
 
@@ -4507,7 +4576,7 @@ CREATE TABLE dataops.dossier_mail (
     error text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     sent_at timestamp with time zone,
-    CONSTRAINT dossier_mail_kind_check CHECK ((kind = ANY (ARRAY['received'::text, 'closed'::text]))),
+    CONSTRAINT dossier_mail_kind_check CHECK ((kind = ANY (ARRAY['received'::text, 'closed'::text, 'question'::text]))),
     CONSTRAINT dossier_mail_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])))
 );
 
@@ -4523,7 +4592,7 @@ COMMENT ON TABLE dataops.dossier_mail IS 'Send log for melder-facing mail (#1020
 -- Name: COLUMN dossier_mail.kind; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON COLUMN dataops.dossier_mail.kind IS 'received (ontvangstbevestiging) | closed (afronding).';
+COMMENT ON COLUMN dataops.dossier_mail.kind IS 'received (ontvangstbevestiging) | closed (afronding) | question (vraag aan de melder). received/closed at most once per dossier; question repeatable.';
 
 
 --
@@ -5779,11 +5848,11 @@ ALTER TABLE ONLY dataops.artifact
 
 
 --
--- Name: dossier_mail dossier_mail_once; Type: CONSTRAINT; Schema: dataops; Owner: -
+-- Name: dossier_entry dossier_entry_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
 --
 
-ALTER TABLE ONLY dataops.dossier_mail
-    ADD CONSTRAINT dossier_mail_once UNIQUE (dossier_id, kind);
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_pkey PRIMARY KEY (id);
 
 
 --
@@ -6489,6 +6558,27 @@ CREATE INDEX artifact_parent_idx ON dataops.artifact USING btree (parent_artifac
 --
 
 CREATE INDEX dossier_building_idx ON dataops.dossier USING btree (building_id) WHERE (building_id IS NOT NULL);
+
+
+--
+-- Name: dossier_entry_dossier_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_entry_dossier_idx ON dataops.dossier_entry USING btree (dossier_id, at);
+
+
+--
+-- Name: dossier_entry_mail_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE UNIQUE INDEX dossier_entry_mail_idx ON dataops.dossier_entry USING btree (mail_message_id) WHERE (mail_message_id IS NOT NULL);
+
+
+--
+-- Name: dossier_mail_once; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossier_id, kind) WHERE (kind = ANY (ARRAY['received'::text, 'closed'::text]));
 
 
 --
@@ -7397,6 +7487,38 @@ ALTER TABLE ONLY dataops.dossier
 
 
 --
+-- Name: dossier_entry dossier_entry_artifact_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_artifact_id_fkey FOREIGN KEY (artifact_id) REFERENCES dataops.artifact(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_entry dossier_entry_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier_entry dossier_entry_extraction_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_extraction_id_fkey FOREIGN KEY (extraction_id) REFERENCES dataops.extraction(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_entry dossier_entry_verdict_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_verdict_id_fkey FOREIGN KEY (verdict_id) REFERENCES dataops.verdict(id) ON DELETE SET NULL;
+
+
+--
 -- Name: dossier_mail dossier_mail_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -7600,5 +7722,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 78jk05M09uaP5i49W6qAj48tXlBg5K8V3GPpE2ciCL3To7NlcwdyPykBiY6WVHm
+\unrestrict XlCHfIhFhSX8N7dGg6M7LWkfYF9iwcIA07WgDaCzjDcH3886iM2C0xGoNUuh8mX
 
