@@ -68,6 +68,17 @@ GRANT SELECT (id, user_id, created_at, updated_at, expires_at, ip_address, user_
 GRANT SELECT (id, user_id, name, last_used, created_at, updated_at, expires_at)
     ON application.auth_key TO grafana;
 
+-- Grafana reads the intake pipeline state (Operations board) and the daily
+-- usage rollup + refresh log in data (Usage & billing, "model refresh age").
+GRANT USAGE ON SCHEMA dataops TO grafana;
+GRANT SELECT ON dataops.dossier, dataops.extraction TO grafana;
+GRANT SELECT ON data.product_tracker_daily, data.refresh_log TO grafana;
+
+-- The refresh_data_model flow (fundermaps_windmill) refreshes the rollup and
+-- writes one refresh_log row per run.
+GRANT SELECT, MAINTAIN ON data.product_tracker_daily TO fundermaps_windmill;
+GRANT SELECT, INSERT ON data.refresh_log TO fundermaps_windmill;
+
 -- ---------------------------------------------------------------------------
 -- Default privileges so future tables (created later via migrations or by
 -- the worker) inherit the same access without manual GRANTs.

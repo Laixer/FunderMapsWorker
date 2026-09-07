@@ -1,0 +1,14 @@
+summary: Log Refresh Data Model Run
+description: Writes one row to `data.refresh_log` when the flow completes. Grafana ("model refresh age" on Operations) and later /health/nightly read max(finished_at) as a dead-man switch.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    database:
+      type: object
+      description: ''
+      format: resource-postgresql
+  required:
+    - database

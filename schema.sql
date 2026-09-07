@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Pi2kqACIyQPdRwKJyiUtA96yxCi6miZK9EDREzNKworHLwkN8D6czze5UAXjZg9
+\restrict ovCltcI0HRa47f8gfOClM5qsJMg6UcY2H5YvoZleUI2EY8myIl8sEtG6w2KnSjh
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4129,6 +4129,61 @@ ALTER TABLE data.model_version ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
+-- Name: product_tracker_daily; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.product_tracker_daily AS
+ SELECT ((create_date AT TIME ZONE 'Europe/Amsterdam'::text))::date AS day,
+    organization_id,
+    product,
+    count(*) AS calls
+   FROM application.product_tracker
+  GROUP BY (((create_date AT TIME ZONE 'Europe/Amsterdam'::text))::date), organization_id, product
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW product_tracker_daily; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.product_tracker_daily IS 'Webservice/map usage per Amsterdam-local day, organization and product. Source: application.product_tracker. Refreshed by the refresh_data_model flow.';
+
+
+--
+-- Name: refresh_log; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.refresh_log (
+    id bigint NOT NULL,
+    job text NOT NULL,
+    status text DEFAULT 'ok'::text NOT NULL,
+    finished_at timestamp with time zone DEFAULT now() NOT NULL,
+    detail jsonb
+);
+
+
+--
+-- Name: TABLE refresh_log; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.refresh_log IS 'One row per completed scheduled job (e.g. refresh_data_model). Read by Grafana and, later, /health/nightly as a dead-man switch.';
+
+
+--
+-- Name: refresh_log_id_seq; Type: SEQUENCE; Schema: data; Owner: -
+--
+
+ALTER TABLE data.refresh_log ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME data.refresh_log_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: risk_table_priority; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -5824,6 +5879,14 @@ ALTER TABLE ONLY data.model_version
 
 
 --
+-- Name: refresh_log refresh_log_pkey; Type: CONSTRAINT; Schema: data; Owner: -
+--
+
+ALTER TABLE ONLY data.refresh_log
+    ADD CONSTRAINT refresh_log_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: supercluster supercluster_pkey; Type: CONSTRAINT; Schema: data; Owner: -
 --
 
@@ -6453,6 +6516,20 @@ CREATE UNIQUE INDEX model_risk_static_2024_1_pkey ON data.model_risk_static_2024
 --
 
 CREATE UNIQUE INDEX model_version_one_default_idx ON data.model_version USING btree (is_default) WHERE is_default;
+
+
+--
+-- Name: product_tracker_daily_pkey; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX product_tracker_daily_pkey ON data.product_tracker_daily USING btree (day, organization_id, product);
+
+
+--
+-- Name: refresh_log_job_finished_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE INDEX refresh_log_job_finished_idx ON data.refresh_log USING btree (job, finished_at DESC);
 
 
 --
@@ -7715,5 +7792,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Pi2kqACIyQPdRwKJyiUtA96yxCi6miZK9EDREzNKworHLwkN8D6czze5UAXjZg9
+\unrestrict ovCltcI0HRa47f8gfOClM5qsJMg6UcY2H5YvoZleUI2EY8myIl8sEtG6w2KnSjh
 
