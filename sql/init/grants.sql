@@ -8,7 +8,9 @@
 --
 -- Roles assumed to already exist (init_db.sh creates them):
 --   fundermaps             -- ETL/owner
---   fundermaps_webapp      -- TS API (full CRUD on app/report data)
+--   fundermaps_webapp      -- privilege group for the TS API (full CRUD on app/report data)
+--   fundermaps_api         -- TS API login role; member of fundermaps_webapp
+--                            (see migrate/create_fundermaps_api_role.sql)
 --   fundermaps_webservice  -- product webservice (read-only)
 --   grafana                -- dashboards (read-only)
 
