@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict XlCHfIhFhSX8N7dGg6M7LWkfYF9iwcIA07WgDaCzjDcH3886iM2C0xGoNUuh8mX
+\restrict Pi2kqACIyQPdRwKJyiUtA96yxCi6miZK9EDREzNKworHLwkN8D6czze5UAXjZg9
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2275,7 +2275,7 @@ CREATE TABLE application.account (
     password text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    issuer text DEFAULT 'local:credential'::text NOT NULL
+    issuer text DEFAULT 'local:credential'::text
 );
 
 
@@ -6064,13 +6064,6 @@ ALTER TABLE ONLY report.recovery_sample
 
 
 --
--- Name: account_issuer_account_id_key; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE UNIQUE INDEX account_issuer_account_id_key ON application.account USING btree (issuer, account_id);
-
-
---
 -- Name: apikey_config_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -7722,5 +7715,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XlCHfIhFhSX8N7dGg6M7LWkfYF9iwcIA07WgDaCzjDcH3886iM2C0xGoNUuh8mX
+\unrestrict Pi2kqACIyQPdRwKJyiUtA96yxCi6miZK9EDREzNKworHLwkN8D6czze5UAXjZg9
 
