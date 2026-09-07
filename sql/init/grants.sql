@@ -73,6 +73,7 @@ GRANT SELECT (id, user_id, name, last_used, created_at, updated_at, expires_at)
 GRANT USAGE ON SCHEMA dataops TO grafana;
 GRANT SELECT ON dataops.dossier, dataops.extraction TO grafana;
 GRANT SELECT ON data.product_tracker_daily, data.refresh_log TO grafana;
+GRANT SELECT ON application.contractor TO grafana;
 
 -- The refresh_data_model flow (fundermaps_windmill) refreshes the rollup and
 -- writes one refresh_log row per run.

@@ -51,3 +51,6 @@ GRANT SELECT, INSERT ON data.refresh_log TO fundermaps_windmill;
 GRANT USAGE ON SCHEMA data TO grafana;
 GRANT USAGE ON SCHEMA dataops TO grafana;
 GRANT SELECT ON dataops.dossier, dataops.extraction TO grafana;
+
+-- Bureau breakdown on the Data quality board.
+GRANT SELECT ON application.contractor TO grafana;
