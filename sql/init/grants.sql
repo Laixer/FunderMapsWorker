@@ -57,6 +57,17 @@ GRANT SELECT
     ON ALL TABLES IN SCHEMA application, data, geocoder, maplayer, report
     TO grafana;
 
+-- Better Auth tables carry secrets (session.token, auth_key.key_hash). Grafana
+-- only needs the who/when columns for the Users + Operations dashboards, so
+-- grant those columns explicitly instead of the whole table. (Applied to prod
+-- 2026-09-07; apikey already had table-level SELECT via the default privileges.)
+REVOKE SELECT ON application.session, application.auth_key FROM grafana;
+GRANT SELECT (id, user_id, created_at, updated_at, expires_at, ip_address, user_agent,
+              impersonated_by, active_organization_id)
+    ON application.session TO grafana;
+GRANT SELECT (id, user_id, name, last_used, created_at, updated_at, expires_at)
+    ON application.auth_key TO grafana;
+
 -- ---------------------------------------------------------------------------
 -- Default privileges so future tables (created later via migrations or by
 -- the worker) inherit the same access without manual GRANTs.
