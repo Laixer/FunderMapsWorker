@@ -1,0 +1,14 @@
+summary: Refresh Product Tracker Daily
+description: Refreshes the `data.product_tracker_daily` (usage per day × organization × product; read by the Grafana Usage & billing board) materialized view.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    database:
+      type: object
+      description: ''
+      format: resource-postgresql
+  required:
+    - database
