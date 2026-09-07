@@ -28,6 +28,40 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const backoff = (a: number) =>
   Math.min(2000 * 2 ** (a - 1), 45_000) * (0.7 + Math.random() * 0.6);
 
+/**
+ * What the model calls since the last takeUsage() cost. OpenRouter reports
+ * prompt/completion tokens on every response and the price in USD credits when
+ * the request asks for usage accounting (`usage: { include: true }`), which
+ * every request here does. ingest-dossier drains this per document and writes
+ * it to dataops.extraction, so spend per read is a query, not a guess.
+ */
+export interface Usage {
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number | null;
+}
+const zeroUsage = (): Usage => ({ calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: null });
+let usage: Usage = zeroUsage();
+
+function recordUsage(j: any): void {
+  const u = j?.usage;
+  if (!u) return;
+  usage.calls += 1;
+  usage.input_tokens += Number(u.prompt_tokens ?? 0) || 0;
+  usage.output_tokens += Number(u.completion_tokens ?? 0) || 0;
+  if (typeof u.cost === "number") usage.cost_usd = (usage.cost_usd ?? 0) + u.cost;
+}
+
+/** Returns the usage accumulated since the previous call and starts a fresh tally. */
+export function takeUsage(): Usage {
+  const out = usage;
+  usage = zeroUsage();
+  return out;
+}
+
+const withAccounting = (body: unknown) => ({ ...(body as Record<string, unknown>), usage: { include: true } });
+
 async function ask(body: unknown, attempts = 6): Promise<any> {
   let last = "";
   for (let a = 1; a <= attempts; a++) {
@@ -38,11 +72,11 @@ async function ask(body: unknown, attempts = 6): Promise<any> {
           Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(withAccounting(body)),
       });
       if (r.ok) {
         const j = await r.json();
-        if (!(j as any)?.error) return j;
+        if (!(j as any)?.error) { recordUsage(j); return j; }
         last = `provider: ${JSON.stringify((j as any).error).slice(0, 160)}`;
       } else {
         last = `HTTP ${r.status}: ${(await r.text()).slice(0, 160)}`;
@@ -797,8 +831,8 @@ export async function extractDocument(pdfPath: string): Promise<FieldRead[]> {
   };
   let text = "";
   for (let attempt = 1; attempt <= 4; attempt++) {
-    const r = await fetch(DOC_OPENROUTER, { method: "POST", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (r.ok) { const j = (await r.json()) as any; if (!j?.error) { text = j.choices?.[0]?.message?.content ?? ""; break; } text = ""; }
+    const r = await fetch(DOC_OPENROUTER, { method: "POST", headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(withAccounting(body)) });
+    if (r.ok) { const j = (await r.json()) as any; if (!j?.error) { recordUsage(j); text = j.choices?.[0]?.message?.content ?? ""; break; } text = ""; }
     if (attempt === 4) throw new Error(`model call failed: HTTP ${r.status}`);
     await new Promise((res) => setTimeout(res, 3000 * attempt));
   }
