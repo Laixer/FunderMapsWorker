@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ovCltcI0HRa47f8gfOClM5qsJMg6UcY2H5YvoZleUI2EY8myIl8sEtG6w2KnSjh
+\restrict 1be6EUQQhBgwBWAx4HhNSopnHYwSPK7u9jv7ogQy0TsMrKFcmVlb6zX8mgcRjqW
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2907,6 +2907,32 @@ COMMENT ON TABLE application.organization_user IS 'Linking table between organiz
 
 
 --
+-- Name: passkey; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.passkey (
+    id text NOT NULL,
+    name text,
+    public_key text NOT NULL,
+    user_id uuid NOT NULL,
+    credential_id text NOT NULL,
+    counter integer NOT NULL,
+    device_type text NOT NULL,
+    backed_up boolean NOT NULL,
+    transports text,
+    created_at timestamp without time zone DEFAULT now(),
+    aaguid text
+);
+
+
+--
+-- Name: TABLE passkey; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.passkey IS 'WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
+
+
+--
 -- Name: session; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -5703,6 +5729,14 @@ ALTER TABLE ONLY application.organization_user
 
 
 --
+-- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.passkey
+    ADD CONSTRAINT passkey_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -6383,6 +6417,20 @@ CREATE UNIQUE INDEX organization_user_id_idx ON application.organization_user US
 --
 
 CREATE INDEX organization_user_organization_id_idx ON application.organization_user USING btree (organization_id);
+
+
+--
+-- Name: passkey_credential_id_key; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE UNIQUE INDEX passkey_credential_id_key ON application.passkey USING btree (credential_id);
+
+
+--
+-- Name: passkey_user_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX passkey_user_id_idx ON application.passkey USING btree (user_id);
 
 
 --
@@ -7421,6 +7469,14 @@ ALTER TABLE ONLY application.organization_user
 
 
 --
+-- Name: passkey passkey_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.passkey
+    ADD CONSTRAINT passkey_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: product_tracker product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -7792,5 +7848,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ovCltcI0HRa47f8gfOClM5qsJMg6UcY2H5YvoZleUI2EY8myIl8sEtG6w2KnSjh
+\unrestrict 1be6EUQQhBgwBWAx4HhNSopnHYwSPK7u9jv7ogQy0TsMrKFcmVlb6zX8mgcRjqW
 

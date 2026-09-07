@@ -76,6 +76,12 @@ GRANT SELECT ON dataops.dossier, dataops.extraction, dataops.dossier_entry, data
 GRANT SELECT ON data.product_tracker_daily, data.refresh_log TO grafana;
 GRANT SELECT ON application.contractor TO grafana;
 
+-- Passkeys (Better Auth passkey plugin): API full CRUD, others read without
+-- the public key material.
+GRANT SELECT, INSERT, UPDATE, DELETE ON application.passkey TO fundermaps_webapp;
+GRANT SELECT ON application.passkey TO fundermaps_webservice;
+GRANT SELECT (id, name, user_id, device_type, backed_up, created_at, aaguid) ON application.passkey TO grafana;
+
 -- The refresh_data_model flow (fundermaps_windmill) refreshes the rollup and
 -- writes one refresh_log row per run.
 GRANT SELECT, MAINTAIN ON data.product_tracker_daily TO fundermaps_windmill;
