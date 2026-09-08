@@ -2,7 +2,7 @@ import { log, ACCENT, RESET } from "../lib/log.ts";
 import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as vision from "../providers/vision.ts";
-import { mayEstablishFoundationType, FIELDS_REQUIRING_ADMISSIBLE_SOURCE } from "../providers/admissibility.ts";
+import { mayEstablishFoundationType, readSaysQuickScan, FIELDS_REQUIRING_ADMISSIBLE_SOURCE } from "../providers/admissibility.ts";
 import * as s3 from "../providers/s3.ts";
 import { env } from "../config.ts";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
@@ -464,11 +464,15 @@ export async function ingestDossier(payload: {
     // the only one on a document whose filename is a uuid. Passing `file` alone
     // here would silently disarm the QuickScan check for everything the public
     // form delivers.
-    const adm = mayEstablishFoundationType(
+    // Label, header, filename -- and, since the model reads the document's
+    // own kind, what it read. The last one is what covers a scanned QuickScan
+    // that arrives without a label (the Studio stopped asking, 2026-09-08).
+    let adm = mayEstablishFoundationType(
       sourceText,
       payload.display_name ?? file,
       payload.declared_category,
     );
+    if (adm.ok) adm = readSaysQuickScan(fields);
     if (!adm.ok) {
       log.warn(`source not admissible`, { reason: adm.reason?.slice(0, 90) });
       fields = fields.map(f =>

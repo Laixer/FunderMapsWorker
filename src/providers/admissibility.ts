@@ -119,6 +119,32 @@ export function mayEstablishFoundationType(
 }
 
 /**
+ * The fourth signal: the model's own reading of what the document is.
+ *
+ * The document lane returns `inquiry_type` with a citation (vision.DOCUMENT_FIELDS,
+ * 2026-09-07), and it does so for scans, which the header regexes cannot see.
+ * That was the one case the uploader's label existed for -- so since
+ * 2026-09-08 the Studio no longer asks staff to pre-classify a document the
+ * pipeline is about to classify. The public intake keeps its label: that is the
+ * melder's claim, and still recorded.
+ *
+ * A model read is not deterministic where the label was. The header and
+ * filename checks stay as the backstop, and every value still goes to a person
+ * with its citation, so the cost of a miss here is a reviewer's glance.
+ */
+export function readSaysQuickScan(fields: { field: string; value: string; evidence?: string | null }[]): Admissibility {
+  const t = fields.find((f) => f.field === "inquiry_type");
+  if (!t || t.value !== "quickscan") return { ok: true };
+  return {
+    ok: false,
+    reason:
+      `bron niet toelaatbaar: het document is gelezen als QuickScan / Fase 0` +
+      (t.evidence ? ` ("${t.evidence.slice(0, 120)}")` : "") +
+      `. Het funderingstype daarin is FunderMaps-data die naar ons terugkomt.`,
+  };
+}
+
+/**
  * Every field the text lane extracts. This used to be the foundation type
  * alone, on the theory that a QuickScan's own measurements were genuine work
  * by someone on site. Don's verdicts on 2026-08-28/29 said otherwise: of 20
