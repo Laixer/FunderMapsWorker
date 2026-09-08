@@ -1,6 +1,7 @@
 summary: Data Ops — ingest pending dossiers
 description: Reads every open dossier with an unread document through
-  FunderMapsWorker readSubmission (imported, not spawned). Hourly; everything
+  FunderMapsWorker readSubmission (imported, not spawned). Hourly, or one
+  dossier on demand (dossier_id) when the Studio uploads a document; everything
   lands pending for review.
 lock: '!inline f/fundermaps/dataops/ingest_pending.script.lock'
 kind: script
@@ -12,10 +13,14 @@ schema:
     - s3
     - openrouter
     - limit
+    - dossier_id
   properties:
     limit:
       type: integer
       default: 40
+    dossier_id:
+      type: integer
+      description: Read only this dossier, now (the Studio upload path). Empty = the sweep.
     openrouter:
       type: string
     pg:
