@@ -1,0 +1,1 @@
+INSERT INTO data.refresh_log (job, status) VALUES ('refresh_data_model', 'ok');

@@ -1,0 +1,1 @@
+REFRESH MATERIALIZED VIEW CONCURRENTLY data.product_tracker_daily;

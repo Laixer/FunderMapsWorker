@@ -28,3 +28,58 @@ jobs:
           FUNDERMAPS_S3_ACCESS_KEY: ci-test
           FUNDERMAPS_S3_SECRET_KEY: ci-test
         run: bun test
+
+  # Proves that a fresh database can be bootstrapped from what is in git:
+  # schema.sql (the prod dump) + sql/init/* via scripts/init_db.sh, on a
+  # plain PostGIS 18 container. Catches a truncated or hand-patched dump, a
+  # seed that no longer fits the schema, and grants that name a dropped
+  # object. It does NOT compare against prod — regenerate schema.sql after
+  # every prod DDL change (see docs/risk-model.md).
+  schema:
+    name: Bootstrap schema.sql on PostGIS 18
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: fundermaps
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fundermaps"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/fundermaps
+    steps:
+      - uses: actions/checkout@v7
+      - name: Ensure psql
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -y -q postgresql-client)
+      - name: Bootstrap database
+        run: ./scripts/init_db.sh | grep -v 'postgres://'
+      - name: Smoke check
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -X -q <<'SQL'
+          DO $$
+          DECLARE
+            n_tables int;
+            n_matviews int;
+            n_lookup int;
+          BEGIN
+            SELECT count(*) INTO n_tables FROM pg_tables
+              WHERE schemaname IN ('application','data','dataops','geocoder','maplayer','report');
+            SELECT count(*) INTO n_matviews FROM pg_matviews WHERE schemaname = 'data';
+            SELECT count(*) INTO n_lookup FROM data.model_gevelscan;
+            RAISE NOTICE 'tables=% matviews=% gevelscan_rows=%', n_tables, n_matviews, n_lookup;
+            -- Lower bounds only: growth is fine, a half-loaded dump is not.
+            IF n_tables < 70 THEN RAISE EXCEPTION 'too few tables (%), schema.sql looks truncated', n_tables; END IF;
+            IF n_matviews < 10 THEN RAISE EXCEPTION 'too few matviews (%)', n_matviews; END IF;
+            IF n_lookup = 0 THEN RAISE EXCEPTION 'model lookup seed did not load'; END IF;
+            PERFORM 1 FROM geocoder.building LIMIT 0;
+            PERFORM 1 FROM report.inquiry LIMIT 0;
+            PERFORM 1 FROM application.organization LIMIT 0;
+            PERFORM 1 FROM dataops.dossier_entry LIMIT 0;
+          END $$;
+          SQL

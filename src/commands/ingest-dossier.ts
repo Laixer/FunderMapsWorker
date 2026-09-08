@@ -97,6 +97,9 @@ export interface IngestResult {
   fields: number;
   /** Values the model scored >= 0.95 with a quote and no inference. Informational only. */
   highConfidence: number;
+  /** Model calls made for this document and what OpenRouter charged for them (null when it did not say). */
+  calls?: number;
+  costUsd?: number | null;
 }
 
 /**
@@ -160,6 +163,10 @@ export async function ingestDossier(payload: {
 
   const workDir = payload.tmp_dir ?? (await mkdtemp(join(tmpdir(), "fm-dossier-")));
   const localPath = join(workDir, basename(file));
+  // Everything the model is asked between here and the extraction row -- page
+  // classification included -- is this document's spend.
+  const startedAt = new Date();
+  vision.takeUsage();
   const result: IngestResult = {
     dossierId: null, artifactId: null, lane: "none",
     pages: 0, redactedPages: 0, fields: 0, highConfidence: 0,
@@ -483,14 +490,21 @@ export async function ingestDossier(payload: {
       !f.rejected && (f.confidence ?? 0) >= HIGH_CONFIDENCE && !!f.evidence?.trim() && !inferred(f);
     result.highConfidence = fields.filter(sure).length;
 
+    const spent = vision.takeUsage();
+    result.calls = spent.calls;
+    result.costUsd = spent.cost_usd;
+
     if (!dry_run && result.artifactId !== null) {
       const [ex] = await sql<{ id: number }[]>`
         INSERT INTO dataops.extraction
-          (artifact_id, model, prompt_version, lane, pages_sent, finished_at)
+          (artifact_id, model, prompt_version, lane, pages_sent,
+           input_tokens, output_tokens, cost_usd, started_at, finished_at)
         VALUES (${result.artifactId},
                 ${result.lane === "text" ? env.DATAOPS_TEXT_MODEL : env.DATAOPS_VISION_MODEL},
                 'dataops-2026.2', ${result.lane},
-                ${result.lane === "text" ? pages : cleanPages.length}, now())
+                ${result.lane === "text" ? pages : cleanPages.length},
+                ${spent.calls ? spent.input_tokens : null}, ${spent.calls ? spent.output_tokens : null},
+                ${spent.cost_usd}, ${startedAt}, now())
         RETURNING id`;
 
       // Per-address values: resolve what the report wrote to a geocoder row
@@ -582,7 +596,7 @@ export async function readSubmission(payload: {
     SELECT a.id, a.storage_key, a.original_filename, a.declared_category
       FROM dataops.artifact a
      WHERE a.dossier_id = ${d.id}
-       ${payload.again ? sql`` : sql`AND NOT EXISTS (SELECT 1 FROM dataops.extraction e WHERE e.artifact_id = a.id)`}
+       ${payload.again ? sql`` : sql`AND NOT EXISTS (SELECT 1 FROM dataops.extraction e WHERE e.artifact_id = a.id AND e.error IS NULL)`}
      ORDER BY a.id`;
 
   log.info(`dossier #${d.id}${d.reference ? ` (${d.reference})` : ""}`, {
@@ -629,8 +643,20 @@ export async function readSubmission(payload: {
       }
     } catch (e) {
       // One unreadable file must not strand the rest of a submission. The
-      // artifact keeps no extraction, so a later run picks it up again.
+      // failure is kept as an extraction row with `error` set -- that is what
+      // the Operations board counts -- and the sweep below ignores errored
+      // rows, so a later run still picks the artifact up again.
       log.error(`  ${a.original_filename ?? a.storage_key}: ${String(e)}`);
+      if (!payload.dry_run) {
+        const spent = vision.takeUsage();
+        await sql`
+          INSERT INTO dataops.extraction
+            (artifact_id, model, prompt_version, lane, input_tokens, output_tokens, cost_usd, finished_at, error)
+          VALUES (${a.id}, ${env.DATAOPS_TEXT_MODEL}, 'dataops-2026.2', 'none',
+                  ${spent.calls ? spent.input_tokens : null}, ${spent.calls ? spent.output_tokens : null},
+                  ${spent.cost_usd}, now(), ${String(e).slice(0, 2000)})`.catch((err) =>
+          log.error(`  could not record the failure: ${String(err)}`));
+      }
     }
   }
   return results;

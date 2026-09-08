@@ -69,7 +69,12 @@ if [[ "${DATABASE_URL}" == *"do-user-871803"* ]] && [[ -z "${FUNDERMAPS_INIT_ALL
 fi
 
 # --- Password material ------------------------------------------------------
-gen_password() { LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24; }
+# No `head` on the reading side of the pipe: with `set -o pipefail`, `head -c`
+# closing the pipe early makes `tr` exit 141 (SIGPIPE) and the whole script
+# dies before printing anything. `cut` reads its input to the end.
+gen_password() {
+    dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c1-24
+}
 
 PG_FM_PASS="${PG_FM_PASS:-$(gen_password)}"
 PG_WEBAPP_PASS="${PG_WEBAPP_PASS:-$(gen_password)}"
@@ -121,8 +126,12 @@ SQL
 # --- Step 3: schema.sql -----------------------------------------------------
 # pg_dump 18 emits a `\restrict <token>` directive at the top that psql ≤ 17
 # does not understand. Strip it before piping in. Harmless on psql 18.
+# The dump also carries prod's `CREATE EXTENSION timescaledb` (product_tracker
+# is a hypertable there). The hypertable chunks are already excluded from the
+# dump, so on a plain PostGIS box the table is a vanilla table and the
+# extension is not needed — drop the two lines that mention it.
 echo "==> Loading schema.sql"
-sed -e '/^\\restrict /d' -e '/^\\unrestrict /d' "${SCHEMA_FILE}" \
+sed -e '/^\\restrict /d' -e '/^\\unrestrict /d' -e '/EXTENSION.*timescaledb/d' "${SCHEMA_FILE}" \
     | PGOPTIONS='--client-min-messages=warning' \
         psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -X -q
 

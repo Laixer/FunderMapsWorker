@@ -1,4 +1,4 @@
-FROM ghcr.io/maplibre/martin:1.12.0
+FROM ghcr.io/maplibre/martin:1.15.0
 
 # Noto Sans TTFs (OFL) — Martin generates glyph PBFs from these and serves
 # them at /font/{fontstack}/{range}. Pinned to an openmaptiles/fonts

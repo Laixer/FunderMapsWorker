@@ -57,6 +57,36 @@ GRANT SELECT
     ON ALL TABLES IN SCHEMA application, data, geocoder, maplayer, report
     TO grafana;
 
+-- Better Auth tables carry secrets (session.token, auth_key.key_hash). Grafana
+-- only needs the who/when columns for the Users + Operations dashboards, so
+-- grant those columns explicitly instead of the whole table. (Applied to prod
+-- 2026-09-07; apikey already had table-level SELECT via the default privileges.)
+REVOKE SELECT ON application.session, application.auth_key FROM grafana;
+GRANT SELECT (id, user_id, created_at, updated_at, expires_at, ip_address, user_agent,
+              impersonated_by, active_organization_id)
+    ON application.session TO grafana;
+GRANT SELECT (id, user_id, name, last_used, created_at, updated_at, expires_at)
+    ON application.auth_key TO grafana;
+
+-- Grafana reads the intake pipeline state (Operations board) and the daily
+-- usage rollup + refresh log in data (Usage & billing, "model refresh age").
+GRANT USAGE ON SCHEMA dataops TO grafana;
+GRANT SELECT ON dataops.dossier, dataops.extraction, dataops.dossier_entry, dataops.dossier_mail,
+                dataops.artifact, dataops.extraction_field, dataops.verdict TO grafana;
+GRANT SELECT ON data.product_tracker_daily, data.refresh_log TO grafana;
+GRANT SELECT ON application.contractor TO grafana;
+
+-- Passkeys (Better Auth passkey plugin): API full CRUD, others read without
+-- the public key material.
+GRANT SELECT, INSERT, UPDATE, DELETE ON application.passkey TO fundermaps_webapp;
+GRANT SELECT ON application.passkey TO fundermaps_webservice;
+GRANT SELECT (id, name, user_id, device_type, backed_up, created_at, aaguid) ON application.passkey TO grafana;
+
+-- The refresh_data_model flow (fundermaps_windmill) refreshes the rollup and
+-- writes one refresh_log row per run.
+GRANT SELECT, MAINTAIN ON data.product_tracker_daily TO fundermaps_windmill;
+GRANT SELECT, INSERT ON data.refresh_log TO fundermaps_windmill;
+
 -- ---------------------------------------------------------------------------
 -- Default privileges so future tables (created later via migrations or by
 -- the worker) inherit the same access without manual GRANTs.

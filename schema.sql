@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict 78jk05M09uaP5i49W6qAj48tXlBg5K8V3GPpE2ciCL3To7NlcwdyPykBiY6WVHm
+\restrict 1be6EUQQhBgwBWAx4HhNSopnHYwSPK7u9jv7ogQy0TsMrKFcmVlb6zX8mgcRjqW
 
 -- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg24.04+2)
+-- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -267,6 +267,19 @@ CREATE TYPE data.reliability AS ENUM (
 
 
 --
+-- Name: actor_kind; Type: TYPE; Schema: dataops; Owner: -
+--
+
+CREATE TYPE dataops.actor_kind AS ENUM (
+    'melder',
+    'reviewer',
+    'pipeline',
+    'model',
+    'system'
+);
+
+
+--
 -- Name: dossier_outcome; Type: TYPE; Schema: dataops; Owner: -
 --
 
@@ -275,6 +288,22 @@ CREATE TYPE dataops.dossier_outcome AS ENUM (
     'rejected',
     'duplicate',
     'no_data'
+);
+
+
+--
+-- Name: entry_kind; Type: TYPE; Schema: dataops; Owner: -
+--
+
+CREATE TYPE dataops.entry_kind AS ENUM (
+    'received',
+    'extraction',
+    'finding',
+    'verdict',
+    'remark',
+    'question',
+    'reply',
+    'status'
 );
 
 
@@ -1895,8 +1924,7 @@ COMMENT ON FUNCTION maplayer.incident_neighborhood(z integer, x integer, y integ
 --
 
 CREATE PROCEDURE maplayer.refresh_building_cluster_tiles()
-    LANGUAGE plpgsql
-    SECURITY DEFINER
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
@@ -1965,8 +1993,7 @@ $$;
 --
 
 CREATE PROCEDURE maplayer.refresh_building_tiles()
-    LANGUAGE plpgsql
-    SECURITY DEFINER
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
@@ -2248,7 +2275,7 @@ CREATE TABLE application.account (
     password text,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    issuer text DEFAULT 'local:credential'::text NOT NULL
+    issuer text DEFAULT 'local:credential'::text
 );
 
 
@@ -2877,6 +2904,32 @@ CREATE TABLE application.organization_user (
 --
 
 COMMENT ON TABLE application.organization_user IS 'Linking table between organizations and their users.';
+
+
+--
+-- Name: passkey; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.passkey (
+    id text NOT NULL,
+    name text,
+    public_key text NOT NULL,
+    user_id uuid NOT NULL,
+    credential_id text NOT NULL,
+    counter integer NOT NULL,
+    device_type text NOT NULL,
+    backed_up boolean NOT NULL,
+    transports text,
+    created_at timestamp without time zone DEFAULT now(),
+    aaguid text
+);
+
+
+--
+-- Name: TABLE passkey; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.passkey IS 'WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
 
 
 --
@@ -4102,6 +4155,61 @@ ALTER TABLE data.model_version ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
+-- Name: product_tracker_daily; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.product_tracker_daily AS
+ SELECT ((create_date AT TIME ZONE 'Europe/Amsterdam'::text))::date AS day,
+    organization_id,
+    product,
+    count(*) AS calls
+   FROM application.product_tracker
+  GROUP BY (((create_date AT TIME ZONE 'Europe/Amsterdam'::text))::date), organization_id, product
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW product_tracker_daily; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.product_tracker_daily IS 'Webservice/map usage per Amsterdam-local day, organization and product. Source: application.product_tracker. Refreshed by the refresh_data_model flow.';
+
+
+--
+-- Name: refresh_log; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.refresh_log (
+    id bigint NOT NULL,
+    job text NOT NULL,
+    status text DEFAULT 'ok'::text NOT NULL,
+    finished_at timestamp with time zone DEFAULT now() NOT NULL,
+    detail jsonb
+);
+
+
+--
+-- Name: TABLE refresh_log; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.refresh_log IS 'One row per completed scheduled job (e.g. refresh_data_model). Read by Grafana and, later, /health/nightly as a dead-man switch.';
+
+
+--
+-- Name: refresh_log_id_seq; Type: SEQUENCE; Schema: data; Owner: -
+--
+
+ALTER TABLE data.refresh_log ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME data.refresh_log_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: risk_table_priority; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4479,6 +4587,48 @@ COMMENT ON COLUMN dataops.dossier.outcome IS 'Dossier-level decision. Per-value 
 
 
 --
+-- Name: dossier_entry; Type: TABLE; Schema: dataops; Owner: -
+--
+
+CREATE TABLE dataops.dossier_entry (
+    id bigint NOT NULL,
+    dossier_id bigint NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    kind dataops.entry_kind NOT NULL,
+    actor_kind dataops.actor_kind NOT NULL,
+    actor text,
+    body jsonb DEFAULT '{}'::jsonb NOT NULL,
+    text text NOT NULL,
+    artifact_id bigint,
+    extraction_id bigint,
+    verdict_id bigint,
+    visible_to_melder boolean NOT NULL,
+    mail_message_id text
+);
+
+
+--
+-- Name: TABLE dossier_entry; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.dossier_entry IS 'Append-only timeline of a dossier. INSERT+SELECT only; an entry is never updated or deleted.';
+
+
+--
+-- Name: dossier_entry_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
+--
+
+ALTER TABLE dataops.dossier_entry ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME dataops.dossier_entry_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: dossier_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
 --
 
@@ -4507,7 +4657,7 @@ CREATE TABLE dataops.dossier_mail (
     error text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     sent_at timestamp with time zone,
-    CONSTRAINT dossier_mail_kind_check CHECK ((kind = ANY (ARRAY['received'::text, 'closed'::text]))),
+    CONSTRAINT dossier_mail_kind_check CHECK ((kind = ANY (ARRAY['received'::text, 'closed'::text, 'question'::text]))),
     CONSTRAINT dossier_mail_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])))
 );
 
@@ -4523,7 +4673,7 @@ COMMENT ON TABLE dataops.dossier_mail IS 'Send log for melder-facing mail (#1020
 -- Name: COLUMN dossier_mail.kind; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON COLUMN dataops.dossier_mail.kind IS 'received (ontvangstbevestiging) | closed (afronding).';
+COMMENT ON COLUMN dataops.dossier_mail.kind IS 'received (ontvangstbevestiging) | closed (afronding) | question (vraag aan de melder). received/closed at most once per dossier; question repeatable.';
 
 
 --
@@ -5579,6 +5729,14 @@ ALTER TABLE ONLY application.organization_user
 
 
 --
+-- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.passkey
+    ADD CONSTRAINT passkey_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -5755,6 +5913,14 @@ ALTER TABLE ONLY data.model_version
 
 
 --
+-- Name: refresh_log refresh_log_pkey; Type: CONSTRAINT; Schema: data; Owner: -
+--
+
+ALTER TABLE ONLY data.refresh_log
+    ADD CONSTRAINT refresh_log_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: supercluster supercluster_pkey; Type: CONSTRAINT; Schema: data; Owner: -
 --
 
@@ -5779,11 +5945,11 @@ ALTER TABLE ONLY dataops.artifact
 
 
 --
--- Name: dossier_mail dossier_mail_once; Type: CONSTRAINT; Schema: dataops; Owner: -
+-- Name: dossier_entry dossier_entry_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
 --
 
-ALTER TABLE ONLY dataops.dossier_mail
-    ADD CONSTRAINT dossier_mail_once UNIQUE (dossier_id, kind);
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_pkey PRIMARY KEY (id);
 
 
 --
@@ -5992,13 +6158,6 @@ ALTER TABLE ONLY report.recovery
 
 ALTER TABLE ONLY report.recovery_sample
     ADD CONSTRAINT recovery_sample_pkey PRIMARY KEY (id);
-
-
---
--- Name: account_issuer_account_id_key; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE UNIQUE INDEX account_issuer_account_id_key ON application.account USING btree (issuer, account_id);
 
 
 --
@@ -6261,6 +6420,20 @@ CREATE INDEX organization_user_organization_id_idx ON application.organization_u
 
 
 --
+-- Name: passkey_credential_id_key; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE UNIQUE INDEX passkey_credential_id_key ON application.passkey USING btree (credential_id);
+
+
+--
+-- Name: passkey_user_id_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX passkey_user_id_idx ON application.passkey USING btree (user_id);
+
+
+--
 -- Name: product_tracker_building_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -6394,6 +6567,20 @@ CREATE UNIQUE INDEX model_version_one_default_idx ON data.model_version USING bt
 
 
 --
+-- Name: product_tracker_daily_pkey; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX product_tracker_daily_pkey ON data.product_tracker_daily USING btree (day, organization_id, product);
+
+
+--
+-- Name: refresh_log_job_finished_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE INDEX refresh_log_job_finished_idx ON data.refresh_log USING btree (job, finished_at DESC);
+
+
+--
 -- Name: statistics_product_buildings_restored_neighborhood_idx; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -6489,6 +6676,27 @@ CREATE INDEX artifact_parent_idx ON dataops.artifact USING btree (parent_artifac
 --
 
 CREATE INDEX dossier_building_idx ON dataops.dossier USING btree (building_id) WHERE (building_id IS NOT NULL);
+
+
+--
+-- Name: dossier_entry_dossier_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_entry_dossier_idx ON dataops.dossier_entry USING btree (dossier_id, at);
+
+
+--
+-- Name: dossier_entry_mail_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE UNIQUE INDEX dossier_entry_mail_idx ON dataops.dossier_entry USING btree (mail_message_id) WHERE (mail_message_id IS NOT NULL);
+
+
+--
+-- Name: dossier_mail_once; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossier_id, kind) WHERE (kind = ANY (ARRAY['received'::text, 'closed'::text]));
 
 
 --
@@ -7261,6 +7469,14 @@ ALTER TABLE ONLY application.organization_user
 
 
 --
+-- Name: passkey passkey_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.passkey
+    ADD CONSTRAINT passkey_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: product_tracker product_tracker_building_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -7394,6 +7610,38 @@ ALTER TABLE ONLY dataops.artifact
 
 ALTER TABLE ONLY dataops.dossier
     ADD CONSTRAINT dossier_duplicate_of_fkey FOREIGN KEY (duplicate_of) REFERENCES dataops.dossier(id);
+
+
+--
+-- Name: dossier_entry dossier_entry_artifact_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_artifact_id_fkey FOREIGN KEY (artifact_id) REFERENCES dataops.artifact(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_entry dossier_entry_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier_entry dossier_entry_extraction_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_extraction_id_fkey FOREIGN KEY (extraction_id) REFERENCES dataops.extraction(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_entry dossier_entry_verdict_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_entry
+    ADD CONSTRAINT dossier_entry_verdict_id_fkey FOREIGN KEY (verdict_id) REFERENCES dataops.verdict(id) ON DELETE SET NULL;
 
 
 --
@@ -7600,5 +7848,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 78jk05M09uaP5i49W6qAj48tXlBg5K8V3GPpE2ciCL3To7NlcwdyPykBiY6WVHm
+\unrestrict 1be6EUQQhBgwBWAx4HhNSopnHYwSPK7u9jv7ogQy0TsMrKFcmVlb6zX8mgcRjqW
 

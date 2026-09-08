@@ -84,6 +84,15 @@ value:
                       value: $res:f/fundermaps/managed_pg
                   is_trigger: false
                   path: f/fundermaps/data/refresh_statistics_product_data_collected
+              - id: w
+                value:
+                  type: script
+                  input_transforms:
+                    database:
+                      type: static
+                      value: $res:f/fundermaps/managed_pg
+                  is_trigger: false
+                  path: f/fundermaps/data/refresh_product_tracker_daily
             expr: ''
             parallel: true
             skip_failure: false
@@ -206,6 +215,16 @@ value:
         type: flow
         input_transforms: {}
         path: f/fundermaps/mapset/process_mapset
+    - id: x
+      summary: Log Run
+      value:
+        type: script
+        input_transforms:
+          database:
+            type: static
+            value: $res:f/fundermaps/managed_pg
+        is_trigger: false
+        path: f/fundermaps/data/log_refresh_data_model
   groups: []
 schema:
   $schema: https://json-schema.org/draft/2020-12/schema
