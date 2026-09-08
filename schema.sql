@@ -864,7 +864,7 @@ CREATE TYPE report.wood_type AS ENUM (
 -- Name: year; Type: DOMAIN; Schema: report; Owner: -
 --
 
-CREATE DOMAIN report.year AS date DEFAULT CURRENT_TIMESTAMP
+CREATE DOMAIN report.year AS date
 	CONSTRAINT range CHECK (((date_part('Y'::text, VALUE) > (900)::double precision) AND (date_part('Y'::text, VALUE) < (2100)::double precision)));
 
 
