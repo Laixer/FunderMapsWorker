@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 1be6EUQQhBgwBWAx4HhNSopnHYwSPK7u9jv7ogQy0TsMrKFcmVlb6zX8mgcRjqW
+\restrict cVufPNBuRg3uB4GVUHUXQ7fkbnZsX9Eyyho0ajmYZ9jdaVgKyZKbwqUfa7Bb4GA
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -316,7 +316,8 @@ CREATE TYPE dataops.intake_channel AS ENUM (
     'upload',
     'bulk_drop',
     'api',
-    'invoer_app'
+    'invoer_app',
+    'audit'
 );
 
 
@@ -369,7 +370,8 @@ CREATE TYPE dataops.review_state AS ENUM (
     'confirmed',
     'corrected',
     'rejected',
-    'superseded'
+    'superseded',
+    'agreed'
 );
 
 
@@ -527,7 +529,8 @@ CREATE TYPE report.dossier_event_kind AS ENUM (
     'rejected',
     'reopened',
     'imported',
-    'proposed'
+    'proposed',
+    'audited'
 );
 
 
@@ -4533,7 +4536,8 @@ CREATE TABLE dataops.dossier (
     payload jsonb,
     outcome dataops.dossier_outcome,
     outcome_note text,
-    outcome_at timestamp with time zone
+    outcome_at timestamp with time zone,
+    audit_inquiry_id integer
 );
 
 
@@ -4584,6 +4588,13 @@ COMMENT ON COLUMN dataops.dossier.payload IS 'What the melder claimed: topic, an
 --
 
 COMMENT ON COLUMN dataops.dossier.outcome IS 'Dossier-level decision. Per-value decisions live in dataops.verdict.';
+
+
+--
+-- Name: COLUMN dossier.audit_inquiry_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier.audit_inquiry_id IS 'The rapportage this dossier re-reads (channel audit). Null on intake dossiers.';
 
 
 --
@@ -4757,7 +4768,8 @@ CREATE TABLE dataops.extraction_field (
     evidence_page integer,
     state dataops.review_state DEFAULT 'pending'::dataops.review_state NOT NULL,
     address_text text,
-    address_id geocoder.geocoder_id
+    address_id geocoder.geocoder_id,
+    current_value text
 );
 
 
@@ -4766,6 +4778,13 @@ CREATE TABLE dataops.extraction_field (
 --
 
 COMMENT ON COLUMN dataops.extraction_field.evidence IS 'The passage the value was read from. Required for auto-accept: fabrications are rare, silent, and otherwise indistinguishable from correct answers.';
+
+
+--
+-- Name: COLUMN extraction_field.current_value; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.extraction_field.current_value IS 'On an audit: what the database held for this field when the document was read. Null = the database had nothing.';
 
 
 --
@@ -6672,6 +6691,13 @@ CREATE INDEX artifact_parent_idx ON dataops.artifact USING btree (parent_artifac
 
 
 --
+-- Name: dossier_audit_inquiry_id_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_audit_inquiry_id_idx ON dataops.dossier USING btree (audit_inquiry_id) WHERE (audit_inquiry_id IS NOT NULL);
+
+
+--
 -- Name: dossier_building_idx; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -7605,6 +7631,14 @@ ALTER TABLE ONLY dataops.artifact
 
 
 --
+-- Name: dossier dossier_audit_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier
+    ADD CONSTRAINT dossier_audit_inquiry_id_fkey FOREIGN KEY (audit_inquiry_id) REFERENCES report.inquiry(id) ON DELETE SET NULL;
+
+
+--
 -- Name: dossier dossier_duplicate_of_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -7848,5 +7882,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1be6EUQQhBgwBWAx4HhNSopnHYwSPK7u9jv7ogQy0TsMrKFcmVlb6zX8mgcRjqW
+\unrestrict cVufPNBuRg3uB4GVUHUXQ7fkbnZsX9Eyyho0ajmYZ9jdaVgKyZKbwqUfa7Bb4GA
 
