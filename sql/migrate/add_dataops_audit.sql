@@ -26,3 +26,8 @@ ALTER TABLE dataops.extraction_field
   ADD COLUMN IF NOT EXISTS current_value text;
 COMMENT ON COLUMN dataops.extraction_field.current_value IS
   'On an audit: what the database held for this field when the document was read. Null = the database had nothing.';
+
+-- The rapportage's own trail gets a kind for "Fundie re-read this and a
+-- person applied N corrections": 'imported' would claim the data came from
+-- outside, and it did not.
+ALTER TYPE report.dossier_event_kind ADD VALUE IF NOT EXISTS 'audited';

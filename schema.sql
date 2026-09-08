@@ -529,7 +529,8 @@ CREATE TYPE report.dossier_event_kind AS ENUM (
     'rejected',
     'reopened',
     'imported',
-    'proposed'
+    'proposed',
+    'audited'
 );
 
 
