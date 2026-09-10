@@ -1609,6 +1609,7 @@ BEGIN
                 dewatering_depth_risk_reliability, unclassified_risk,
                 height, velocity, owner, inquiry_type, damage_cause,
                 enforcement_term, overall_quality, recovery_type, contractor,
+                monitoring,
                 ST_AsMVTGeom(geom, env, 4096, 64, true) AS geom
             FROM maplayer.building_tiles
             WHERE geom && env
@@ -1639,6 +1640,8 @@ BEGIN
                 -- contractor is set on ~5% of buildings and has ~55
                 -- distinct values → dictionary-encodes to near-nothing
                 inquiry_type, contractor,
+                -- monitoring is a boolean on ~3.8k buildings: free
+                monitoring,
                 -- WebFront paints with these even at z12–13: every layer
                 -- extrudes on height; owner/restoration-cost/enforcement-term/
                 -- overall-quality layers and address_count filters break
@@ -1663,7 +1666,7 @@ $$;
 -- Name: FUNCTION buildings(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String", "contractor": "String"}}]}';
+COMMENT ON FUNCTION maplayer.buildings(z integer, x integer, y integer) IS '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String", "contractor": "String", "monitoring": "Boolean"}}]}';
 
 
 --
@@ -2019,7 +2022,7 @@ BEGIN
         dewatering_depth_risk_reliability, unclassified_risk,
         height, velocity, owner, inquiry_type, damage_cause,
         enforcement_term, overall_quality, recovery_type, contractor,
-        surface_area, geom, geom_simple
+        monitoring, surface_area, geom, geom_simple
     )
     SELECT
         bgh.building_id,
@@ -2050,6 +2053,12 @@ BEGIN
         bgh.overall_quality::text,
         bgh.recovery_type::text,
         con.name,
+        EXISTS (
+            SELECT FROM report.inquiry_sample s
+            JOIN report.inquiry mi ON mi.id = s.inquiry_id
+            WHERE s.building_id = bgh.building_id
+              AND mi.type = 'monitoring'
+        ),
         bgh.surface_area::double precision,
         ST_Transform(bgh.geom, 3857),
         -- 5.0 Mercator units ≈ 3 m at NL latitude: invisible at z12–13,
@@ -5010,7 +5019,8 @@ CREATE TABLE maplayer.building_tiles (
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857),
     surface_area double precision,
-    contractor text
+    contractor text,
+    monitoring boolean DEFAULT false NOT NULL
 );
 
 

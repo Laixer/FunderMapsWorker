@@ -1,71 +1,27 @@
--- Dynamic tile source for the Martin tileserver (hybrid tile pipeline).
+-- Monitoring layer regression (WebFront #268 / Martin cutover): the
+-- tippecanoe-era analysis_monitoring tileset was server-side filtered to
+-- buildings with a monitoring-type inquiry; the dynamic buildings source is
+-- not, so WebFront's monitoring layer painted every building (reported by
+-- gemeente Schiedam 2026-09-10).
 --
--- One flat physical table replaces the per-request join through
--- data.building_geo_hierarchy (model_risk_static ⋈ building_active): all
--- attributes the five tile-generating analysis_* views expose today, plus
--- the geometry pre-transformed to Web Mercator in two variants — full
--- detail for z14+ and a simplified copy for z12–13 (a building is only a
--- few pixels there; without simplification a dense-city z12 tile is ~7 MB).
+-- Fix: a boolean `monitoring` attribute on maplayer.building_tiles, exposed
+-- at every zoom by maplayer.buildings(); WebFront filters on it.
+-- Membership = ANY monitoring inquiry with a sample on the building (the
+-- old view's definition). inquiry_type='monitoring' is NOT equivalent: it is
+-- the single inquiry the model picked, and ~1,400 monitored buildings have a
+-- higher-priority research that wins.
 --
--- Rebuilt nightly right after model_risk_static
--- refreshes (attributes change nightly; geometry only on BAG reload —
--- a future optimization is trigger-based partial refresh, see the
--- tileserver plan).
---
--- maplayer.buildings(z,x,y) is a Martin "function source": Martin serves
--- GET /buildings/{z}/{x}/{y} by calling it. The attribute set is exactly
--- the union of what analysis_{building,foundation,monitoring,report,risk}
--- put into the public tippecanoe tiles today — tiles are public, so this
--- function must not expose more than that union.
+-- Canonical definitions updated alongside in sql/model/create_building_tiles.sql.
+-- Run as a role that owns maplayer.building_tiles (fundermaps).
 
-CREATE TABLE IF NOT EXISTS maplayer.building_tiles (
-    building_id text PRIMARY KEY,
-    -- CBS codes, exposed under the same names the analysis views use
-    neighborhood_id text,
-    district_id text,
-    municipality_id text,
-    address_count integer,
-    construction_year integer,
-    construction_year_reliability text,
-    foundation_type text,
-    foundation_type_reliability text,
-    restoration_costs integer,
-    drystand double precision,
-    drystand_risk text,
-    drystand_risk_reliability text,
-    bio_infection_risk text,
-    bio_infection_risk_reliability text,
-    dewatering_depth double precision,
-    dewatering_depth_risk text,
-    dewatering_depth_risk_reliability text,
-    unclassified_risk text,
-    height double precision,
-    velocity double precision,
-    owner text,
-    inquiry_type text,
-    damage_cause text,
-    enforcement_term double precision,
-    overall_quality text,
-    recovery_type text,
-    -- name of the contractor that performed the established inquiry
-    -- (issue #882); same inquiry the other report attributes come from
-    contractor text,
-    -- true when ANY monitoring-type inquiry has a sample on the building
-    -- (membership of the retired analysis_monitoring tileset). Not derivable
-    -- from inquiry_type: that is the one inquiry the model picked, and for
-    -- ~1,400 monitored buildings a higher-priority research wins the pick.
-    monitoring boolean NOT NULL DEFAULT false,
-    -- drop-filter only, never exposed in tiles: at z12 a pixel is ~38 m,
-    -- so small buildings are sub-pixel and tippecanoe used to drop them too
-    surface_area double precision,
-    geom geometry(MultiPolygon, 3857),
-    geom_simple geometry(MultiPolygon, 3857)
-);
+\set ON_ERROR_STOP on
 
-CREATE INDEX IF NOT EXISTS building_tiles_geom_idx
-    ON maplayer.building_tiles USING gist (geom);
-CREATE INDEX IF NOT EXISTS building_tiles_geom_simple_idx
-    ON maplayer.building_tiles USING gist (geom_simple);
+--------------------------------------------------------------------------------
+-- 1. Tile table + refresh + function source
+--------------------------------------------------------------------------------
+
+ALTER TABLE maplayer.building_tiles
+    ADD COLUMN IF NOT EXISTS monitoring boolean NOT NULL DEFAULT false;
 
 -- Population procedure: build a shadow table, swap it in (lock-free for
 -- readers; see the body). ~6.4M rows, ~8 min.
@@ -268,26 +224,16 @@ $$;
 COMMENT ON FUNCTION maplayer.buildings(integer, integer, integer) IS
 '{"description": "FunderMaps building foundation tiles (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "buildings", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "address_count": "Number", "construction_year": "Number", "construction_year_reliability": "String", "foundation_type": "String", "foundation_type_reliability": "String", "restoration_costs": "Number", "drystand": "Number", "drystand_risk": "String", "drystand_risk_reliability": "String", "bio_infection_risk": "String", "bio_infection_risk_reliability": "String", "dewatering_depth": "Number", "dewatering_depth_risk": "String", "dewatering_depth_risk_reliability": "String", "unclassified_risk": "String", "height": "Number", "velocity": "Number", "owner": "String", "inquiry_type": "String", "damage_cause": "String", "enforcement_term": "Number", "overall_quality": "String", "recovery_type": "String", "contractor": "String", "monitoring": "Boolean"}}]}';
 
--- Serving role (created on prod with LOGIN, CONNECTION LIMIT 5 and
--- statement_timeout=15s; password lives outside the repo).
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
-        GRANT USAGE ON SCHEMA maplayer TO fundermaps_tileserver;
-        GRANT SELECT ON maplayer.building_tiles TO fundermaps_tileserver;
-        GRANT EXECUTE ON FUNCTION maplayer.buildings(integer, integer, integer)
-            TO fundermaps_tileserver;
-    END IF;
-END $$;
+--------------------------------------------------------------------------------
+-- 2. One-off backfill so the layer works before the next nightly rebuild
+--    (~3.8k of 6.45M rows; the refresh procedure computes it from then on).
+--------------------------------------------------------------------------------
 
--- The nightly rebuild runs from the Windmill flow
--- f/fundermaps/data/refresh_data_model as fundermaps_windmill.
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
-        GRANT USAGE ON SCHEMA maplayer TO fundermaps_windmill;
-        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN
-            ON maplayer.building_tiles TO fundermaps_windmill;
-        GRANT SELECT ON data.building_geo_hierarchy TO fundermaps_windmill;
-    END IF;
-END $$;
+UPDATE maplayer.building_tiles bt
+SET monitoring = true
+WHERE EXISTS (
+    SELECT FROM report.inquiry_sample s
+    JOIN report.inquiry mi ON mi.id = s.inquiry_id
+    WHERE s.building_id = bt.building_id
+      AND mi.type = 'monitoring'
+);
