@@ -226,10 +226,18 @@ superseded.
 
 ```
   bun run ingest-dossier --file <path | s3://key> [--dry-run]
+  bun run normalize-artifacts [--apply] [--limit N] [--id <artifact_id>]   # one-time repair of pre-2026-09-10 rows
 
   +-----------------------------------------------------------------------------+
   |  FETCH            s3://...  ->  Spaces          local path -> copy           |
   |                   the original is NEVER modified                             |
+  +--------------------------------+--------------------------------------------+
+                                   v
+  +-----------------------------------------------------------------------------+
+  |  NORMALISE        type sniffed by content (never the extension);             |
+  |                   an image the browser cannot show (TIFF, BMP, HEIC) becomes |
+  |                   a full-resolution PNG (bilevel/grayscale) or JPEG (colour) |
+  |                   and THAT is what gets stored and shown. Since 2026-09-10.  |
   +--------------------------------+--------------------------------------------+
                                    v
   +-----------------------------------------------------------------------------+

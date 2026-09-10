@@ -8,6 +8,7 @@
     "dev": "bun --watch run src/index.ts",
     "load-dataset": "bun run src/commands/load-dataset.ts",
     "ingest-dossier": "bun run src/commands/ingest-dossier.ts",
+    "normalize-artifacts": "bun run src/commands/normalize-artifacts.ts",
     "test": "bun test",
     "typecheck": "bun run --bun tsc --noEmit"
   },
