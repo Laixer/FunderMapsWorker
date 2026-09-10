@@ -215,13 +215,53 @@ export async function prepareImage(
   return { page: 1, path: dst, redacted: 0, annotation: "" };
 }
 
+/** The media type by content, never by extension ("" when `file` cannot tell). */
+export async function sniffMime(path: string): Promise<string> {
+  const r = await spawn(["file", "-b", "--mime-type", path]).catch(() => null);
+  return r?.stdout.trim() ?? "";
+}
+
 /** Sniff the kind from content, never from the extension. */
 export async function fileKind(path: string): Promise<"pdf" | "image" | "other"> {
-  const r = await spawn(["file", "-b", "--mime-type", path]).catch(() => null);
-  const mime = r?.stdout.trim() ?? "";
+  const mime = await sniffMime(path);
   if (mime === "application/pdf") return "pdf";
   if (mime.startsWith("image/")) return "image";
   return "other";
+}
+
+/** Image types every browser renders inline. Anything else the review screen cannot show. */
+const BROWSER_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif"]);
+
+export function browserRenders(mime: string): boolean {
+  return BROWSER_IMAGE_TYPES.has(mime);
+}
+
+/**
+ * Turn an image the browser cannot show (TIFF from the archives, BMP, HEIC)
+ * into one it can, at full resolution. Returns the input unchanged when it
+ * already renders inline.
+ *
+ * Container by content: the archives deliver 1-bit line drawings, and a 1-bit
+ * 9692x7500 sheet is 1.7 MB as TIFF, 1.9 MB as PNG and 22 MB as JPEG -- JPEG
+ * is the wrong tool for bilevel and grayscale scans. Colour photographs go the
+ * other way, so those become JPEG. Multi-page TIFFs keep their first page:
+ * drawing scans are single sheets, and the vision lane only ever looked at
+ * page one of an image anyway.
+ */
+export async function toBrowserImage(path: string, outDir: string): Promise<{ path: string; mime: string; converted: boolean }> {
+  const mime = await sniffMime(path);
+  if (!mime.startsWith("image/") || browserRenders(mime)) return { path, mime, converted: false };
+  const probe = await spawn(["identify", "-format", "%[type]", `${path}[0]`]).catch(() => null);
+  const type = probe?.stdout.trim() ?? "";
+  const lossless = /^(Bilevel|Grayscale)/.test(type);
+  const stem = basename(path).replace(/\.[^.]+$/, "");
+  const dst = join(outDir, lossless ? `${stem}.png` : `${stem}.jpg`);
+  await spawn(
+    lossless
+      ? ["convert", `${path}[0]`, dst]
+      : ["convert", `${path}[0]`, "-quality", "90", dst],
+  );
+  return { path: dst, mime: lossless ? "image/png" : "image/jpeg", converted: true };
 }
 
 /**

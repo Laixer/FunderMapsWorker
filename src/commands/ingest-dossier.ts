@@ -162,7 +162,7 @@ export async function ingestDossier(payload: {
   if (!env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not set");
 
   const workDir = payload.tmp_dir ?? (await mkdtemp(join(tmpdir(), "fm-dossier-")));
-  const localPath = join(workDir, basename(file));
+  let localPath = join(workDir, basename(file));
   // Everything the model is asked between here and the extraction row -- page
   // classification included -- is this document's spend.
   const startedAt = new Date();
@@ -187,6 +187,24 @@ export async function ingestDossier(payload: {
       throw new Error("--dossier mode expects artifacts with an s3 storage_key");
     } else {
       await Bun.write(localPath, Bun.file(file));
+    }
+
+    // -- normalise -----------------------------------------------------------
+    // Sniff by content, never by extension. Images the browser cannot render
+    // (the archives deliver drawings as TIFF) become a full-resolution PNG or
+    // JPEG here, once, and that copy is what gets stored and shown. The type
+    // recorded on the row is the real one, not a constant.
+    const kind = await pdf.fileKind(localPath);
+    if (kind === "other") throw new Error(`unsupported file type: ${basename(file)}`);
+    const norm = await pdf.toBrowserImage(localPath, workDir);
+    const converted = norm.converted;
+    if (converted) {
+      log.step(`${await pdf.sniffMime(localPath)} converted to ${norm.mime} for the review screen`);
+      localPath = norm.path;
+    }
+    const mime = kind === "pdf" ? "application/pdf" : norm.mime;
+
+    if (!file.startsWith("s3://") && !payload.artifact_id) {
 
       // Upload it. A dossier whose storage_key points at nothing is worse than
       // no dossier: the review screen mints a signed URL, the reviewer gets a
@@ -196,7 +214,7 @@ export async function ingestDossier(payload: {
       //
       // Keyed by uuid like inquiry-report/, with the original name kept on the
       // artifact row: two people send "Funderingsrapport.pdf" in the same week.
-      const ext = (file.split(".").pop() ?? "bin").toLowerCase();
+      const ext = (localPath.split(".").pop() ?? "bin").toLowerCase();
       storageKey = `${DATAOPS_PREFIX}${crypto.randomUUID()}.${ext}`;
       // Belt and braces. The key is built above and cannot currently escape the
       // prefix, but this command will be edited by someone who does not know
@@ -208,14 +226,15 @@ export async function ingestDossier(payload: {
         );
       }
       log.step(`Uploading to ${storageKey}`);
-      const mime = (await pdf.fileKind(localPath)) === "pdf"
-        ? "application/pdf"
-        : `image/${ext === "jpg" ? "jpeg" : ext}`;
+      await s3.uploadFile(localPath, storageKey, undefined, { ContentType: mime });
+    } else if (converted) {
+      // The source was an S3 object (a form upload, or a bulk drop already in
+      // dataops/) in a format the review screen cannot show. The converted copy
+      // becomes the artifact; the original object is left where it is.
+      storageKey = `${DATAOPS_PREFIX}${crypto.randomUUID()}.${localPath.split(".").pop()}`;
+      log.step(`Uploading browser-viewable copy to ${storageKey}`);
       await s3.uploadFile(localPath, storageKey, undefined, { ContentType: mime });
     }
-
-    const kind = await pdf.fileKind(localPath);
-    if (kind === "other") throw new Error(`unsupported file type: ${basename(file)}`);
 
     // -- sniff ---------------------------------------------------------------
     // Never trust the extension. The type on report.inquiry is no better a
@@ -307,19 +326,28 @@ export async function ingestDossier(payload: {
     if (!dry_run) {
       if (payload.artifact_id) {
         // The row is the form's; only what reading it taught us is ours to
-        // write. Filename, size and mime stay as the sender sent them.
+        // write. Filename and size stay as the sender sent them; the type is
+        // filled in when the form left it empty (the intake form does).
         result.artifactId = payload.artifact_id;
         await sql`
           UPDATE dataops.artifact
-             SET lane = ${result.lane}, page_count = ${pages}
+             SET lane = ${result.lane}, page_count = ${pages},
+                 mime_type = COALESCE(mime_type, ${mime})
            WHERE id = ${payload.artifact_id}`;
+        if (converted) {
+          await sql`
+            UPDATE dataops.artifact
+               SET storage_key = ${storageKey}, mime_type = ${mime}, size_bytes = ${size}
+             WHERE id = ${payload.artifact_id}`;
+          log.step("artifact repointed at the JPEG copy");
+        }
         log.step(`reading existing artifact #${payload.artifact_id}`);
       } else {
         const [a] = await sql<{ id: number }[]>`
           INSERT INTO dataops.artifact
             (dossier_id, storage_key, original_filename, mime_type, size_bytes, page_count, lane)
           VALUES (${result.dossierId}, ${storageKey}, ${basename(file)},
-                  ${kind === "pdf" ? "application/pdf" : "image/jpeg"},
+                  ${mime},
                   ${size}, ${pages}, ${result.lane})
           RETURNING id`;
         result.artifactId = a!.id;
