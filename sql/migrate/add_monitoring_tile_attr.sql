@@ -16,6 +16,16 @@
 
 \set ON_ERROR_STOP on
 
+-- refresh_building_tiles() builds a shadow table and swaps it in. An ALTER
+-- on the live table during that window is lost at the swap (the shadow
+-- copy predates it) and buildings() would then fail on the missing column.
+DO $$
+BEGIN
+    IF to_regclass('maplayer.building_tiles_next') IS NOT NULL THEN
+        RAISE EXCEPTION 'refresh_building_tiles() is running; retry after it finishes';
+    END IF;
+END $$;
+
 --------------------------------------------------------------------------------
 -- 1. Tile table + refresh + function source
 --------------------------------------------------------------------------------
