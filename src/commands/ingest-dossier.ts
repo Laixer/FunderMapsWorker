@@ -2,6 +2,7 @@ import { log, ACCENT, RESET } from "../lib/log.ts";
 import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as vision from "../providers/vision.ts";
+import { locateEvidence } from "../lib/evidence-locate.ts";
 import { mayEstablishFoundationType, readSaysQuickScan, FIELDS_REQUIRING_ADMISSIBLE_SOURCE } from "../providers/admissibility.ts";
 import * as s3 from "../providers/s3.ts";
 import { env } from "../config.ts";
@@ -560,15 +561,23 @@ export async function ingestDossier(payload: {
                 ${JSON.stringify({ lane: result.lane, fields: fields.length, pages: result.pages })},
                 ${result.artifactId}, ${ex!.id}, true)`;
 
+      // Where each citation sits in the text, so the review screen can list
+      // proposals in the report's order rather than the schema's (ClientApp
+      // #333, point 2). Only the lanes that read pdftotext output can say;
+      // a drawing has no text to point into, and null sorts last.
+      const locatable = result.lane === "text" || result.lane === "document" ? sourceText : "";
       for (const f of fields) {
+        const loc = locateEvidence(f.evidence, locatable);
         // A value from an inadmissible source is kept, not discarded: the
         // reviewer should see what the document said and why we will not take
         // it. 'rejected' plus the reason in the evidence makes that legible.
         await sql`
           INSERT INTO dataops.extraction_field
-            (extraction_id, field, value, confidence, evidence, state, address_text, address_id)
+            (extraction_id, field, value, confidence, evidence, evidence_page, evidence_offset,
+             state, address_text, address_id)
           VALUES (${ex!.id}, ${f.field}, ${f.value}, ${f.confidence},
                   ${f.rejected ? `${f.rejected}\n\nCitaat uit het document: ${f.evidence ?? ""}` : f.evidence},
+                  ${loc?.page ?? null}, ${loc?.offset ?? null},
                   ${f.rejected ? "rejected" : "pending"},
                   ${f.address ?? null}, ${f.address ? (addressIds.get(f.address) ?? null) : null})
           ON CONFLICT DO NOTHING`;

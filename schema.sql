@@ -4778,7 +4778,8 @@ CREATE TABLE dataops.extraction_field (
     state dataops.review_state DEFAULT 'pending'::dataops.review_state NOT NULL,
     address_text text,
     address_id geocoder.geocoder_id,
-    current_value text
+    current_value text,
+    evidence_offset integer
 );
 
 
@@ -4787,6 +4788,20 @@ CREATE TABLE dataops.extraction_field (
 --
 
 COMMENT ON COLUMN dataops.extraction_field.evidence IS 'The passage the value was read from. Required for auto-accept: fabrications are rare, silent, and otherwise indistinguishable from correct answers.';
+
+
+--
+-- Name: COLUMN extraction_field.evidence_page; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.extraction_field.evidence_page IS 'Page the citation was found on (1-based), located at ingest in the pdftotext output. Null when not found or when the lane has no text.';
+
+
+--
+-- Name: COLUMN extraction_field.evidence_offset; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.extraction_field.evidence_offset IS 'Character offset of the citation in the pdftotext output, located at ingest. The document-order key; null sorts last.';
 
 
 --
