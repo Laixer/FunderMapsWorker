@@ -9,6 +9,7 @@
     "load-dataset": "bun run src/commands/load-dataset.ts",
     "ingest-dossier": "bun run src/commands/ingest-dossier.ts",
     "normalize-artifacts": "bun run src/commands/normalize-artifacts.ts",
+    "load-loket-export": "bun run src/commands/load-loket-export.ts",
     "test": "bun test",
     "typecheck": "bun run --bun tsc --noEmit"
   },
