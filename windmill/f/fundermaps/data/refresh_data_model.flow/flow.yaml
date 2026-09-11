@@ -4,7 +4,8 @@ description: 'Daily pipeline refreshing all risk model data, then generating map
   matview (~13 min), (3) product statistics in 3 parallel lanes (max 3
   concurrent matview refreshes, lanes balanced by duration), (4) refresh dynamic
   building tiles (Martin), (5) process remaining static map tilesets
-  sequentially.'
+  sequentially, (6) log the run, (7) risk follow-up mail to melders whose
+  registered risk moved (API #143).'
 value:
   modules:
     - id: a
@@ -225,6 +226,25 @@ value:
             value: $res:f/fundermaps/managed_pg
         is_trigger: false
         path: f/fundermaps/data/log_refresh_data_model
+    - id: y
+      summary: Risk follow-up mail
+      value:
+        type: script
+        input_transforms:
+          intake_token:
+            type: static
+            value: $var:f/fundermaps/intake_token
+          api_url:
+            type: static
+            value: https://api.fundermaps.com
+          dry_run:
+            type: static
+            value: false
+        is_trigger: false
+        path: f/fundermaps/dataops/risk_followup
+      skip_if:
+        expr: 'false'
+      continue_on_error: true
   groups: []
 schema:
   $schema: https://json-schema.org/draft/2020-12/schema

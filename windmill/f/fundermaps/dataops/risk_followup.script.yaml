@@ -1,0 +1,25 @@
+summary: Data Ops — risk follow-up after model refresh
+description: Calls POST /api/intake/risk-followup so every closed melding whose
+  registered risk moved in this refresh gets one mail (API #143 option B). Last
+  step of the refresh_data_model flow; safe to run any time.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - intake_token
+    - api_url
+    - dry_run
+  properties:
+    intake_token:
+      type: string
+      description: The intake lane's shared secret
+    api_url:
+      type: string
+      default: https://api.fundermaps.com
+    dry_run:
+      type: boolean
+      default: false
+  required:
+    - intake_token
