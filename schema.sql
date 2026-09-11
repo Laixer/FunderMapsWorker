@@ -4677,7 +4677,7 @@ CREATE TABLE dataops.dossier_mail (
     error text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     sent_at timestamp with time zone,
-    CONSTRAINT dossier_mail_kind_check CHECK ((kind = ANY (ARRAY['received'::text, 'closed'::text, 'question'::text]))),
+    CONSTRAINT dossier_mail_kind_check CHECK ((kind = ANY (ARRAY['received'::text, 'closed'::text, 'question'::text, 'risk_changed'::text]))),
     CONSTRAINT dossier_mail_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])))
 );
 
@@ -4693,7 +4693,7 @@ COMMENT ON TABLE dataops.dossier_mail IS 'Send log for melder-facing mail (#1020
 -- Name: COLUMN dossier_mail.kind; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON COLUMN dataops.dossier_mail.kind IS 'received (ontvangstbevestiging) | closed (afronding) | question (vraag aan de melder). received/closed at most once per dossier; question repeatable.';
+COMMENT ON COLUMN dataops.dossier_mail.kind IS 'received (ontvangstbevestiging) | closed (afronding) | question (vraag aan de melder) | risk_changed (risico herberekend). received/closed/risk_changed at most once per dossier; question repeatable.';
 
 
 --
@@ -6732,7 +6732,7 @@ CREATE UNIQUE INDEX dossier_entry_mail_idx ON dataops.dossier_entry USING btree 
 -- Name: dossier_mail_once; Type: INDEX; Schema: dataops; Owner: -
 --
 
-CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossier_id, kind) WHERE (kind = ANY (ARRAY['received'::text, 'closed'::text]));
+CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossier_id, kind) WHERE (kind = ANY (ARRAY['received'::text, 'closed'::text, 'risk_changed'::text]));
 
 
 --
