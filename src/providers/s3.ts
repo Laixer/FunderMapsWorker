@@ -46,21 +46,27 @@ export async function uploadBytes(
   });
 }
 
-export async function downloadFile(
-  filePath: string,
+export async function downloadBytes(
   key: string,
   bucket?: string
-): Promise<void> {
-  await withRetry(async () => {
+): Promise<Uint8Array> {
+  return withRetry(async () => {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: bucket ?? env.FUNDERMAPS_S3_BUCKET,
         Key: key,
       })
     );
-    const bytes = await response.Body!.transformToByteArray();
-    await Bun.write(filePath, bytes);
+    return response.Body!.transformToByteArray();
   });
+}
+
+export async function downloadFile(
+  filePath: string,
+  key: string,
+  bucket?: string
+): Promise<void> {
+  await Bun.write(filePath, await downloadBytes(key, bucket));
 }
 
 export async function deleteFile(
