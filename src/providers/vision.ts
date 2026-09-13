@@ -748,7 +748,10 @@ export async function extractFields(reportText: string): Promise<FieldRead[]> {
 // MAX_PDF_BYTES, cover sheets from the historical bulk corpus, and bare images.
 // ---------------------------------------------------------------------------
 const DOC_OPENROUTER = OPENROUTER;
-export const MAX_PDF_BYTES = 28 * 1024 * 1024;
+// 14 MB, not 28: the document lane sends the PDF inline as base64 (x1.37), and
+// OpenRouter answered HTTP 413 to a 16.9 MB file (#340 reads, 2026-09-13).
+// Anything larger takes the text or vision lane instead of failing the read.
+export const MAX_PDF_BYTES = 14 * 1024 * 1024;
 
 const QUALITY = new Set(["bad", "mediocre", "tolerable", "good", "mediocre_good", "mediocre_bad"]);
 const QUALITY_NL: Record<string, string> = { slecht: "bad", matig: "mediocre", redelijk: "tolerable", goed: "good", matig_tot_goed: "mediocre_good", matig_tot_slecht: "mediocre_bad" };

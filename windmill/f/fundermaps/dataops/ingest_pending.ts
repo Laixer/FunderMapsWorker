@@ -109,6 +109,10 @@ async function ensureTools() {
   console.log("installing pdf/image tools");
   await $`apt-get update -qq`.quiet().nothrow();
   await $`env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq poppler-utils imagemagick file`.quiet();
+  // HEIC photos (iPhone uploads on melden.fundermaps.com) need the HEVC decoder
+  // plugin, split out of libheif since Ubuntu 24.04 / Debian trixie. Older
+  // images have it built in, so a missing package is not an error.
+  await $`env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libheif-plugin-libde265`.quiet().nothrow();
 }
 
 /** FunderMapsWorker at main, cached per container. Returns the short commit. */

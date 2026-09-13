@@ -256,11 +256,18 @@ export async function toBrowserImage(path: string, outDir: string): Promise<{ pa
   const lossless = /^(Bilevel|Grayscale)/.test(type);
   const stem = basename(path).replace(/\.[^.]+$/, "");
   const dst = join(outDir, lossless ? `${stem}.png` : `${stem}.jpg`);
-  await spawn(
+  const r = await spawn(
     lossless
       ? ["convert", `${path}[0]`, dst]
       : ["convert", `${path}[0]`, "-quality", "90", dst],
   );
+  // ImageMagick reports a missing decoder (HEIC without libde265, #340 read
+  // errors 2026-09-13) on stderr and exits non-zero without writing anything;
+  // spawn() does not throw, so without this the failure surfaced two steps
+  // later as ENOENT on the JPEG. Say what actually went wrong.
+  if (r.exitCode !== 0 || !(await Bun.file(dst).exists())) {
+    throw new Error(`cannot convert ${mime} to a browser image: ${r.stderr.trim().split("\n")[0] || `convert exited ${r.exitCode}`}`);
+  }
   return { path: dst, mime: lossless ? "image/png" : "image/jpeg", converted: true };
 }
 
