@@ -10,6 +10,7 @@ import {
   pickCandidate,
   type Candidate,
   type DossierContext,
+  postalArea,
 } from "../lib/address-resolve.ts";
 import { mayEstablishFoundationType, readSaysQuickScan, FIELDS_REQUIRING_ADMISSIBLE_SOURCE } from "../providers/admissibility.ts";
 import * as s3 from "../providers/s3.ts";
@@ -65,7 +66,7 @@ const HIGH_CONFIDENCE = 0.95;
  * addresses -- the links the earlier invoer already made, which the document
  * itself may not spell out (an old drawing names a street, not a house).
  */
-async function loadDossierContext(dossierId: number | null): Promise<DossierContext> {
+export async function loadDossierContext(dossierId: number | null): Promise<DossierContext> {
   if (!dossierId) return EMPTY_CONTEXT;
   const [d] = await sql<{ building_id: string | null; audit_inquiry_id: number | null }[]>`
     SELECT building_id, audit_inquiry_id FROM dataops.dossier WHERE id = ${dossierId}`;
@@ -83,7 +84,7 @@ async function loadDossierContext(dossierId: number | null): Promise<DossierCont
     const samples = await sql<{ address: string; city: string | null; postal_code: string | null }[]>`
       SELECT DISTINCT s.address, a.city, a.postal_code
         FROM report.inquiry_sample s LEFT JOIN geocoder.address a ON a.id = s.address
-       WHERE s.inquiry = ${d.audit_inquiry_id}`;
+       WHERE s.inquiry_id = ${d.audit_inquiry_id}`;
     for (const smp of samples) ctx.knownAddressIds.add(smp.address);
     if (samples.length === 1) ctx.fallbackAddressId = samples[0]!.address;
     if (!ctx.city) ctx.city = samples.find((x) => x.city)?.city ?? null;
@@ -105,15 +106,27 @@ async function loadDossierContext(dossierId: number | null): Promise<DossierCont
  * On a nalezing of a one-address rapportage, text that cannot be placed lands
  * on that address: the link the earlier invoer made is kept (#333 point 12).
  */
-async function resolveAddress(text: string, ctx: DossierContext): Promise<Candidate | null> {
+export async function resolveAddress(text: string, ctx: DossierContext): Promise<Candidate | null> {
   const p = parseAddress(text);
   if (!p) return ctx.fallbackAddressId ? { id: ctx.fallbackAddressId, buildingId: null, city: null, postalCode: null } : null;
   const number = `${p.number}${p.suffix}`;
+  // The candidates the ranking gets to see. "Talmastraat 18" exists in 55
+  // cities; a plain LIMIT 20 handed pickCandidate() an arbitrary twenty and
+  // the dossier's own Lekkerkerk row never made the cut (451 unresolved texts
+  // on 253 open dossiers, 2026-09-14). Put what the dossier knows first --
+  // its pand, its city, its postcode area -- and only then cut the list.
+  const area = postalArea(ctx.postalCode);
+  const ranked = sql`
+    ORDER BY (a.building_id = ${ctx.buildingId ?? ""}) DESC,
+             (lower(a.city) = lower(${ctx.city ?? ""})) DESC,
+             (left(a.postal_code, 4) = ${area ?? ""}) DESC,
+             a.city, a.building_number
+    LIMIT 100`;
   let rows: Candidate[] = (
     await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null }[]>`
       SELECT a.id, a.building_id, a.city, a.postal_code FROM geocoder.address a
        WHERE lower(a.street) = lower(${p.street}) AND upper(a.building_number) = ${number}
-       LIMIT 20`
+       ${ranked}`
   ).map((r) => ({ id: r.id, buildingId: r.building_id, city: r.city, postalCode: r.postal_code }));
   if (rows.length === 0 && !p.suffix) {
     // "93" in the report, "93A" / "93B" in the BAG: the report addresses the
@@ -122,7 +135,8 @@ async function resolveAddress(text: string, ctx: DossierContext): Promise<Candid
     const units = await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null }[]>`
       SELECT a.id, a.building_id, a.city, a.postal_code FROM geocoder.address a
        WHERE lower(a.street) = lower(${p.street}) AND a.building_number ~ ${`^${p.number}[A-Za-z]`}
-       ORDER BY a.building_number LIMIT 20`;
+         AND (${ctx.city ?? ""} = '' OR lower(a.city) = lower(${ctx.city ?? ""}))
+       ORDER BY a.building_number LIMIT 100`;
     const buildings = new Set(units.map((u) => u.building_id));
     if (units.length && buildings.size === 1) rows = [{ id: units[0]!.id, buildingId: units[0]!.building_id, city: units[0]!.city, postalCode: units[0]!.postal_code }];
   }
