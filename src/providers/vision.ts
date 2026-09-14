@@ -260,14 +260,25 @@ Regels voor het bewijs:
   het bewijs dan met "afgeleid: " en beschrijf waaruit. Afleiden mag -- op een
   oude tekening is dat vaak de enige manier -- het verzwijgen niet.
 
+- De DATUM van de tekening: kijk in het titelblok (rechtsonder), bij stempels,
+  handtekeningen en handgeschreven aantekeningen ("Haarlem, 12 mei 1911",
+  "gew. 3-'54", een goedkeuringsstempel met datum). Geef die als YYYY-MM-DD;
+  alleen jaar en maand bekend: de 1e; alleen een jaar: 1 januari van dat jaar.
+  Meerdere data: de datum van de tekening zelf, niet die van een latere
+  wijziging of een archiefstempel. Niet leesbaar: null. Verzin geen datum.
+
 Antwoord met alleen JSON:
-{"foundation_type": "...", "confidence": 0.0, "evidence": "wat je op de tekening ziet waaruit dit blijkt", "page": 1}`;
+{"foundation_type": "...", "confidence": 0.0, "evidence": "wat je op de tekening ziet waaruit dit blijkt", "page": 1,
+ "document_date": "YYYY-MM-DD of null", "date_evidence": "waar op de tekening de datum staat, letterlijk"}`;
 
 export interface DrawingRead {
   foundationType: string | null;
   confidence: number | null;
   evidence: string | null;
   page: number | null;
+  /** From the title block, a stamp or handwriting; null when not readable (#338, Don 2026-09-14). */
+  documentDate: string | null;
+  dateEvidence: string | null;
 }
 
 export async function readDrawing(pages: string[]): Promise<DrawingRead> {
@@ -278,14 +289,17 @@ export async function readDrawing(pages: string[]): Promise<DrawingRead> {
     messages: [{ role: "user", content: [{ type: "text", text: READ_PROMPT }, ...pages.map(asImage)] }],
   });
   const a = parseJson(j.choices?.[0]?.message?.content ?? "", [
-    "foundation_type", "confidence", "evidence", "page",
+    "foundation_type", "confidence", "evidence", "page", "document_date", "date_evidence",
   ]);
   const ft = (a?.["foundation_type"] as string) ?? null;
+  const rawDate = typeof a?.["document_date"] === "string" ? (a["document_date"] as string) : null;
   return {
     foundationType: ft && ft !== "onbekend" ? ft : null,
     confidence: norm01(a?.["confidence"]),
     evidence: (a?.["evidence"] as string) ?? null,
     page: typeof a?.["page"] === "number" ? (a["page"] as number) : null,
+    documentDate: rawDate ? normaliseDocumentDate(rawDate) : null,
+    dateEvidence: typeof a?.["date_evidence"] === "string" ? (a["date_evidence"] as string) : null,
   };
 }
 

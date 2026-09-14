@@ -477,6 +477,17 @@ export async function ingestDossier(payload: {
           confidence: read.confidence,
         }];
       }
+      // The sheet's own date (title block, stamp, handwriting). Without it the
+      // commit fell back to the day the melding arrived, which for a 1911
+      // drawing is the worst possible answer (#338, Don 2026-09-14).
+      if (read.documentDate) {
+        fields.push({
+          field: "document_date",
+          value: read.documentDate,
+          evidence: read.dateEvidence,
+          confidence: 0.8,
+        });
+      }
     } else {
       log.warn("no page carries usable evidence — routed to a human, no model call made");
     }
