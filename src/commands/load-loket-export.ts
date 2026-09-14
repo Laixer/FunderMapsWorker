@@ -184,18 +184,22 @@ async function findOrCreateDossier(m: Row, dry_run: boolean): Promise<{ id: numb
   counts.dossiers_created++;
   if (addr.building_id) counts.address_set++;
   if (dry_run) return { id: null, building_id: addr.building_id };
+  // sql.json(), never JSON.stringify(): postgres-js encodes jsonb parameters
+  // itself, so a pre-stringified value lands as a jsonb STRING (and `{} ||
+  // "string"` becomes an array). The first run did exactly that -- see
+  // sql/migrate/repair_loket_payload.sql.
   const [d] = await sql<{ id: number }[]>`
     INSERT INTO dataops.dossier
       (channel, subject, external_ref, received_at, bag_id, building_id, resolution_status, payload)
     VALUES (${CHANNEL}, ${subject}, ${ref}, ${m.submitted}, ${addr.bag_id || null}, ${addr.building_id},
-            ${addr.status}, ${JSON.stringify(payload)})
+            ${addr.status}, ${sql.json(payload)})
     RETURNING id`;
   await sql`
     INSERT INTO dataops.dossier_entry
       (dossier_id, kind, actor_kind, actor, text, body, visible_to_melder)
     VALUES (${d!.id}, 'received', 'system', 'loket-export',
             ${`Terugmelding ${m.melding_nr} overgenomen uit de loket-export`},
-            ${JSON.stringify({ source: payload.source, status: m.status, fase: m.fase })}, false)`;
+            ${sql.json({ source: payload.source, status: m.status, fase: m.fase })}, false)`;
   return { id: d!.id, building_id: addr.building_id };
 }
 
@@ -230,14 +234,14 @@ async function adoptKnown(m: Row, hits: Known[], artifactMeldingen: Map<number, 
     await sql`
       UPDATE dataops.dossier
          SET bag_id = ${addr.bag_id}, building_id = ${addr.building_id}, resolution_status = 'resolved',
-             payload = COALESCE(payload, '{}'::jsonb) || ${JSON.stringify({ loket_melding_nr: m.melding_nr, loket_melding_id: m.melding_id })}::jsonb,
+             payload = COALESCE(payload, '{}'::jsonb) || ${sql.json({ loket_melding_nr: m.melding_nr, loket_melding_id: m.melding_id })},
              updated_at = now()
        WHERE id = ${dossierId} AND building_id IS NULL`;
     await sql`
       INSERT INTO dataops.dossier_entry (dossier_id, kind, actor_kind, actor, text, body, visible_to_melder)
       VALUES (${dossierId}, 'status', 'system', 'loket-export',
               ${`Adres overgenomen uit loket-terugmelding ${m.melding_nr}`},
-              ${JSON.stringify({ bag_id: addr.bag_id })}, false)`;
+              ${sql.json({ bag_id: addr.bag_id })}, false)`;
   }
 }
 

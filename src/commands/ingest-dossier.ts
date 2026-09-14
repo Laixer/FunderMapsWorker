@@ -557,7 +557,7 @@ export async function ingestDossier(payload: {
                 ${result.lane === "text" ? env.DATAOPS_TEXT_MODEL : env.DATAOPS_VISION_MODEL},
                 ${`Document gelezen (${result.lane}): ${fields.filter((f) => !f.rejected).length} voorstel(len)` +
                   (fields.some((f) => f.rejected) ? `, ${fields.filter((f) => f.rejected).length} geweigerd (bron niet toelaatbaar)` : "")},
-                ${JSON.stringify({ lane: result.lane, fields: fields.length, pages: result.pages })},
+                ${sql.json({ lane: result.lane, fields: fields.length, pages: result.pages })},
                 ${result.artifactId}, ${ex!.id}, true)`;
 
       for (const f of fields) {
