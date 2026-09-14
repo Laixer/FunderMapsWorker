@@ -3,6 +3,14 @@ import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as vision from "../providers/vision.ts";
 import { locateEvidence } from "../lib/evidence-locate.ts";
+import {
+  EMPTY_CONTEXT,
+  extraAddresses,
+  parseAddress,
+  pickCandidate,
+  type Candidate,
+  type DossierContext,
+} from "../lib/address-resolve.ts";
 import { mayEstablishFoundationType, readSaysQuickScan, FIELDS_REQUIRING_ADMISSIBLE_SOURCE } from "../providers/admissibility.ts";
 import * as s3 from "../providers/s3.ts";
 import { env } from "../config.ts";
@@ -50,43 +58,77 @@ const HIGH_CONFIDENCE = 0.95;
  */
 
 /**
- * "Adamshofstraat 93A" -> geocoder.address.id, or null.
+ * What the dossier already knows about where it is (ClientApp #333 part D).
+ *
+ * The pand the melding was filed under gives a city and a postcode area, and
+ * its own addresses; a nalezing (channel audit) adds the rapportage's sample
+ * addresses -- the links the earlier invoer already made, which the document
+ * itself may not spell out (an old drawing names a street, not a house).
+ */
+async function loadDossierContext(dossierId: number | null): Promise<DossierContext> {
+  if (!dossierId) return EMPTY_CONTEXT;
+  const [d] = await sql<{ building_id: string | null; audit_inquiry_id: number | null }[]>`
+    SELECT building_id, audit_inquiry_id FROM dataops.dossier WHERE id = ${dossierId}`;
+  if (!d) return EMPTY_CONTEXT;
+  const ctx: DossierContext = { ...EMPTY_CONTEXT, knownAddressIds: new Set(), buildingId: d.building_id };
+  if (d.building_id) {
+    const own = await sql<{ id: string; city: string; postal_code: string | null }[]>`
+      SELECT id, city, postal_code FROM geocoder.address
+       WHERE building_id = ${d.building_id} ORDER BY building_number LIMIT 50`;
+    for (const a of own) ctx.knownAddressIds.add(a.id);
+    ctx.city = own[0]?.city ?? null;
+    ctx.postalCode = own[0]?.postal_code ?? null;
+  }
+  if (d.audit_inquiry_id) {
+    const samples = await sql<{ address: string; city: string | null; postal_code: string | null }[]>`
+      SELECT DISTINCT s.address, a.city, a.postal_code
+        FROM report.inquiry_sample s LEFT JOIN geocoder.address a ON a.id = s.address
+       WHERE s.inquiry = ${d.audit_inquiry_id}`;
+    for (const smp of samples) ctx.knownAddressIds.add(smp.address);
+    if (samples.length === 1) ctx.fallbackAddressId = samples[0]!.address;
+    if (!ctx.city) ctx.city = samples.find((x) => x.city)?.city ?? null;
+    if (!ctx.postalCode) ctx.postalCode = samples.find((x) => x.postal_code)?.postal_code ?? null;
+  }
+  return ctx;
+}
+
+/**
+ * "Adamshofstraat 93A" -> geocoder.address row, or null.
  *
  * Street + number, exact on the number (93A is not 93), case-insensitive on
- * the street; when the dossier already names a building, its city breaks a
- * tie between the many Kerkstraten. Nothing fuzzier: a wrong address on a
- * sample is worse than none, and the reviewer sees the raw text either way.
+ * the street. Several matches (the many Kerkstraten) are ranked by what the
+ * dossier knows: an address it already links, its own pand, its city, its
+ * postcode area (lib/address-resolve.ts). Nothing fuzzier: a wrong address on
+ * a sample is worse than none, and the reviewer sees the raw text either way
+ * and can link it by hand in the address panel.
+ *
+ * On a nalezing of a one-address rapportage, text that cannot be placed lands
+ * on that address: the link the earlier invoer made is kept (#333 point 12).
  */
-async function resolveAddress(text: string, dossierId: number | null): Promise<string | null> {
-  const m = text.trim().match(/^(.+?)\s+(\d+)\s*([a-zA-Z]?)\b/);
-  if (!m) return null;
-  const street = m[1]!.trim();
-  const number = `${m[2]}${(m[3] ?? "").toUpperCase()}`;
-  let rows: { id: string; city: string }[] = await sql<{ id: string; city: string }[]>`
-    SELECT a.id, a.city FROM geocoder.address a
-     WHERE lower(a.street) = lower(${street}) AND upper(a.building_number) = ${number}
-     LIMIT 20`;
-  if (rows.length === 0 && !m[3]) {
+async function resolveAddress(text: string, ctx: DossierContext): Promise<Candidate | null> {
+  const p = parseAddress(text);
+  if (!p) return ctx.fallbackAddressId ? { id: ctx.fallbackAddressId, buildingId: null, city: null, postalCode: null } : null;
+  const number = `${p.number}${p.suffix}`;
+  let rows: Candidate[] = (
+    await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null }[]>`
+      SELECT a.id, a.building_id, a.city, a.postal_code FROM geocoder.address a
+       WHERE lower(a.street) = lower(${p.street}) AND upper(a.building_number) = ${number}
+       LIMIT 20`
+  ).map((r) => ({ id: r.id, buildingId: r.building_id, city: r.city, postalCode: r.postal_code }));
+  if (rows.length === 0 && !p.suffix) {
     // "93" in the report, "93A" / "93B" in the BAG: the report addresses the
     // pand. Accept the units of that number when they all sit on one building,
     // and take the first unit -- the invoer convention for the same reports.
-    const units = await sql<{ id: string; city: string; building_id: string | null }[]>`
-      SELECT a.id, a.city, a.building_id FROM geocoder.address a
-       WHERE lower(a.street) = lower(${street}) AND a.building_number ~ ${`^${m[2]}[A-Za-z]`}
+    const units = await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null }[]>`
+      SELECT a.id, a.building_id, a.city, a.postal_code FROM geocoder.address a
+       WHERE lower(a.street) = lower(${p.street}) AND a.building_number ~ ${`^${p.number}[A-Za-z]`}
        ORDER BY a.building_number LIMIT 20`;
     const buildings = new Set(units.map((u) => u.building_id));
-    if (units.length && buildings.size === 1) rows = [units[0]!];
+    if (units.length && buildings.size === 1) rows = [{ id: units[0]!.id, buildingId: units[0]!.building_id, city: units[0]!.city, postalCode: units[0]!.postal_code }];
   }
-  if (rows.length === 1) return rows[0]!.id;
-  if (rows.length === 0) return null;
-  if (dossierId) {
-    const [d] = await sql<{ city: string | null }[]>`
-      SELECT a.city FROM dataops.dossier d JOIN geocoder.address a ON a.building_id = d.building_id
-       WHERE d.id = ${dossierId} LIMIT 1`;
-    const inCity = rows.filter((r) => d?.city && r.city === d.city);
-    if (inCity.length === 1) return inCity[0]!.id;
-  }
-  return null;
+  const id = pickCandidate(rows, ctx);
+  if (id) return rows.find((r) => r.id === id) ?? null;
+  return ctx.fallbackAddressId ? { id: ctx.fallbackAddressId, buildingId: null, city: null, postalCode: null } : null;
 }
 
 export interface IngestResult {
@@ -554,10 +596,15 @@ export async function ingestDossier(payload: {
       // Per-address values: resolve what the report wrote to a geocoder row
       // once per distinct address. Unresolved is fine -- the text is kept and
       // the reviewer sees it -- but a resolved id is what commit needs.
+      const dossierIdNow = payload.dossier_id ?? result.dossierId;
+      const ctx = await loadDossierContext(dossierIdNow);
       const addressIds = new Map<string, string | null>();
+      const candidates = new Map<string, Candidate>();
       for (const f of fields) {
         if (!f.address || addressIds.has(f.address)) continue;
-        addressIds.set(f.address, await resolveAddress(f.address, payload.dossier_id ?? result.dossierId));
+        const hit = await resolveAddress(f.address, ctx);
+        addressIds.set(f.address, hit?.id ?? null);
+        if (hit) candidates.set(hit.id, hit);
       }
       // The timeline: one entry per reading, written by the pipeline itself.
       // The structured rows above stay the source of truth; this line is what
@@ -592,6 +639,39 @@ export async function ingestDossier(payload: {
                   ${f.rejected ? "rejected" : "pending"},
                   ${f.address ?? null}, ${f.address ? (addressIds.get(f.address) ?? null) : null})
           ON CONFLICT DO NOTHING`;
+      }
+
+      // The addresses the document names beyond the pand it was filed under
+      // (#333 point 14): pipeline rows for the review screen's address panel,
+      // one per address, pending until a person confirms or refuses them --
+      // and a line on the timeline so a reviewer is told. The dossier's own
+      // pand is never a row here (the panel shows it from dossier.building_id).
+      const extra = extraAddresses(addressIds, candidates, ctx);
+      if (extra.length && dossierIdNow) {
+        // Fail-soft: the read is complete without these rows (the API derives
+        // the panel from the values until then), and the sweep's role needs
+        // grant_dossier_address_to_windmill.sql before it may write them.
+        try {
+          for (const a of extra) {
+            await sql`
+              INSERT INTO dataops.dossier_address (dossier_id, address_id, address_text, source, state)
+              VALUES (${dossierIdNow}, ${a.addressId}, ${a.addressText}, 'pipeline', 'pending')
+              ON CONFLICT (dossier_id, address_id) DO NOTHING`;
+          }
+        } catch (err) {
+          log.warn(`dossier_address rows not written`, { reason: String(err).slice(0, 120) });
+        }
+        const listed = extra.slice(0, 6).map((a) => a.addressText).join(", ") + (extra.length > 6 ? `, … (+${extra.length - 6})` : "");
+        await sql`
+          INSERT INTO dataops.dossier_entry
+            (dossier_id, kind, actor_kind, actor, text, body, artifact_id, extraction_id, visible_to_melder)
+          VALUES (${dossierIdNow}, 'finding', 'pipeline', 'ingest-dossier',
+                  ${(ctx.buildingId
+                    ? `Document noemt ${extra.length} adres${extra.length === 1 ? "" : "sen"} buiten het pand van het dossier: `
+                    : `Document noemt ${extra.length} adres${extra.length === 1 ? "" : "sen"} (dossier heeft geen pand): `) + listed},
+                  ${sql.json({ address_ids: extra.map((a) => a.addressId), address_texts: extra.map((a) => a.addressText), own_building_id: ctx.buildingId })},
+                  ${result.artifactId}, ${ex!.id}, false)`;
+        log.step(`${extra.length} address(es) beyond the dossier's pand recorded for review`);
       }
     }
 
