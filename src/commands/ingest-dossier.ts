@@ -84,7 +84,7 @@ export async function loadDossierContext(dossierId: number | null): Promise<Doss
     const samples = await sql<{ address: string; city: string | null; postal_code: string | null }[]>`
       SELECT DISTINCT s.address, a.city, a.postal_code
         FROM report.inquiry_sample s LEFT JOIN geocoder.address a ON a.id = s.address
-       WHERE s.inquiry = ${d.audit_inquiry_id}`;
+       WHERE s.inquiry_id = ${d.audit_inquiry_id}`;
     for (const smp of samples) ctx.knownAddressIds.add(smp.address);
     if (samples.length === 1) ctx.fallbackAddressId = samples[0]!.address;
     if (!ctx.city) ctx.city = samples.find((x) => x.city)?.city ?? null;
