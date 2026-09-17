@@ -31,7 +31,8 @@ No test runner or linter is configured. TypeScript strict mode is the primary sa
 - **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
 - **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
 - **`src/db.ts`** — PostgreSQL connection pool (uses `postgres` library with SSL prefer mode).
-- **`sql/`** — Hand-written SQL: `load/` (BAG/subsidence/3DBAG ingest), `model/` (risk model refresh), `migrate/` (one-shot schema migrations). Run manually via `psql`; the worker does not auto-apply migrations.
+- **`db/migrations/`** — Ledger-tracked schema migrations, applied with `bun run migrate` (ledger `application.schema_migrations`, contract in `db/migrations/README.md`). `sql/migrate/` is the pre-ledger history, not replayed.
+- **`sql/`** — Hand-written SQL: `load/` (BAG/subsidence/3DBAG ingest), `model/` (risk model refresh), `migrate/` (legacy one-shot migrations, see above).
 
 ### Key patterns
 
@@ -53,4 +54,4 @@ Uses a multi-stage `Containerfile`: builds tippecanoe from source, then creates 
 
 - **`MAX_TILESET_WORKERS=1` must be set in any deployment that runs `process_mapset`**. The default in `config.ts` is unset (no parallelism cap on tileset rendering), but `analysis_full` exports OOM an 8 GB box if more than one tileset renders concurrently. New deployments should pin this to 1 until someone addresses the OOM root cause — don't bump it without that.
 - `MAX_CONCURRENT` defaults to 3 (process-wide cap across job types). Tileset jobs honour `MAX_TILESET_WORKERS` *inside* this cap, so a healthy mix of mixed jobs can saturate without OOMing the tileset path.
-- The worker does **not** auto-apply migrations. SQL under `sql/migrate/` is hand-run via `psql` against the target database. Worker boot will happily run against a schema that's a migration behind; the failure mode is a job that hits a missing column at runtime, not a startup error.
+- The worker does **not** auto-apply migrations at boot. `bun run migrate` is a deliberate step (CI runs it on the bootstrapped schema; prod from the ops VM as doadmin with `--allow-prod`). Worker boot will happily run against a schema that's a migration behind; the failure mode is a job that hits a missing column at runtime, not a startup error.
