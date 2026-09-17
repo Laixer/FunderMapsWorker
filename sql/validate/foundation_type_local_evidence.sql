@@ -38,6 +38,8 @@ SELECT e.building_id,
        e.split = 'train' AS is_train,
        data.is_wood_family(data.indicative_foundation_type(
            bp.construction_year_bag, bp.height, gr.code, bp.address_count)) AS tree_wood,
+       CASE WHEN data.is_wood_family(tr.t) THEN 'wood' WHEN data.is_no_pile_family(tr.t) THEN 'no_pile'
+            WHEN data.is_concrete_family(tr.t) THEN 'concrete' ELSE 'other' END AS tree_class,
        CASE WHEN bp.construction_year_bag < 1700 THEN 0 WHEN bp.construction_year_bag < 1800 THEN 1
             WHEN bp.construction_year_bag < 1880 THEN 2 WHEN bp.construction_year_bag < 1920 THEN 3
             WHEN bp.construction_year_bag < 1940 THEN 4 WHEN bp.construction_year_bag < 1965 THEN 5
@@ -59,6 +61,7 @@ SELECT e.building_id,
 FROM data.model_evaluation_sample e
 JOIN data.building_precomputed bp ON bp.building_id = e.building_id
 LEFT JOIN data.building_geographic_region gr ON gr.building_id = e.building_id
+CROSS JOIN LATERAL (SELECT data.indicative_foundation_type(bp.construction_year_bag, bp.height, gr.code, bp.address_count) AS t) tr
 LEFT JOIN data.building_cluster bc ON bc.building_id = e.building_id
 LEFT JOIN data.supercluster sc ON sc.cluster_id = bc.cluster_id
 LEFT JOIN geocoder.neighborhood nb ON nb.id = bp.neighborhood_id
@@ -71,25 +74,33 @@ CREATE INDEX ON f (neighborhood_id); ANALYZE f;
 
 -- evidence pool: train buildings outside the geographic hold-out
 DROP TABLE IF EXISTS pool;
-CREATE TEMP TABLE pool AS SELECT building_id, is_wood, cluster_id, supercluster_id, neighborhood_id
+CREATE TEMP TABLE pool AS SELECT building_id, is_wood, observed_family, cluster_id, supercluster_id, neighborhood_id
 FROM f WHERE is_train AND NOT geo_holdout;
 CREATE INDEX ON pool (cluster_id); CREATE INDEX ON pool (supercluster_id); CREATE INDEX ON pool (neighborhood_id); ANALYZE pool;
 
 -- ------------------------------------------------------- cell prior (as frontier)
-DROP TABLE IF EXISTS g; CREATE TEMP TABLE g AS SELECT avg(is_wood::int)::numeric AS p FROM pool;
+DROP TABLE IF EXISTS g; CREATE TEMP TABLE g AS SELECT avg(is_wood::int)::numeric AS p,
+  avg((observed_family='no_pile')::int)::numeric AS p_np, avg((observed_family='concrete')::int)::numeric AS p_co FROM pool;
 DROP TABLE IF EXISTS lvl2; CREATE TEMP TABLE lvl2 AS
-  SELECT era, soil, hgt, count(*) n, avg(is_wood::int)::numeric p FROM f WHERE is_train AND NOT geo_holdout GROUP BY 1,2,3;
+  SELECT era, soil, hgt, count(*) n, avg(is_wood::int)::numeric p,
+         avg((observed_family='no_pile')::int)::numeric p_np, avg((observed_family='concrete')::int)::numeric p_co
+  FROM f WHERE is_train AND NOT geo_holdout GROUP BY 1,2,3;
 DROP TABLE IF EXISTS lvl1; CREATE TEMP TABLE lvl1 AS
-  SELECT era, soil, hgt, glv, addr, count(*) n, avg(is_wood::int)::numeric p FROM f WHERE is_train AND NOT geo_holdout GROUP BY 1,2,3,4,5;
+  SELECT era, soil, hgt, glv, addr, count(*) n, avg(is_wood::int)::numeric p,
+         avg((observed_family='no_pile')::int)::numeric p_np, avg((observed_family='concrete')::int)::numeric p_co
+  FROM f WHERE is_train AND NOT geo_holdout GROUP BY 1,2,3,4,5;
 ANALYZE lvl2; ANALYZE lvl1;
 
 -- ---------------------------------------------- local evidence, leave-one-out
 DROP TABLE IF EXISTS agg_c; CREATE TEMP TABLE agg_c AS
-  SELECT cluster_id, count(*) n, sum(is_wood::int) w FROM pool WHERE cluster_id IS NOT NULL GROUP BY 1;
+  SELECT cluster_id, count(*) n, sum(is_wood::int) w, sum((observed_family='no_pile')::int) np, sum((observed_family='concrete')::int) co
+  FROM pool WHERE cluster_id IS NOT NULL GROUP BY 1;
 DROP TABLE IF EXISTS agg_s; CREATE TEMP TABLE agg_s AS
-  SELECT supercluster_id, count(*) n, sum(is_wood::int) w FROM pool WHERE supercluster_id IS NOT NULL GROUP BY 1;
+  SELECT supercluster_id, count(*) n, sum(is_wood::int) w, sum((observed_family='no_pile')::int) np, sum((observed_family='concrete')::int) co
+  FROM pool WHERE supercluster_id IS NOT NULL GROUP BY 1;
 DROP TABLE IF EXISTS agg_n; CREATE TEMP TABLE agg_n AS
-  SELECT neighborhood_id, count(*) n, sum(is_wood::int) w FROM pool WHERE neighborhood_id IS NOT NULL GROUP BY 1;
+  SELECT neighborhood_id, count(*) n, sum(is_wood::int) w, sum((observed_family='no_pile')::int) np, sum((observed_family='concrete')::int) co
+  FROM pool WHERE neighborhood_id IS NOT NULL GROUP BY 1;
 ANALYZE agg_c; ANALYZE agg_s; ANALYZE agg_n;
 
 DROP TABLE IF EXISTS scored;
@@ -101,9 +112,15 @@ WITH base AS (
          CASE WHEN l1.n >= 30 THEN (l1.p*l1.n + 20*COALESCE(l2.p,g.p)) / (l1.n + 20)
               WHEN l2.n >= 30 THEN (l2.p*l2.n + 20*g.p) / (l2.n + 20)
               ELSE g.p END AS p_cell,
-         COALESCE(ac.n,0) AS c_n, COALESCE(ac.w,0) AS c_w,
-         COALESCE(as_.n,0) AS s_n, COALESCE(as_.w,0) AS s_w,
-         COALESCE(an.n,0) AS nb_n, COALESCE(an.w,0) AS nb_w
+         CASE WHEN l1.n >= 30 THEN (l1.p_np*l1.n + 20*COALESCE(l2.p_np,g.p_np)) / (l1.n + 20)
+              WHEN l2.n >= 30 THEN (l2.p_np*l2.n + 20*g.p_np) / (l2.n + 20)
+              ELSE g.p_np END AS p_cell_np,
+         CASE WHEN l1.n >= 30 THEN (l1.p_co*l1.n + 20*COALESCE(l2.p_co,g.p_co)) / (l1.n + 20)
+              WHEN l2.n >= 30 THEN (l2.p_co*l2.n + 20*g.p_co) / (l2.n + 20)
+              ELSE g.p_co END AS p_cell_co,
+         COALESCE(ac.n,0) AS c_n, COALESCE(ac.w,0) AS c_w, COALESCE(ac.np,0) AS c_np, COALESCE(ac.co,0) AS c_co,
+         COALESCE(as_.n,0) AS s_n, COALESCE(as_.w,0) AS s_w, COALESCE(as_.np,0) AS s_np, COALESCE(as_.co,0) AS s_co,
+         COALESCE(an.n,0) AS nb_n, COALESCE(an.w,0) AS nb_w, COALESCE(an.np,0) AS nb_np, COALESCE(an.co,0) AS nb_co
   FROM f CROSS JOIN g
   LEFT JOIN lvl1 l1 USING (era,soil,hgt,glv,addr)
   LEFT JOIN lvl2 l2 USING (era,soil,hgt)
@@ -113,21 +130,36 @@ WITH base AS (
 ), loo AS (
   -- leave-one-out: subtract the building itself from every level it contributed to
   SELECT *,
-         c_n - self AS c_n1,  c_w - self*is_wood::int AS c_w1,
-         s_n - self AS s_n1,  s_w - self*is_wood::int AS s_w1,
-         nb_n - self AS nb_n1, nb_w - self*is_wood::int AS nb_w1
+         c_n - self AS c_n1,  c_w - self*is_wood::int AS c_w1,  c_np - self*(observed_family='no_pile')::int AS c_np1,  c_co - self*(observed_family='concrete')::int AS c_co1,
+         s_n - self AS s_n1,  s_w - self*is_wood::int AS s_w1,  s_np - self*(observed_family='no_pile')::int AS s_np1,  s_co - self*(observed_family='concrete')::int AS s_co1,
+         nb_n - self AS nb_n1, nb_w - self*is_wood::int AS nb_w1, nb_np - self*(observed_family='no_pile')::int AS nb_np1, nb_co - self*(observed_family='concrete')::int AS nb_co1
   FROM base
 ), shrunk AS (
-  -- hierarchical shrinkage, m = 5 pseudo-observations at each step:
+  -- hierarchical shrinkage, m = 5 pseudo-observations at each step, per class:
   -- cell prior -> neighbourhood -> supercluster -> cluster
   SELECT *,
-         (nb_w1 + 5*p_cell) / (nb_n1 + 5) AS p_nb
+         (nb_w1  + 5*p_cell)    / (nb_n1 + 5) AS p_nb,
+         (nb_np1 + 5*p_cell_np) / (nb_n1 + 5) AS p_nb_np,
+         (nb_co1 + 5*p_cell_co) / (nb_n1 + 5) AS p_nb_co
   FROM loo
 ), shrunk2 AS (
-  SELECT *, (s_w1 + 5*p_nb) / (s_n1 + 5) AS p_sc FROM shrunk
+  SELECT *,
+         (s_w1  + 5*p_nb)    / (s_n1 + 5) AS p_sc,
+         (s_np1 + 5*p_nb_np) / (s_n1 + 5) AS p_sc_np,
+         (s_co1 + 5*p_nb_co) / (s_n1 + 5) AS p_sc_co
+  FROM shrunk
+), shrunk3 AS (
+  SELECT *,
+         (c_w1  + 5*p_sc)    / (c_n1 + 5) AS p_local,
+         (c_np1 + 5*p_sc_np) / (c_n1 + 5) AS p_local_np,
+         (c_co1 + 5*p_sc_co) / (c_n1 + 5) AS p_local_co
+  FROM shrunk2
 )
-SELECT *, (c_w1 + 5*p_sc) / (c_n1 + 5) AS p_local
-FROM shrunk2;
+SELECT *,
+       -- the class the product would show: wood when p_wood clears 0.45, else the likelier of the other two
+       CASE WHEN p_local >= 0.45 THEN 'wood' WHEN p_local_np >= p_local_co THEN 'no_pile' ELSE 'concrete' END AS local_class,
+       CASE WHEN p_cell >= 0.45 THEN 'wood' WHEN p_cell_np >= p_cell_co THEN 'no_pile' ELSE 'concrete' END AS cell_class
+FROM shrunk3;
 ANALYZE scored;
 
 -- ------------------------------------------------------------------- reports
@@ -256,3 +288,23 @@ SELECT count(*) AS sample_rows, round(sum(wt)) AS national_buildings,
        round(100*sum(wt) FILTER (WHERE nb_n >= 10)/sum(wt),1) AS pct_buurt_ge10,
        round(100*sum(wt) FILTER (WHERE c_n = 0 AND s_n = 0 AND nb_n = 0)/sum(wt),1) AS pct_no_evidence
 FROM w;
+
+\echo ''
+\echo '=== 7. THREE-CLASS family accuracy (wood / no_pile / concrete): tree vs cell vs local, test half and held-out municipalities ==='
+SELECT CASE WHEN geo_holdout THEN 'held-out municipalities' ELSE 'hash test half' END AS set, count(*) AS n,
+       round(100.0*count(*) FILTER (WHERE tree_class = observed_family)/count(*),1) AS tree_acc,
+       round(100.0*count(*) FILTER (WHERE cell_class = observed_family)/count(*),1) AS cell_acc,
+       round(100.0*count(*) FILTER (WHERE local_class = observed_family)/count(*),1) AS local_acc
+FROM scored WHERE NOT is_train OR geo_holdout GROUP BY 1 ORDER BY 1 DESC;
+
+\echo ''
+\echo '=== 7b. per-class recall, hash test half ==='
+SELECT observed_family, count(*) AS n,
+       round(100.0*count(*) FILTER (WHERE tree_class = observed_family)/count(*),1) AS tree_recall,
+       round(100.0*count(*) FILTER (WHERE cell_class = observed_family)/count(*),1) AS cell_recall,
+       round(100.0*count(*) FILTER (WHERE local_class = observed_family)/count(*),1) AS local_recall
+FROM scored WHERE NOT is_train AND NOT geo_holdout GROUP BY 1 ORDER BY 2 DESC;
+
+\echo ''
+\echo '=== 7c. confusion of the local model, hash test half (observed -> predicted) ==='
+SELECT observed_family, local_class, count(*) FROM scored WHERE NOT is_train AND NOT geo_holdout GROUP BY 1,2 ORDER BY 1, 3 DESC;
