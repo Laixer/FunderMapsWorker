@@ -1,5 +1,9 @@
 # sql/migrate/
 
+**Legacy.** Since 2026-09-17 new migrations go to `db/migrations/` and are applied
+with `bun run migrate`, which keeps a ledger (see `db/migrations/README.md`). The
+files here are the pre-ledger history: hand-applied on prod, not replayed.
+
 One-shot, hand-applied schema/data migrations. The worker does **not** auto-apply
 these — they're run manually against the target database with `psql`:
 

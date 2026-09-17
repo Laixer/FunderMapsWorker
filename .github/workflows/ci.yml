@@ -58,7 +58,25 @@ jobs:
       - name: Ensure psql
         run: command -v psql || (sudo apt-get update -q && sudo apt-get install -y -q postgresql-client)
       - name: Bootstrap database
-        run: ./scripts/init_db.sh | grep -v 'postgres://'
+        # pipefail: without it the grep decided the step's exit code and a
+        # failing grants step went unnoticed (fundermaps_windmill, 2026-09-17).
+        run: |
+          set -o pipefail
+          ./scripts/init_db.sh | grep -v 'postgres://'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # Every migration above BASELINE must apply cleanly on the schema.sql it
+      # will meet on prod; the ones at or below BASELINE are stamped. Then the
+      # ledger must agree with the files (a second run finds nothing to do).
+      - name: Apply migrations
+        run: |
+          bun run migrate --dry-run
+          bun run migrate
+          bun run migrate --status | tee /tmp/status.txt
+          grep -q '^0 pending' /tmp/status.txt
       - name: Smoke check
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -X -q <<'SQL'
