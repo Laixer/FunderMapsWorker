@@ -67,10 +67,12 @@ export async function migrate(opts: { dryRun: boolean; status: boolean; allowPro
   try {
     console.log(`target   ${redact(url)}`);
     console.log(`baseline ${baseline}   files ${files.length}`);
-    // Bootstrap the ledger. CREATE IF NOT EXISTS is a no-op on every later run.
-    if (!opts.dryRun && !opts.status) {
+    // Bootstrap the ledger on the first real run only; a later run would get
+    // a "relation already exists, skipping" NOTICE printed by the driver.
+    const hadLedger = (await sql`select to_regclass(${LEDGER}) is not null as ok`)[0]!["ok"] as boolean;
+    if (!opts.dryRun && !opts.status && !hadLedger) {
       await sql.unsafe(`
-        create table if not exists ${LEDGER} (
+        create table ${LEDGER} (
           version     text primary key,
           name        text not null,
           checksum    text not null,
@@ -80,7 +82,7 @@ export async function migrate(opts: { dryRun: boolean; status: boolean; allowPro
           baseline    boolean not null default false
         )`);
     }
-    const ledgerExists = (await sql`select to_regclass(${LEDGER}) is not null as ok`)[0]!["ok"] as boolean;
+    const ledgerExists = hadLedger || (!opts.dryRun && !opts.status);
     const ledger: LedgerRow[] = ledgerExists
       ? (await sql.unsafe(`select version, checksum, baseline from ${LEDGER}`)) as unknown as LedgerRow[]
       : [];

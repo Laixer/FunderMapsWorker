@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GmLq5UXWlIwkGH3j7ExgAcW1fCIYQjUel99mQ9gRdOvohOiYA8HPVghGIdbABaF
+\restrict U2NALEPpveF4V5pBkkKBSvumpexF2PZvKgveuyIsAbI0DVLVHjKpLdaQahBJuZw
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -6866,6 +6866,13 @@ CREATE UNIQUE INDEX dossier_reference_key ON dataops.dossier USING btree (refere
 
 
 --
+-- Name: dossier_risk_snapshot_unchecked_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_risk_snapshot_unchecked_idx ON dataops.dossier USING btree (id) WHERE ((outcome IS NOT NULL) AND (payload ? 'risk_snapshot'::text) AND (((payload -> 'risk_snapshot'::text) ->> 'checked_at'::text) IS NULL));
+
+
+--
 -- Name: dossier_submitter_email_idx; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -8038,5 +8045,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GmLq5UXWlIwkGH3j7ExgAcW1fCIYQjUel99mQ9gRdOvohOiYA8HPVghGIdbABaF
+\unrestrict U2NALEPpveF4V5pBkkKBSvumpexF2PZvKgveuyIsAbI0DVLVHjKpLdaQahBJuZw
 
