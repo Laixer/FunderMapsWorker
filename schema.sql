@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict cVufPNBuRg3uB4GVUHUXQ7fkbnZsX9Eyyho0ajmYZ9jdaVgKyZKbwqUfa7Bb4GA
+\restrict GmLq5UXWlIwkGH3j7ExgAcW1fCIYQjUel99mQ9gRdOvohOiYA8HPVghGIdbABaF
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2945,6 +2945,21 @@ COMMENT ON TABLE application.passkey IS 'WebAuthn credentials (Better Auth passk
 
 
 --
+-- Name: schema_migrations; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.schema_migrations (
+    version text NOT NULL,
+    name text NOT NULL,
+    checksum text NOT NULL,
+    applied_at timestamp with time zone DEFAULT now() NOT NULL,
+    applied_by text DEFAULT CURRENT_USER NOT NULL,
+    duration_ms integer,
+    baseline boolean DEFAULT false NOT NULL
+);
+
+
+--
 -- Name: session; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -4860,17 +4875,17 @@ COMMENT ON COLUMN dataops.extraction_field.evidence_page IS 'Page the citation w
 
 
 --
--- Name: COLUMN extraction_field.evidence_offset; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.extraction_field.evidence_offset IS 'Character offset of the citation in the pdftotext output, located at ingest. The document-order key; null sorts last.';
-
-
---
 -- Name: COLUMN extraction_field.current_value; Type: COMMENT; Schema: dataops; Owner: -
 --
 
 COMMENT ON COLUMN dataops.extraction_field.current_value IS 'On an audit: what the database held for this field when the document was read. Null = the database had nothing.';
+
+
+--
+-- Name: COLUMN extraction_field.evidence_offset; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.extraction_field.evidence_offset IS 'Character offset of the citation in the pdftotext output, located at ingest. The document-order key; null sorts last.';
 
 
 --
@@ -5843,6 +5858,14 @@ ALTER TABLE ONLY application.passkey
 
 
 --
+-- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.schema_migrations
+    ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -6794,6 +6817,13 @@ CREATE INDEX artifact_parent_idx ON dataops.artifact USING btree (parent_artifac
 
 
 --
+-- Name: dossier_address_dossier_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_address_dossier_idx ON dataops.dossier_address USING btree (dossier_id);
+
+
+--
 -- Name: dossier_audit_inquiry_id_idx; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -6805,13 +6835,6 @@ CREATE INDEX dossier_audit_inquiry_id_idx ON dataops.dossier USING btree (audit_
 --
 
 CREATE INDEX dossier_building_idx ON dataops.dossier USING btree (building_id) WHERE (building_id IS NOT NULL);
-
-
---
--- Name: dossier_address_dossier_idx; Type: INDEX; Schema: dataops; Owner: -
---
-
-CREATE INDEX dossier_address_dossier_idx ON dataops.dossier_address USING btree (dossier_id);
 
 
 --
@@ -6875,6 +6898,13 @@ CREATE UNIQUE INDEX extraction_field_reading_field_value_addr_idx ON dataops.ext
 --
 
 CREATE INDEX extraction_field_state_idx ON dataops.extraction_field USING btree (state) WHERE (state = 'pending'::dataops.review_state);
+
+
+--
+-- Name: extraction_reviewer_once; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE UNIQUE INDEX extraction_reviewer_once ON dataops.extraction USING btree (artifact_id) WHERE (model = 'reviewer'::text);
 
 
 --
@@ -7741,22 +7771,6 @@ ALTER TABLE ONLY dataops.artifact
 
 
 --
--- Name: dossier dossier_audit_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier
-    ADD CONSTRAINT dossier_audit_inquiry_id_fkey FOREIGN KEY (audit_inquiry_id) REFERENCES report.inquiry(id) ON DELETE SET NULL;
-
-
---
--- Name: dossier dossier_duplicate_of_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier
-    ADD CONSTRAINT dossier_duplicate_of_fkey FOREIGN KEY (duplicate_of) REFERENCES dataops.dossier(id);
-
-
---
 -- Name: dossier_address dossier_address_address_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -7770,6 +7784,22 @@ ALTER TABLE ONLY dataops.dossier_address
 
 ALTER TABLE ONLY dataops.dossier_address
     ADD CONSTRAINT dossier_address_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier dossier_audit_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier
+    ADD CONSTRAINT dossier_audit_inquiry_id_fkey FOREIGN KEY (audit_inquiry_id) REFERENCES report.inquiry(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier dossier_duplicate_of_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier
+    ADD CONSTRAINT dossier_duplicate_of_fkey FOREIGN KEY (duplicate_of) REFERENCES dataops.dossier(id);
 
 
 --
@@ -8008,5 +8038,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict cVufPNBuRg3uB4GVUHUXQ7fkbnZsX9Eyyho0ajmYZ9jdaVgKyZKbwqUfa7Bb4GA
+\unrestrict GmLq5UXWlIwkGH3j7ExgAcW1fCIYQjUel99mQ9gRdOvohOiYA8HPVghGIdbABaF
 
