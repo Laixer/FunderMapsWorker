@@ -73,20 +73,31 @@ export async function loadDossierContext(dossierId: number | null): Promise<Doss
   if (!d) return EMPTY_CONTEXT;
   const ctx: DossierContext = { ...EMPTY_CONTEXT, knownAddressIds: new Set(), buildingId: d.building_id };
   if (d.building_id) {
-    const own = await sql<{ id: string; city: string; postal_code: string | null }[]>`
-      SELECT id, city, postal_code FROM geocoder.address
+    // Address ids are BAG nummeraanduidingen (address.external_id) since the
+    // gfm retirement, step 2 (Worker #158). Rows written before the rewrite
+    // still carry the gfm- id until migration 20260918_002 has run, so the
+    // known set holds both spellings for that window.
+    const own = await sql<{ id: string; legacy_id: string; city: string; postal_code: string | null }[]>`
+      SELECT external_id AS id, id AS legacy_id, city, postal_code FROM geocoder.address
        WHERE building_id = ${d.building_id} ORDER BY building_number LIMIT 50`;
-    for (const a of own) ctx.knownAddressIds.add(a.id);
+    for (const a of own) {
+      ctx.knownAddressIds.add(a.id);
+      ctx.knownAddressIds.add(a.legacy_id);
+    }
     ctx.city = own[0]?.city ?? null;
     ctx.postalCode = own[0]?.postal_code ?? null;
   }
   if (d.audit_inquiry_id) {
-    const samples = await sql<{ address: string; city: string | null; postal_code: string | null }[]>`
-      SELECT DISTINCT s.address, a.city, a.postal_code
-        FROM report.inquiry_sample s LEFT JOIN geocoder.address a ON a.id = s.address
+    const samples = await sql<{ address: string; external_id: string | null; city: string | null; postal_code: string | null }[]>`
+      SELECT DISTINCT s.address, a.external_id, a.city, a.postal_code
+        FROM report.inquiry_sample s
+        LEFT JOIN geocoder.address a ON a.external_id = s.address OR a.id = s.address
        WHERE s.inquiry_id = ${d.audit_inquiry_id}`;
-    for (const smp of samples) ctx.knownAddressIds.add(smp.address);
-    if (samples.length === 1) ctx.fallbackAddressId = samples[0]!.address;
+    for (const smp of samples) {
+      ctx.knownAddressIds.add(smp.address);
+      if (smp.external_id) ctx.knownAddressIds.add(smp.external_id);
+    }
+    if (samples.length === 1) ctx.fallbackAddressId = samples[0]!.external_id ?? samples[0]!.address;
     if (!ctx.city) ctx.city = samples.find((x) => x.city)?.city ?? null;
     if (!ctx.postalCode) ctx.postalCode = samples.find((x) => x.postal_code)?.postal_code ?? null;
   }
@@ -124,7 +135,7 @@ export async function resolveAddress(text: string, ctx: DossierContext): Promise
     LIMIT 100`;
   let rows: Candidate[] = (
     await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null }[]>`
-      SELECT a.id, a.building_id, a.city, a.postal_code FROM geocoder.address a
+      SELECT a.external_id AS id, a.building_id, a.city, a.postal_code FROM geocoder.address a
        WHERE lower(a.street) = lower(${p.street}) AND upper(a.building_number) = ${number}
        ${ranked}`
   ).map((r) => ({ id: r.id, buildingId: r.building_id, city: r.city, postalCode: r.postal_code }));
@@ -133,7 +144,7 @@ export async function resolveAddress(text: string, ctx: DossierContext): Promise
     // pand. Accept the units of that number when they all sit on one building,
     // and take the first unit -- the invoer convention for the same reports.
     const units = await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null }[]>`
-      SELECT a.id, a.building_id, a.city, a.postal_code FROM geocoder.address a
+      SELECT a.external_id AS id, a.building_id, a.city, a.postal_code FROM geocoder.address a
        WHERE lower(a.street) = lower(${p.street}) AND a.building_number ~ ${`^${p.number}[A-Za-z]`}
          AND (${ctx.city ?? ""} = '' OR lower(a.city) = lower(${ctx.city ?? ""}))
        ORDER BY a.building_number LIMIT 100`;
