@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict U2NALEPpveF4V5pBkkKBSvumpexF2PZvKgveuyIsAbI0DVLVHjKpLdaQahBJuZw
+\restrict 4dOTnSQX3mhtqlWlqF1VGjy4ZtG2kDugvnx3odoEyb08YKMFB8ULzb2yQFFoZd5
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2114,7 +2114,7 @@ CREATE PROCEDURE maplayer.refresh_facade_scan_tiles()
     INSERT INTO maplayer.facade_scan_tiles (
         external_id, neighborhood_id, district_id, municipality_id,
         height, owner, skewed_parallel_facade, skewed_perpendicular_facade,
-        facade_type, settlement_speed, facade_scan_risk, risk, priority, geom
+        facade_type, settlement_speed, facade_scan_risk, risk, risk_class, priority, geom
     )
     SELECT
         f.external_id,
@@ -2129,9 +2129,18 @@ CREATE PROCEDURE maplayer.refresh_facade_scan_tiles()
         f.settlement_speed::text,
         f.facade_scan_risk::text,
         f.risk::text,
+        CASE f.risk::text
+            WHEN 'a' THEN 'laag'
+            WHEN 'b' THEN 'laag'
+            WHEN 'c' THEN 'midden'
+            WHEN 'd' THEN 'hoog'
+            WHEN 'e' THEN 'hoog'
+            ELSE NULL
+        END,
         f.priority::text,
         ST_Multi(ST_Transform(f.geom, 3857))
-    FROM maplayer.facade_scan f;
+    FROM maplayer.facade_scan f
+    WHERE f.inquiry_type = 'facade_scan';
 
     ANALYZE maplayer.facade_scan_tiles;
 $$;
@@ -5149,7 +5158,8 @@ CREATE VIEW maplayer.facade_scan AS
     inputz.facade_scan_risk,
     mg.risk,
     rtp.priority,
-    inputz.geom
+    inputz.geom,
+    inputz.inquiry_type
    FROM ((( SELECT DISTINCT ON (ba.external_id) ba.external_id,
             n.external_id AS neighborhood_id,
             d.external_id AS district_id,
@@ -5212,8 +5222,10 @@ CREATE VIEW maplayer.facade_scan AS
                     ELSE NULL::report.rotation_type
                 END AS settlement_speed,
             is2.facade_scan_risk,
-            ba.geom
-           FROM ((((((report.inquiry_sample is2
+            ba.geom,
+            (i.type)::text AS inquiry_type
+           FROM (((((((report.inquiry_sample is2
+             JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
              JOIN geocoder.building_active ba ON ((ba.external_id = (is2.building_id)::text)))
              JOIN data.building_height bh ON ((bh.building_id = ba.external_id)))
              LEFT JOIN data.building_ownership bo ON ((bo.building_id = ba.external_id)))
@@ -5244,7 +5256,8 @@ CREATE TABLE maplayer.facade_scan_tiles (
     facade_scan_risk text,
     risk text,
     priority text,
-    geom public.geometry(MultiPolygon,3857)
+    geom public.geometry(MultiPolygon,3857),
+    risk_class text
 );
 
 
@@ -7778,14 +7791,6 @@ ALTER TABLE ONLY dataops.artifact
 
 
 --
--- Name: dossier_address dossier_address_address_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier_address
-    ADD CONSTRAINT dossier_address_address_id_fkey FOREIGN KEY (address_id) REFERENCES geocoder.address(id);
-
-
---
 -- Name: dossier_address dossier_address_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -7855,14 +7860,6 @@ ALTER TABLE ONLY dataops.dossier_mail
 
 ALTER TABLE ONLY dataops.extraction
     ADD CONSTRAINT extraction_artifact_id_fkey FOREIGN KEY (artifact_id) REFERENCES dataops.artifact(id) ON DELETE CASCADE;
-
-
---
--- Name: extraction_field extraction_field_address_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.extraction_field
-    ADD CONSTRAINT extraction_field_address_id_fkey FOREIGN KEY (address_id) REFERENCES geocoder.address(id) ON DELETE SET NULL;
 
 
 --
@@ -8045,5 +8042,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict U2NALEPpveF4V5pBkkKBSvumpexF2PZvKgveuyIsAbI0DVLVHjKpLdaQahBJuZw
+\unrestrict 4dOTnSQX3mhtqlWlqF1VGjy4ZtG2kDugvnx3odoEyb08YKMFB8ULzb2yQFFoZd5
 
