@@ -73,17 +73,12 @@ export async function loadDossierContext(dossierId: number | null): Promise<Doss
   if (!d) return EMPTY_CONTEXT;
   const ctx: DossierContext = { ...EMPTY_CONTEXT, knownAddressIds: new Set(), buildingId: d.building_id };
   if (d.building_id) {
-    // Address ids are BAG nummeraanduidingen (address.external_id) since the
-    // gfm retirement, step 2 (Worker #158). Rows written before the rewrite
-    // still carry the gfm- id until migration 20260918_005 has run, so the
-    // known set holds both spellings for that window.
-    const own = await sql<{ id: string; legacy_id: string; city: string; postal_code: string | null }[]>`
-      SELECT external_id AS id, id AS legacy_id, city, postal_code FROM geocoder.address
+    // Address ids are BAG nummeraanduidingen (address.external_id); the gfm-
+    // surrogate is gone from every referencing column (Worker #158).
+    const own = await sql<{ id: string; city: string; postal_code: string | null }[]>`
+      SELECT external_id AS id, city, postal_code FROM geocoder.address
        WHERE building_id = ${d.building_id} ORDER BY building_number LIMIT 50`;
-    for (const a of own) {
-      ctx.knownAddressIds.add(a.id);
-      ctx.knownAddressIds.add(a.legacy_id);
-    }
+    for (const a of own) ctx.knownAddressIds.add(a.id);
     ctx.city = own[0]?.city ?? null;
     ctx.postalCode = own[0]?.postal_code ?? null;
   }
@@ -91,7 +86,7 @@ export async function loadDossierContext(dossierId: number | null): Promise<Doss
     const samples = await sql<{ address: string; external_id: string | null; city: string | null; postal_code: string | null }[]>`
       SELECT DISTINCT s.address, a.external_id, a.city, a.postal_code
         FROM report.inquiry_sample s
-        LEFT JOIN geocoder.address a ON a.external_id = s.address OR a.id = s.address
+        LEFT JOIN geocoder.address a ON a.external_id = s.address
        WHERE s.inquiry_id = ${d.audit_inquiry_id}`;
     for (const smp of samples) {
       ctx.knownAddressIds.add(smp.address);

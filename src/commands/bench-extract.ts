@@ -144,7 +144,7 @@ for (const inq of inquiries) {
            wood_type::text, wood_penetration_depth::text, wood_encroachment::text,
            mason_level::text AS mason_level, foundation_depth::text, groundlevel::text,
            damage_cause::text, damage_characteristics::text
-    FROM report.inquiry_sample s LEFT JOIN geocoder.address ga ON ga.id = s.address
+    FROM report.inquiry_sample s LEFT JOIN geocoder.address ga ON ga.external_id = s.address
     WHERE s.inquiry_id = ${inq.id}`;
   const truth: Truth = {};
   for (const f of EXTRACT_FIELDS) {
