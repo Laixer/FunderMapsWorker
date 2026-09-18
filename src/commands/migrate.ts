@@ -7,7 +7,8 @@ import { describe, plan, toMigrationFile, type LedgerRow, type MigrationFile, ty
  * `bun run migrate [--dry-run] [--status] [--allow-prod]`
  *
  * Applies db/migrations/*.sql that the ledger (application.schema_migrations)
- * does not know yet, oldest first, each in its own transaction unless the
+ * does not know yet (on an empty ledger: stamps the ones at or below BASELINE,
+ * which schema.sql already contains), oldest first, each in its own transaction unless the
  * file says `-- migrate: no-transaction`. Records version, sha256, who and
  * how long. Refuses to continue when an applied file has been edited.
  *
@@ -108,14 +109,23 @@ export async function migrate(opts: { dryRun: boolean; status: boolean; allowPro
       return 1;
     }
     try {
+      // Stamps happen only on an empty ledger (lib/migrations.ts plan()), and
+      // all of them or none: a first run that died half-way through would leave
+      // a ledger that is no longer empty, and the rerun would try to apply the
+      // rest of what schema.sql already contains.
+      const stamps = todo.filter((a) => a.kind === "stamp");
+      if (stamps.length) {
+        await sql.begin(async (tx) => {
+          for (const { migration: m } of stamps) {
+            await tx.unsafe(`insert into ${LEDGER} (version, name, checksum, duration_ms, baseline) values ($1, $2, $3, 0, true)`, [m.version, m.name, m.checksum]);
+          }
+        });
+        for (const { migration: m } of stamps) console.log(`stamped  ${m.file}`);
+      }
       for (const a of todo) {
+        if (a.kind === "stamp") continue;
         const m = a.migration;
         const t0 = performance.now();
-        if (a.kind === "stamp") {
-          await sql.unsafe(`insert into ${LEDGER} (version, name, checksum, duration_ms, baseline) values ($1, $2, $3, 0, true)`, [m.version, m.name, m.checksum]);
-          console.log(`stamped  ${m.file}`);
-          continue;
-        }
         if (m.noTransaction) {
           // Statements run one by one outside a transaction (CREATE INDEX
           // CONCURRENTLY refuses to run inside one). A failure half-way leaves
