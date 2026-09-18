@@ -31,9 +31,18 @@ DATABASE_URL=postgres://... bun run migrate --status      # ledger vs files
 `schema.sql` is the prod dump and still the way a fresh database is
 bootstrapped (`scripts/init_db.sh`). `BASELINE` holds the version of the last
 migration that `schema.sql` already contains. On a database bootstrapped from
-`schema.sql`, the runner *stamps* every migration at or below `BASELINE`
-(ledger row, nothing executed) and applies the rest. On prod the ledger is the
-truth and `BASELINE` is irrelevant.
+`schema.sql` — recognised by its **empty ledger** — the runner *stamps* every
+migration at or below `BASELINE` (ledger row, nothing executed, all in one
+transaction) and applies the rest.
+
+Everywhere else the ledger is the truth and `BASELINE` is irrelevant: a file
+the ledger does not know is applied, whatever its number. That covers prod,
+and it covers a dev database bootstrapped from an older `schema.sql`: when
+`BASELINE` moves up, that database still needs the migrations the new
+`schema.sql` folded in. (Until 2026-09-18 the runner stamped by `BASELINE`
+alone; a late-merged migration numbered below a `BASELINE` that had moved would
+have been recorded on prod without running — Worker #169. Still: number a
+migration above everything on main when it merges, and read the dry run.)
 
 So the loop for a schema change is:
 

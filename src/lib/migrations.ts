@@ -9,7 +9,9 @@
  *     with the file's sha256 at the time it ran;
  *   - db/migrations/BASELINE names the last version that schema.sql already
  *     contains: a fresh database bootstrapped from schema.sql gets those
- *     versions stamped as applied instead of re-run.
+ *     versions stamped as applied instead of re-run. Fresh means an empty
+ *     ledger. Once the ledger has a row it is the truth about that database
+ *     and BASELINE no longer plays a part.
  */
 
 export interface MigrationFile {
@@ -71,15 +73,23 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /**
- * What to do, in order. Files are applied oldest first. A file at or below
- * the baseline that the ledger does not know is stamped, not run: schema.sql
- * already contains it. A ledger row whose checksum differs from the file is
- * a mismatch and stops everything: an applied migration must never change.
- * A ledger row without a file is reported but does not stop the run (the
- * README says how a folded migration is retired).
+ * What to do, in order. Files are applied oldest first. On a database with an
+ * empty ledger (just bootstrapped from schema.sql) a file at or below the
+ * baseline is stamped, not run: schema.sql already contains it. On any other
+ * database a file the ledger does not know is applied, wherever BASELINE
+ * stands: that database got its schema from the migrations it ran, not from
+ * today's schema.sql. Stamping there would record a migration that never ran
+ * (Worker #169: numbered 20260918_002 while BASELINE had moved to _004; prod
+ * would have logged it and rewritten nothing).
+ *
+ * A ledger row whose checksum differs from the file is a mismatch and stops
+ * everything: an applied migration must never change. A ledger row without a
+ * file is reported but does not stop the run (the README says how a folded
+ * migration is retired).
  */
 export function plan(files: MigrationFile[], ledger: LedgerRow[], baseline: string): PlanAction[] {
   const byVersion = new Map(ledger.map((r) => [r.version, r]));
+  const fresh = ledger.length === 0;
   const seen = new Set<string>();
   const out: PlanAction[] = [];
   const sorted = [...files].sort((a, b) => compareVersions(a.version, b.version));
@@ -94,7 +104,7 @@ export function plan(files: MigrationFile[], ledger: LedgerRow[], baseline: stri
     if (row) {
       if (row.checksum !== m.checksum && !row.baseline) out.push({ kind: "mismatch", migration: m, ledgerChecksum: row.checksum });
       else out.push({ kind: "ok", migration: m });
-    } else if (compareVersions(m.version, baseline) <= 0) {
+    } else if (fresh && compareVersions(m.version, baseline) <= 0) {
       out.push({ kind: "stamp", migration: m });
     } else {
       out.push({ kind: "apply", migration: m });
@@ -107,7 +117,7 @@ export function plan(files: MigrationFile[], ledger: LedgerRow[], baseline: stri
 export function describe(a: PlanAction): string {
   switch (a.kind) {
     case "apply": return `apply    ${a.migration.file}${a.migration.noTransaction ? "  (no transaction)" : ""}`;
-    case "stamp": return `stamp    ${a.migration.file}  (at or below BASELINE: schema.sql already has it)`;
+    case "stamp": return `stamp    ${a.migration.file}  (empty ledger, at or below BASELINE: schema.sql already has it)`;
     case "ok": return `ok       ${a.migration.file}`;
     case "mismatch": return `MISMATCH ${a.migration.file}: ledger sha256 ${a.ledgerChecksum.slice(0, 12)}…, file ${a.migration.checksum.slice(0, 12)}…`;
     case "missing-file": return `no file  ${a.version} is in the ledger but not on disk`;

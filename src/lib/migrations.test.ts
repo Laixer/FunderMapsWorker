@@ -36,6 +36,27 @@ d("plan", () => {
     expect(p.map((a) => a.kind)).toEqual(["stamp", "apply"]);
   });
 
+  test("a live ledger never stamps: a file below BASELINE that it does not know is applied (Worker #169)", async () => {
+    // Prod on 2026-09-18: _001.._004 applied, BASELINE moved to _004 by the
+    // regen, and a PR numbered _002 merges late. It must run, not be recorded.
+    const files = [await mk("20260918_001_a.sql"), await mk("20260918_002_late.sql"), await mk("20260918_004_c.sql")];
+    const ledger: LedgerRow[] = [
+      { version: "20260918_001", checksum: files[0]!.checksum, baseline: false },
+      { version: "20260918_004", checksum: files[2]!.checksum, baseline: false },
+    ];
+    const p = plan(files, ledger, "20260918_004");
+    expect(p.map((a) => a.kind)).toEqual(["ok", "apply", "ok"]);
+  });
+
+  test("a database bootstrapped from an older schema.sql applies what a newer BASELINE folded", async () => {
+    // Bootstrapped when BASELINE was _001 (one stamped row, nothing executed),
+    // then main moves BASELINE to _003. This database never got _002 and _003.
+    const files = [await mk("20260918_001_a.sql"), await mk("20260918_002_b.sql"), await mk("20260918_003_c.sql")];
+    const ledger: LedgerRow[] = [{ version: "20260918_001", checksum: files[0]!.checksum, baseline: true }];
+    const p = plan(files, ledger, "20260918_003");
+    expect(p.map((a) => a.kind)).toEqual(["ok", "apply", "apply"]);
+  });
+
   test("applied and unchanged is ok; an edited applied file is a mismatch", async () => {
     const a = await mk("20260917_001_a.sql");
     const ledger: LedgerRow[] = [{ version: a.version, checksum: a.checksum, baseline: false }];
