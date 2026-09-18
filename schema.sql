@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict KwdUZZYXra8ObEChFJueCVw0bHqBiijkhFj38T499QZeubuZ2j6LDBcgH9t5YbO
+\restrict HXaFAE6aePkWP8raBmLlf07zAM03WlXptYdfmZ45q9fKSpASL5BQAvOWRgbU8Ml
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4304,7 +4304,6 @@ CREATE MATERIALIZED VIEW data.statistics_product_construction_years AS
 --
 
 CREATE TABLE geocoder.address (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
     building_number text NOT NULL,
     postal_code text,
     street text NOT NULL,
@@ -4327,7 +4326,7 @@ COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, 
 
 CREATE MATERIALIZED VIEW data.statistics_product_data_collected AS
  SELECT ba.neighborhood_id,
-    (((count(a.id) FILTER (WHERE (i.id IS NOT NULL)))::double precision / (count(a.id))::double precision) * (100)::double precision) AS percentage
+    (((count(*) FILTER (WHERE (i.id IS NOT NULL)))::double precision / (count(*))::double precision) * (100)::double precision) AS percentage
    FROM ((geocoder.address a
      JOIN geocoder.building_active ba ON (((a.building_id)::text = ba.external_id)))
      LEFT JOIN report.inquiry_sample i ON (((i.building_id)::text = (a.building_id)::text)))
@@ -6179,7 +6178,7 @@ ALTER TABLE ONLY dataops.verdict
 --
 
 ALTER TABLE ONLY geocoder.address
-    ADD CONSTRAINT address_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT address_pkey PRIMARY KEY (external_id);
 
 
 --
@@ -6970,13 +6969,6 @@ CREATE INDEX verdict_field_idx ON dataops.verdict USING btree (extraction_field_
 --
 
 CREATE INDEX address_building_id_idx ON geocoder.address USING btree (building_id);
-
-
---
--- Name: address_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE UNIQUE INDEX address_external_id_idx ON geocoder.address USING btree (external_id);
 
 
 --
@@ -8082,5 +8074,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict KwdUZZYXra8ObEChFJueCVw0bHqBiijkhFj38T499QZeubuZ2j6LDBcgH9t5YbO
+\unrestrict HXaFAE6aePkWP8raBmLlf07zAM03WlXptYdfmZ45q9fKSpASL5BQAvOWRgbU8Ml
 
