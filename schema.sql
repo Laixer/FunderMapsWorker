@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 4dOTnSQX3mhtqlWlqF1VGjy4ZtG2kDugvnx3odoEyb08YKMFB8ULzb2yQFFoZd5
+\restrict d3gKDgGjqegkTD2UQm3bzgKK47mgVwHmwdC8XFd7fx8DqJgRdBIdACTyoOfBOVt
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2157,25 +2157,29 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
 
     INSERT INTO maplayer.incident_tiles (
         id, neighborhood_id, district_id, municipality_id,
-        foundation_damage_cause, height, geom
+        foundation_damage_cause, topic, height, geom
     )
     SELECT
-        i.id,
+        m.dossier_id::text,
         n.external_id,
-        d.external_id,
-        m.external_id,
-        i.foundation_damage_cause::text,
+        d2.external_id,
+        mu.external_id,
+        NULL::text,
+        m.topic,
         round(GREATEST(bh.height, 0::real)::numeric, 2)::double precision,
         ST_Multi(ST_Transform(ba.geom, 3857))
-    FROM report.incident i
-    JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
+    FROM ( SELECT DISTINCT ON (d.building_id) d.building_id,
+                  d.id AS dossier_id,
+                  d.payload ->> 'topic' AS topic
+             FROM dataops.dossier d
+            WHERE d.payload ->> 'topic' IS NOT NULL
+              AND d.building_id IS NOT NULL
+            ORDER BY d.building_id, d.created_at DESC) m
+    JOIN geocoder.building_active ba ON ba.external_id = m.building_id
     JOIN data.building_height bh ON bh.building_id = ba.external_id
-    -- LEFT so a building with no CBS geography keeps its tile feature, matching
-    -- the view's row count exactly. All 2,728 rows resolve today; a future null
-    -- degrades to "shown when fenced", never to a dropped incident.
     LEFT JOIN geocoder.neighborhood n ON n.id::text = ba.neighborhood_id::text
-    LEFT JOIN geocoder.district d ON d.id::text = n.district_id::text
-    LEFT JOIN geocoder.municipality m ON m.id::text = d.municipality_id::text;
+    LEFT JOIN geocoder.district d2 ON d2.id::text = n.district_id::text
+    LEFT JOIN geocoder.municipality mu ON mu.id::text = d2.municipality_id::text;
 
     TRUNCATE maplayer.incident_neighborhood_tiles;
 
@@ -2185,19 +2189,20 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
     )
     SELECT
         n.external_id,
-        d.external_id,
-        m.external_id,
+        d2.external_id,
+        mu.external_id,
         count(*),
         ST_Multi(ST_Transform(n.geom, 3857)),
-        -- 20 Mercator units ≈ 12 m at NL latitude: sub-pixel at z11 (76 m/px)
-        -- and every zoom below it, where geom_simple is used.
         ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(n.geom, 3857), 20.0))
-    FROM report.incident i
-    JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
+    FROM ( SELECT DISTINCT d.building_id
+             FROM dataops.dossier d
+            WHERE d.payload ->> 'topic' IS NOT NULL
+              AND d.building_id IS NOT NULL) m
+    JOIN geocoder.building_active ba ON ba.external_id = m.building_id
     JOIN geocoder.neighborhood n ON n.id::text = ba.neighborhood_id::text
-    LEFT JOIN geocoder.district d ON d.id::text = n.district_id::text
-    LEFT JOIN geocoder.municipality m ON m.id::text = d.municipality_id::text
-    GROUP BY n.external_id, d.external_id, m.external_id, n.geom;
+    LEFT JOIN geocoder.district d2 ON d2.id::text = n.district_id::text
+    LEFT JOIN geocoder.municipality mu ON mu.id::text = d2.municipality_id::text
+    GROUP BY n.external_id, d2.external_id, mu.external_id, n.geom;
 
     TRUNCATE maplayer.incident_district_tiles;
 
@@ -2205,17 +2210,20 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         district_id, municipality_id, incident_count, geom, geom_simple
     )
     SELECT
-        d.external_id,
-        m.external_id,
+        d2.external_id,
+        mu.external_id,
         count(*),
-        ST_Multi(ST_Transform(d.geom, 3857)),
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(d.geom, 3857), 20.0))
-    FROM report.incident i
-    JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
+        ST_Multi(ST_Transform(d2.geom, 3857)),
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(d2.geom, 3857), 20.0))
+    FROM ( SELECT DISTINCT d.building_id
+             FROM dataops.dossier d
+            WHERE d.payload ->> 'topic' IS NOT NULL
+              AND d.building_id IS NOT NULL) m
+    JOIN geocoder.building_active ba ON ba.external_id = m.building_id
     JOIN geocoder.neighborhood n ON n.id::text = ba.neighborhood_id::text
-    JOIN geocoder.district d ON d.id::text = n.district_id::text
-    LEFT JOIN geocoder.municipality m ON m.id::text = d.municipality_id::text
-    GROUP BY d.external_id, m.external_id, d.geom;
+    JOIN geocoder.district d2 ON d2.id::text = n.district_id::text
+    LEFT JOIN geocoder.municipality mu ON mu.id::text = d2.municipality_id::text
+    GROUP BY d2.external_id, mu.external_id, d2.geom;
 
     TRUNCATE maplayer.incident_municipality_tiles;
 
@@ -2223,16 +2231,19 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         municipality_id, incident_count, geom, geom_simple
     )
     SELECT
-        m.external_id,
+        mu.external_id,
         count(*),
-        ST_Multi(ST_Transform(m.geom, 3857)),
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(m.geom, 3857), 20.0))
-    FROM report.incident i
-    JOIN geocoder.building_active ba ON ba.external_id = i.building_id::text
+        ST_Multi(ST_Transform(mu.geom, 3857)),
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(mu.geom, 3857), 20.0))
+    FROM ( SELECT DISTINCT d.building_id
+             FROM dataops.dossier d
+            WHERE d.payload ->> 'topic' IS NOT NULL
+              AND d.building_id IS NOT NULL) m
+    JOIN geocoder.building_active ba ON ba.external_id = m.building_id
     JOIN geocoder.neighborhood n ON n.id::text = ba.neighborhood_id::text
-    JOIN geocoder.district d ON d.id::text = n.district_id::text
-    JOIN geocoder.municipality m ON m.id::text = d.municipality_id::text
-    GROUP BY m.external_id, m.geom;
+    JOIN geocoder.district d2 ON d2.id::text = n.district_id::text
+    JOIN geocoder.municipality mu ON mu.id::text = d2.municipality_id::text
+    GROUP BY mu.external_id, mu.geom;
 
     ANALYZE maplayer.incident_tiles;
     ANALYZE maplayer.incident_neighborhood_tiles;
@@ -5266,12 +5277,18 @@ CREATE TABLE maplayer.facade_scan_tiles (
 --
 
 CREATE VIEW maplayer.incident AS
- SELECT i.id,
-    i.foundation_damage_cause,
+ SELECT (m.dossier_id)::text AS id,
+    NULL::report.foundation_damage_cause AS foundation_damage_cause,
     round((GREATEST(bh.height, (0)::real))::numeric, 2) AS height,
-    ba.geom
-   FROM ((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
+    ba.geom,
+    m.topic
+   FROM ((( SELECT DISTINCT ON (d.building_id) d.building_id,
+            d.id AS dossier_id,
+            (d.payload ->> 'topic'::text) AS topic
+           FROM dataops.dossier d
+          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))
+          ORDER BY d.building_id, d.created_at DESC) m
+     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
      JOIN data.building_height bh ON ((bh.building_id = ba.external_id)));
 
 
@@ -5280,13 +5297,15 @@ CREATE VIEW maplayer.incident AS
 --
 
 CREATE VIEW maplayer.incident_district AS
- SELECT d.geom,
-    count(d.id) AS incident_count
-   FROM (((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
+ SELECT d2.geom,
+    count(*) AS incident_count
+   FROM (((( SELECT DISTINCT d.building_id
+           FROM dataops.dossier d
+          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))) m
+     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
-     JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
-  GROUP BY d.id, d.geom;
+     JOIN geocoder.district d2 ON (((d2.id)::text = (n.district_id)::text)))
+  GROUP BY d2.id, d2.geom;
 
 
 --
@@ -5307,14 +5326,16 @@ CREATE TABLE maplayer.incident_district_tiles (
 --
 
 CREATE VIEW maplayer.incident_municipality AS
- SELECT m.geom,
-    count(m.id) AS incident_count
-   FROM ((((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
+ SELECT mu.geom,
+    count(*) AS incident_count
+   FROM ((((( SELECT DISTINCT d.building_id
+           FROM dataops.dossier d
+          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))) m
+     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
-     JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
-     JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
-  GROUP BY m.id, m.geom;
+     JOIN geocoder.district d2 ON (((d2.id)::text = (n.district_id)::text)))
+     JOIN geocoder.municipality mu ON (((mu.id)::text = (d2.municipality_id)::text)))
+  GROUP BY mu.id, mu.geom;
 
 
 --
@@ -5335,9 +5356,11 @@ CREATE TABLE maplayer.incident_municipality_tiles (
 
 CREATE VIEW maplayer.incident_neighborhood AS
  SELECT n.geom,
-    count(n.id) AS incident_count
-   FROM ((report.incident i
-     JOIN geocoder.building_active ba ON ((ba.external_id = (i.building_id)::text)))
+    count(*) AS incident_count
+   FROM ((( SELECT DISTINCT d.building_id
+           FROM dataops.dossier d
+          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))) m
+     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
      JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
   GROUP BY n.id, n.geom;
 
@@ -5367,7 +5390,8 @@ CREATE TABLE maplayer.incident_tiles (
     municipality_id text,
     foundation_damage_cause text,
     height double precision,
-    geom public.geometry(MultiPolygon,3857)
+    geom public.geometry(MultiPolygon,3857),
+    topic text
 );
 
 
@@ -8042,5 +8066,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 4dOTnSQX3mhtqlWlqF1VGjy4ZtG2kDugvnx3odoEyb08YKMFB8ULzb2yQFFoZd5
+\unrestrict d3gKDgGjqegkTD2UQm3bzgKK47mgVwHmwdC8XFd7fx8DqJgRdBIdACTyoOfBOVt
 
