@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict d3gKDgGjqegkTD2UQm3bzgKK47mgVwHmwdC8XFd7fx8DqJgRdBIdACTyoOfBOVt
+\restrict KwdUZZYXra8ObEChFJueCVw0bHqBiijkhFj38T499QZeubuZ2j6LDBcgH9t5YbO
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -7815,6 +7815,14 @@ ALTER TABLE ONLY dataops.artifact
 
 
 --
+-- Name: dossier_address dossier_address_address_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_address
+    ADD CONSTRAINT dossier_address_address_id_fkey FOREIGN KEY (address_id) REFERENCES geocoder.address(external_id);
+
+
+--
 -- Name: dossier_address dossier_address_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -7884,6 +7892,14 @@ ALTER TABLE ONLY dataops.dossier_mail
 
 ALTER TABLE ONLY dataops.extraction
     ADD CONSTRAINT extraction_artifact_id_fkey FOREIGN KEY (artifact_id) REFERENCES dataops.artifact(id) ON DELETE CASCADE;
+
+
+--
+-- Name: extraction_field extraction_field_address_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.extraction_field
+    ADD CONSTRAINT extraction_field_address_id_fkey FOREIGN KEY (address_id) REFERENCES geocoder.address(external_id) ON DELETE SET NULL;
 
 
 --
@@ -8066,5 +8082,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict d3gKDgGjqegkTD2UQm3bzgKK47mgVwHmwdC8XFd7fx8DqJgRdBIdACTyoOfBOVt
+\unrestrict KwdUZZYXra8ObEChFJueCVw0bHqBiijkhFj38T499QZeubuZ2j6LDBcgH9t5YbO
 
