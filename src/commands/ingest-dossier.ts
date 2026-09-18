@@ -75,7 +75,7 @@ export async function loadDossierContext(dossierId: number | null): Promise<Doss
   if (d.building_id) {
     // Address ids are BAG nummeraanduidingen (address.external_id) since the
     // gfm retirement, step 2 (Worker #158). Rows written before the rewrite
-    // still carry the gfm- id until migration 20260918_002 has run, so the
+    // still carry the gfm- id until migration 20260918_005 has run, so the
     // known set holds both spellings for that window.
     const own = await sql<{ id: string; legacy_id: string; city: string; postal_code: string | null }[]>`
       SELECT external_id AS id, id AS legacy_id, city, postal_code FROM geocoder.address
