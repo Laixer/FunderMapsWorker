@@ -92,7 +92,14 @@ WITH truth AS (
     WHERE e.sample_version = 2 AND e.purpose = 'truth' AND e.split = 'train'
       AND e.observed_family IN ('wood','no_pile','concrete')
 ), g AS (
-    SELECT count(*) n, avg((observed_family='wood')::int) pw, avg((observed_family='no_pile')::int) pn, avg((observed_family='concrete')::int) pc FROM truth
+    -- The global fallback. On an empty benchmark (a fresh database, e.g. the CI
+    -- bootstrap) avg() over zero rows is NULL, which would violate the NOT NULL
+    -- on p_wood; the whole build then yields no rows rather than a broken prior.
+    SELECT count(*) n,
+           COALESCE(avg((observed_family='wood')::int), 0) pw,
+           COALESCE(avg((observed_family='no_pile')::int), 0) pn,
+           COALESCE(avg((observed_family='concrete')::int), 0) pc
+    FROM truth
 ), coarse AS (
     SELECT data.ft_cell_coarse_2026_2(cell) AS cell, count(*) n,
            avg((observed_family='wood')::int) pw, avg((observed_family='no_pile')::int) pn, avg((observed_family='concrete')::int) pc
@@ -103,7 +110,7 @@ WITH truth AS (
     FROM truth GROUP BY 1
 )
 INSERT INTO data.foundation_type_prior_2026_2 (cell, n, p_wood, p_no_pile, p_concrete)
-SELECT '*', g.n, g.pw, g.pn, g.pc FROM g
+SELECT '*', g.n, g.pw, g.pn, g.pc FROM g WHERE g.n > 0
 UNION ALL
 SELECT c.cell, c.n,
        (c.pw*c.n + 20*g.pw)/(c.n+20), (c.pn*c.n + 20*g.pn)/(c.n+20), (c.pc*c.n + 20*g.pc)/(c.n+20)
