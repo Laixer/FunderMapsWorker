@@ -15,6 +15,11 @@
 -- doadmin remains superuser and can still write application.schema_migrations,
 -- so the runner keeps working after this file.
 
+-- The dataops SCHEMA itself is still doadmin's, and Postgres refuses to hand a
+-- table to a role that cannot create in its schema: the first attempt failed
+-- with "permission denied for schema dataops". So the schema moves first.
+ALTER SCHEMA dataops OWNER TO fundermaps;
+
 ALTER TABLE application.jwks OWNER TO fundermaps;
 ALTER TABLE application.oauth_access_token OWNER TO fundermaps;
 ALTER TABLE application.oauth_application OWNER TO fundermaps;
