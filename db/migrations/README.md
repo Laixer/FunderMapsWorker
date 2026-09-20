@@ -18,6 +18,11 @@ DATABASE_URL=postgres://... bun run migrate --status      # ledger vs files
   row commits with it. A file whose first lines carry `-- migrate: no-transaction`
   runs outside a transaction instead (for `CREATE INDEX CONCURRENTLY`); such a
   file must be idempotent, because a failure half-way is retried by rerunning.
+- **Ownership: every object belongs to `fundermaps`** (Yorick, 2026-09-20). The runner
+  applies as `doadmin` on prod, so anything a file creates is owned by doadmin unless
+  the file hands it over. A migration that creates a table, view, function or sequence
+  ends with `ALTER ... OWNER TO fundermaps;` for each object it made. `20260920_003`
+  fixed the backlog; do not add to it.
 - Plain SQL, the way `sql/migrate/` always was. Grants belong in the migration
   that creates or widens the object they grant; the runner runs as the object
   owner (`doadmin` on prod), so `GRANT` works as written.

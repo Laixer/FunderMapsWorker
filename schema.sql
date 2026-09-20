@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict HXaFAE6aePkWP8raBmLlf07zAM03WlXptYdfmZ45q9fKSpASL5BQAvOWRgbU8Ml
+\restrict Ael2r1yZmuOReVWRafGSsEDrZYNcZiKBfsk7Vab0HIsBZxBhvRv6aBYXogIk97X
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1190,6 +1190,30 @@ $$;
 
 
 --
+-- Name: ft_cell_2026_2(integer, double precision, text, numeric, integer); Type: FUNCTION; Schema: data; Owner: -
+--
+
+CREATE FUNCTION data.ft_cell_2026_2(construction_year integer, height double precision, soil_code text, ground_level numeric, address_count integer) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT
+    (CASE WHEN construction_year < 1700 THEN 'a' WHEN construction_year < 1800 THEN 'b'
+          WHEN construction_year < 1880 THEN 'c' WHEN construction_year < 1920 THEN 'd'
+          WHEN construction_year < 1940 THEN 'e' WHEN construction_year < 1965 THEN 'f'
+          WHEN construction_year < 1980 THEN 'g' ELSE 'h' END) || '|' ||
+    (CASE WHEN soil_code IN ('hz','ni-hz','ni-du') THEN 'sand'
+          WHEN soil_code IS NULL THEN 'unk' ELSE 'soft' END) || '|' ||
+    (CASE WHEN height IS NULL THEN 'u' WHEN height < 7 THEN '0' WHEN height < 8.5 THEN '1'
+          WHEN height < 10 THEN '2' WHEN height < 12 THEN '3' WHEN height < 14 THEN '4'
+          WHEN height < 20 THEN '5' ELSE '6' END) || '|' ||
+    (CASE WHEN ground_level IS NULL THEN 'u' WHEN ground_level < -1 THEN '0'
+          WHEN ground_level < 0 THEN '1' WHEN ground_level < 1 THEN '2'
+          WHEN ground_level < 3 THEN '3' WHEN ground_level < 8 THEN '4' ELSE '5' END) || '|' ||
+    (CASE WHEN address_count <= 1 THEN '0' WHEN address_count < 8 THEN '1' ELSE '2' END)
+$$;
+
+
+--
 -- Name: ft_cell_coarse_2026_1(text); Type: FUNCTION; Schema: data; Owner: -
 --
 
@@ -1197,6 +1221,17 @@ CREATE FUNCTION data.ft_cell_coarse_2026_1(cell text) RETURNS text
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT split_part(cell,'|',1)||'|'||split_part(cell,'|',2)||'|'||split_part(cell,'|',3)
+$$;
+
+
+--
+-- Name: ft_cell_coarse_2026_2(text); Type: FUNCTION; Schema: data; Owner: -
+--
+
+CREATE FUNCTION data.ft_cell_coarse_2026_2(cell text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT split_part(cell,'|',1) || '|' || split_part(cell,'|',2) || '|' || split_part(cell,'|',3)
 $$;
 
 
@@ -3978,6 +4013,33 @@ CREATE TABLE data.building_subsidence_history (
 
 
 --
+-- Name: foundation_type_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.foundation_type_2026_2 (
+    building_id text NOT NULL,
+    purpose text NOT NULL,
+    split text,
+    scoring_mode boolean NOT NULL,
+    p_wood numeric(6,5) NOT NULL,
+    p_no_pile numeric(6,5) NOT NULL,
+    p_concrete numeric(6,5) NOT NULL,
+    predicted_family text NOT NULL,
+    evidence_level text NOT NULL,
+    evidence_n integer NOT NULL,
+    prior_cell text NOT NULL,
+    prior_p_wood numeric(6,5) NOT NULL
+);
+
+
+--
+-- Name: TABLE foundation_type_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.foundation_type_2026_2 IS 'model-2026.2 candidate output on the evaluation sample: class probabilities from local inspected evidence (cluster > supercluster > neighbourhood) shrunk onto a cell prior. Scored, never served. See sql/model/candidate_2026_2_foundation_type.sql.';
+
+
+--
 -- Name: foundation_type_lookup_2026_1; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4016,6 +4078,26 @@ CREATE TABLE data.foundation_type_lookup_2026_2 (
 --
 
 COMMENT ON TABLE data.foundation_type_lookup_2026_2 IS 'Refit of the 2026.1 lookup on evidence-backed truth only (sample_version 2, grades physical+documented). Excludes quickscan-sourced answers, which are our own output.';
+
+
+--
+-- Name: foundation_type_prior_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.foundation_type_prior_2026_2 (
+    cell text NOT NULL,
+    n integer NOT NULL,
+    p_wood numeric(6,5) NOT NULL,
+    p_no_pile numeric(6,5) NOT NULL,
+    p_concrete numeric(6,5) NOT NULL
+);
+
+
+--
+-- Name: TABLE foundation_type_prior_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.foundation_type_prior_2026_2 IS 'model-2026.2 candidate: smoothed class rates per cell (era|soil|height|ground level|addresses), fitted on benchmark v2 train rows. Coarse cells (era|soil|height) and the global row (cell = *) are included for back-off.';
 
 
 --
@@ -6022,6 +6104,14 @@ ALTER TABLE ONLY data.cluster_recovery_sample
 
 
 --
+-- Name: foundation_type_2026_2 foundation_type_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
+--
+
+ALTER TABLE ONLY data.foundation_type_2026_2
+    ADD CONSTRAINT foundation_type_2026_2_pkey PRIMARY KEY (building_id);
+
+
+--
 -- Name: foundation_type_lookup_2026_1 foundation_type_lookup_2026_1_pkey; Type: CONSTRAINT; Schema: data; Owner: -
 --
 
@@ -6035,6 +6125,14 @@ ALTER TABLE ONLY data.foundation_type_lookup_2026_1
 
 ALTER TABLE ONLY data.foundation_type_lookup_2026_2
     ADD CONSTRAINT foundation_type_lookup_2026_2_pkey PRIMARY KEY (cell);
+
+
+--
+-- Name: foundation_type_prior_2026_2 foundation_type_prior_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
+--
+
+ALTER TABLE ONLY data.foundation_type_prior_2026_2
+    ADD CONSTRAINT foundation_type_prior_2026_2_pkey PRIMARY KEY (cell);
 
 
 --
@@ -6703,6 +6801,13 @@ CREATE UNIQUE INDEX building_sample_building_id_idx ON data.building_sample USIN
 --
 
 CREATE UNIQUE INDEX cluster_sample_v2_cluster_id_idx ON data.cluster_sample USING btree (cluster_id);
+
+
+--
+-- Name: foundation_type_2026_2_purpose_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE INDEX foundation_type_2026_2_purpose_idx ON data.foundation_type_2026_2 USING btree (purpose, split);
 
 
 --
@@ -8074,5 +8179,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict HXaFAE6aePkWP8raBmLlf07zAM03WlXptYdfmZ45q9fKSpASL5BQAvOWRgbU8Ml
+\unrestrict Ael2r1yZmuOReVWRafGSsEDrZYNcZiKBfsk7Vab0HIsBZxBhvRv6aBYXogIk97X
 
