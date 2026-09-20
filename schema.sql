@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ZZLNLN8LfZ4lU5VatTuaXNjuLOhq6OI439lvJVvavgSg2XLDspOPIEVhECM7bik
+\restrict 35aHI7VKzfz4ysbPHQ5VkgaQdhFX3EQNkPdYVfhrkGf8f89GBHlbOuVi3hiV2IO
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -3707,7 +3707,7 @@ CREATE VIEW data.model_risk_dynamic_all AS
                     WHEN (cluster.id IS NOT NULL) THEN 'cluster'::data.reliability
                     ELSE 'indicative'::data.reliability
                 END AS dewatering_depth_risk_reliability,
-            COALESCE(data.compute_unclassified_risk((recovery.type IS NOT NULL), 'a'::data.foundation_risk_indication, 'e'::data.foundation_risk_indication, established.enforcement_term, established.overall_quality, established.recovery_advised, established.damage_cause), data.compute_unclassified_risk((cluster_recovery_sample.type IS NOT NULL), 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised, cluster.damage_cause)) AS unclassified_risk,
+            COALESCE(((established.facade_scan_risk)::text)::data.foundation_risk_indication, data.compute_unclassified_risk((recovery.type IS NOT NULL), 'a'::data.foundation_risk_indication, 'e'::data.foundation_risk_indication, established.enforcement_term, established.overall_quality, established.recovery_advised, established.damage_cause), data.compute_unclassified_risk((cluster_recovery_sample.type IS NOT NULL), 'e'::data.foundation_risk_indication, 'd'::data.foundation_risk_indication, cluster.enforcement_term, cluster.overall_quality, cluster.recovery_advised, cluster.damage_cause)) AS unclassified_risk,
             (bp.height)::numeric(10,2) AS height,
             round((bs.velocity)::numeric, 2) AS velocity,
             round((gwl.level)::numeric, 2) AS ground_water_level,
@@ -8179,5 +8179,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ZZLNLN8LfZ4lU5VatTuaXNjuLOhq6OI439lvJVvavgSg2XLDspOPIEVhECM7bik
+\unrestrict 35aHI7VKzfz4ysbPHQ5VkgaQdhFX3EQNkPdYVfhrkGf8f89GBHlbOuVi3hiV2IO
 
