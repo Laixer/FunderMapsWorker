@@ -1,38 +1,22 @@
--- Phase A4: Rewrite model_risk_dynamic_all
+-- The QuickScan risk also drives the onderzoeksrisico (Worker #181).
 --
--- Depends on:
---   - Phase A1: Helper functions (data.is_wood_family, compute_damage_risk, etc.)
---   - Phase A2: data.building_precomputed (surface_area, address_count, height, ground_level)
---   - Phase A3: Fixed sample matviews (building_sample, cluster_sample, supercluster_sample)
+-- Don, 2026-09-18, after seeing that a QuickScan overrode droogstand,
+-- bio-aantasting and ontwateringsdiepte but not unclassified_risk: "Yes, I
+-- want to include it. In our new riskmodels we'll do this differently." He
+-- confirmed again after the impact table below.
 --
--- Changes from current view:
---   - FROM building_precomputed instead of building_active (eliminates ST_Area, address count, double elevation scan)
---   - LEFT JOINs reduced from 14 to 10 (no building_elevation, no building_height)
---   - Risk LATERALs replaced by function calls
---   - Wood/no-pile checks use helper functions
---   - Bug fixes:
---     * Duplicate wood_rotterdam_arch in drystand CASE removed
---     * dewatering_depth cluster branch: checks foundation_depth IS NOT NULL (was wood_level)
---     * wood_rotterdam_amsterdam removed from no-pile dewatering_depth types
+-- Measured on the 10,455 panden carrying a QuickScan (facade_scan) risk:
+--   8,838 have no unclassified risk today and gain one
+--   1,274 hold a different value and are OVERWRITTEN
+--     b→a 441 · b→c 265 · e→a 140 · e→c 129 · d→a 63 · b→e 49 · e→b 46 · d→c 39
+--     of which 186 move from the worst class to the best two, visible to
+--     customers at the next refresh
+--     343 already agree
 --
--- Issue #1005: inquiry-derived signal (risk values, damage_cause, enforcement,
--- overall_quality, drystand/dewatering measurements) inherits at most from the
--- CLUSTER tier; the supercluster tier only supplies foundation_type (structural
--- characteristic, not risk). inquiry_id/inquiry_type are established-only —
--- never borrowed from a cluster or supercluster peer.
---
--- Construction-year fallback (issue Laixer/FunderMaps#1002):
---   Every building must carry at least one risk indication. When all three
---   component risks AND the report-derived unclassified_risk are null (~45k
---   rows: missing groundwater model coverage, 'other'/'combined' foundation
---   types, no_pile_bearing_floor), unclassified_risk falls back to a
---   construction-year heuristic: built before 1970 → 'd', 1970 or later →
---   'b'. Reliability of these rows is 'indicative' by construction (no
---   sample joins matched). The fallback is deliberately GATED on the other
---   risks being null — ungated it would stamp a class on every report-less
---   building in the country and skew the neighborhood statistics.
---   The outer query wrapper exists only to reference the computed risk
---   columns in that gate.
+-- This is the view the product reads, so the change lands at the next model
+-- refresh (12:30 / 21:00 CEST), not on apply. The full definition is repeated
+-- here because the runner needs the DDL; sql/model/recreate_model_risk_dynamic_all.sql
+-- carries the same text and stays the place to edit it.
 
 CREATE OR REPLACE VIEW data.model_risk_dynamic_all AS
 SELECT
@@ -302,3 +286,7 @@ FROM data.building_precomputed bp
         )
     )) AS foundation_type(ft)
 ) base;
+
+-- House rule since 20260920_003: whatever a migration touches belongs to
+-- fundermaps, because the runner applies as doadmin.
+ALTER VIEW data.model_risk_dynamic_all OWNER TO fundermaps;
