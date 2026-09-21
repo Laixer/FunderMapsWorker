@@ -266,9 +266,48 @@ export async function toBrowserImage(path: string, outDir: string): Promise<{ pa
   // spawn() does not throw, so without this the failure surfaced two steps
   // later as ENOENT on the JPEG. Say what actually went wrong.
   if (r.exitCode !== 0 || !(await Bun.file(dst).exists())) {
-    throw new Error(`cannot convert ${mime} to a browser image: ${r.stderr.trim().split("\n")[0] || `convert exited ${r.exitCode}`}`);
+    const first = r.stderr.trim().split("\n")[0] || `convert exited ${r.exitCode}`;
+    // A second opinion before giving up (#163). The nine Group-4 TIFFs on
+    // dossier 2693 were valid files that this host's ImageMagick could not
+    // read, because the Ubuntu 26.04 build shipped without the TIFF coder --
+    // the format the archives deliver most. Whether a delegate is present is
+    // a property of the box, not of the document, so the same artifact
+    // converts on one machine and fails on another.
+    if (vipsCanTry(mime)) {
+      const v = await spawn(["vips", "copy", `${path}[page=0]`, dst]);
+      if (v.exitCode === 0 && (await Bun.file(dst).exists())) {
+        return { path: dst, mime: lossless ? "image/png" : "image/jpeg", converted: true };
+      }
+    }
+    throw new Error(
+      `cannot convert ${mime} to a browser image: ${first}${await missingCoderHint(mime)}`,
+    );
   }
   return { path: dst, mime: lossless ? "image/png" : "image/jpeg", converted: true };
+}
+
+/** Is `vips` on this box, and is it worth asking about this format? */
+export function vipsCanTry(mime: string): boolean {
+  if (!/^image\/(tiff|bmp|heic|heif)$/.test(mime)) return false;
+  return Bun.which("vips") !== null;
+}
+
+/**
+ * Name the missing coder when ImageMagick simply cannot read this format.
+ *
+ * Without this the operator sees `improper image header` and goes looking at
+ * the file, which is the one thing that is not wrong. Appended to the error
+ * rather than logged, so it travels with the failure into the extraction row.
+ */
+async function missingCoderHint(mime: string): Promise<string> {
+  const format = mime.replace(/^image\//, "").toUpperCase();
+  const list = await spawn(["convert", "-list", "format"]).catch(() => null);
+  if (!list || list.exitCode !== 0) return "";
+  // A coder line looks like "   TIFF* TIFF      rw+   Tagged Image File Format".
+  const has = new RegExp(`^\\s*${format}\\*?\\s`, "im").test(list.stdout);
+  return has
+    ? ""
+    : ` — this ImageMagick has no ${format} coder (\`convert -list format\` does not list it). Install a ${format}-capable ImageMagick or libvips-tools on this host.`;
 }
 
 /**

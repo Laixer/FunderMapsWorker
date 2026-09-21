@@ -95,6 +95,7 @@ if (import.meta.main) {
   const argv = process.argv.slice(2);
   const arg = (k: string) => { const i = argv.indexOf(`--${k}`); return i > -1 ? argv[i + 1] : undefined; };
   log.banner("Data Ops — normalize artifacts");
+  let failures = 0;
   try {
     const r = await normalizeArtifacts({
       apply: argv.includes("--apply"),
@@ -102,8 +103,18 @@ if (import.meta.main) {
       id: arg("id") ? Number(arg("id")) : undefined,
     });
     console.log(JSON.stringify(r));
+    failures = r.failed;
   } finally {
     await sql.end({ timeout: 5 });
+  }
+  // A run that could not convert something is not a successful run (#163).
+  // Nine Group-4 TIFFs failed here on 2026-09-17 and the command still exited
+  // 0, so nothing downstream noticed; the artifacts sat with a NULL mime_type
+  // until Don reported that Studio would not display them. Whoever calls this
+  // -- a person, Windmill, a cron -- can only see a partial run if we say so.
+  if (failures > 0) {
+    log.warn(`${failures} artifact${failures === 1 ? "" : "s"} could not be normalized`);
+    process.exit(1);
   }
   process.exit(0);
 }

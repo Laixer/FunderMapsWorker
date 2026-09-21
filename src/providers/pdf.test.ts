@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { spawn } from "../lib/subprocess.ts";
-import { browserRenders, sniffMime, toBrowserImage } from "./pdf.ts";
+import { browserRenders, sniffMime, toBrowserImage, vipsCanTry } from "./pdf.ts";
 
 const hasMagick = await spawn(["convert", "-version"]).then(() => true, () => false);
 
@@ -40,5 +40,24 @@ describe.if(hasMagick)("toBrowserImage", () => {
     const out = await toBrowserImage(tiff, dir);
     expect(out.mime).toBe("image/jpeg");
     expect(out.path.endsWith("photo.jpg")).toBe(true);
+  });
+});
+
+describe("vipsCanTry", () => {
+  // The fallback exists for the formats ImageMagick is built without on some
+  // hosts (#163: Group-4 TIFF on Ubuntu 26.04). Everything else must never
+  // reach it, whether or not vips happens to be installed on this box.
+  test("never offers itself for a PDF", () => {
+    expect(vipsCanTry("application/pdf")).toBe(false);
+  });
+
+  test("never offers itself for formats the browser already renders", () => {
+    for (const mime of ["image/png", "image/jpeg", "image/webp", "image/gif"]) {
+      expect(vipsCanTry(mime)).toBe(false);
+    }
+  });
+
+  test("its answer for TIFF is exactly whether vips is on this host", () => {
+    expect(vipsCanTry("image/tiff")).toBe(Bun.which("vips") !== null);
   });
 });
