@@ -1,6 +1,11 @@
+-- building_number is how BAG writes an address: the huisletter attaches to the
+-- number (26 + A = 26A), the huisnummertoevoeging follows a hyphen (131 + 3 =
+-- 131-3). Gluing both on as bare suffixes stored 131-3 as 1313 (#195).
+-- '-' || NULL is NULL and concat() skips NULLs, so no toevoeging, no hyphen.
+
 INSERT INTO geocoder.address(building_number, postal_code, street, external_id, city, building_id)
 SELECT
-    concat(v.huisnummer, v.huisletter, v.toevoeging),
+    concat(v.huisnummer, v.huisletter, '-' || nullif(v.toevoeging, '')),
     v.postcode,
     v.openbare_ruimte_naam,
     v.nummeraanduiding_hoofdadres_identificatie,
@@ -18,7 +23,7 @@ DO UPDATE
 
 INSERT INTO geocoder.address(building_number, postal_code, street, external_id, city, building_id)
 SELECT
-    concat(l.huisnummer, l.huisletter, l.toevoeging),
+    concat(l.huisnummer, l.huisletter, '-' || nullif(l.toevoeging, '')),
     l.postcode,
     l.openbare_ruimte_naam,
     concat('NL.IMBAG.NUMMERAANDUIDING.', l.nummeraanduiding_hoofdadres_identificatie),
@@ -36,7 +41,7 @@ DO UPDATE
 
 INSERT INTO geocoder.address(building_number, postal_code, street, external_id, city, building_id)
 SELECT
-    concat(s.huisnummer, s.huisletter, s.toevoeging),
+    concat(s.huisnummer, s.huisletter, '-' || nullif(s.toevoeging, '')),
     s.postcode,
     s.openbare_ruimte_naam,
     concat('NL.IMBAG.NUMMERAANDUIDING.', s.nummeraanduiding_hoofdadres_identificatie),
