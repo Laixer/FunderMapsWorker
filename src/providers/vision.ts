@@ -215,6 +215,9 @@ HOUTEN PALEN: Amsterdam en Rotterdam zijn BENAMINGEN van een constructiewijze.
   het document die benaming zelf gebruikt. Leid ze nooit af uit een tekening.
 - Staat er alleen dat de fundering op houten palen staat, kies dan wood. Dat is
   geen slechter antwoord -- het is het juiste antwoord.
+- Noemt of tekent het document een OPLANGER op de houten paal (ook in het
+  meervoud, "oplangers"), kies dan wood_charger. Een oplanger is een BESCHRIJVING,
+  geen benaming: het woord of de tekening is het bewijs.
 
 NIET ONDERHEID: dit zijn BESCHRIJVINGEN van wat het gebouw draagt.
 - Beschrijft het document de constructie -- gemetselde voet of poeren, betonnen
