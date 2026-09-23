@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict IpDHVGYYmqJGcdfOc7b5YOwdNrv2RBhwMnPL8fAhZiFPx7ujrVYDW2I68QJ57A1
+\restrict 1Ij72YjuQOvmfLd5DShEDmSR7mElqdS5Kfd9ecAUVRo4GoMt4D3V5cx8FkUKvzw
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4975,7 +4975,8 @@ CREATE TABLE dataops.dossier (
     outcome dataops.dossier_outcome,
     outcome_note text,
     outcome_at timestamp with time zone,
-    audit_inquiry_id integer
+    audit_inquiry_id integer,
+    recovery_id integer
 );
 
 
@@ -5033,6 +5034,13 @@ COMMENT ON COLUMN dataops.dossier.outcome IS 'Dossier-level decision. Per-value 
 --
 
 COMMENT ON COLUMN dataops.dossier.audit_inquiry_id IS 'The rapportage this dossier re-reads (channel audit). Null on intake dossiers.';
+
+
+--
+-- Name: COLUMN dossier.recovery_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier.recovery_id IS 'The herstel recorded from this dossier (report.recovery). Independent of inquiry_id: a herstel drawing can yield both.';
 
 
 --
@@ -7336,6 +7344,13 @@ CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossi
 
 
 --
+-- Name: dossier_recovery_id_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_recovery_id_idx ON dataops.dossier USING btree (recovery_id) WHERE (recovery_id IS NOT NULL);
+
+
+--
 -- Name: dossier_reference_key; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -8320,6 +8335,14 @@ ALTER TABLE ONLY dataops.dossier_mail
 
 
 --
+-- Name: dossier dossier_recovery_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier
+    ADD CONSTRAINT dossier_recovery_id_fkey FOREIGN KEY (recovery_id) REFERENCES report.recovery(id) ON DELETE SET NULL;
+
+
+--
 -- Name: extraction extraction_artifact_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -8515,5 +8538,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict IpDHVGYYmqJGcdfOc7b5YOwdNrv2RBhwMnPL8fAhZiFPx7ujrVYDW2I68QJ57A1
+\unrestrict 1Ij72YjuQOvmfLd5DShEDmSR7mElqdS5Kfd9ecAUVRo4GoMt4D3V5cx8FkUKvzw
 
