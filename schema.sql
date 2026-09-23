@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 1Ij72YjuQOvmfLd5DShEDmSR7mElqdS5Kfd9ecAUVRo4GoMt4D3V5cx8FkUKvzw
+\restrict Y0pY6k0Vhkc0rLMZPP1JovkU52zsCOh8Gx1fRbyRocV7qwFfgpfyXIiSU6PF3j0
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2549,6 +2549,64 @@ $$;
 
 
 --
+-- Name: inquiry_sample_damage_lists(); Type: FUNCTION; Schema: report; Owner: -
+--
+
+CREATE FUNCTION report.inquiry_sample_damage_lists() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    old_cause report.foundation_damage_cause;
+    old_cause_list report.foundation_damage_cause[];
+    old_char report.foundation_damage_characteristics;
+    old_char_list report.foundation_damage_characteristics[];
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        old_cause := OLD.damage_cause;           old_cause_list := OLD.damage_cause_list;
+        old_char := OLD.damage_characteristics;  old_char_list := OLD.damage_characteristics_list;
+    ELSE
+        old_cause_list := '{}';
+        old_char_list := '{}';
+    END IF;
+    NEW.damage_cause_list := coalesce(NEW.damage_cause_list, '{}');
+    NEW.damage_characteristics_list := coalesce(NEW.damage_characteristics_list, '{}');
+
+    -- damage_cause / damage_cause_list
+    IF NEW.damage_cause_list IS NOT DISTINCT FROM old_cause_list
+       AND NEW.damage_cause IS DISTINCT FROM old_cause THEN
+        -- Only the scalar moved (a single-value writer): replace, not add.
+        NEW.damage_cause_list := array_remove(NEW.damage_cause_list, old_cause);
+    ELSIF NEW.damage_cause_list IS DISTINCT FROM old_cause_list
+       AND NEW.damage_cause IS NOT DISTINCT FROM old_cause THEN
+        -- Only the list moved (a list writer): its first item is the hoofdoorzaak.
+        NEW.damage_cause := NEW.damage_cause_list[1];
+    END IF;
+    IF NEW.damage_cause IS NOT NULL THEN
+        NEW.damage_cause_list := array_prepend(NEW.damage_cause, array_remove(NEW.damage_cause_list, NEW.damage_cause));
+    ELSIF cardinality(NEW.damage_cause_list) > 0 THEN
+        NEW.damage_cause := NEW.damage_cause_list[1];
+    END IF;
+
+    -- damage_characteristics / damage_characteristics_list, the same rules
+    IF NEW.damage_characteristics_list IS NOT DISTINCT FROM old_char_list
+       AND NEW.damage_characteristics IS DISTINCT FROM old_char THEN
+        NEW.damage_characteristics_list := array_remove(NEW.damage_characteristics_list, old_char);
+    ELSIF NEW.damage_characteristics_list IS DISTINCT FROM old_char_list
+       AND NEW.damage_characteristics IS NOT DISTINCT FROM old_char THEN
+        NEW.damage_characteristics := NEW.damage_characteristics_list[1];
+    END IF;
+    IF NEW.damage_characteristics IS NOT NULL THEN
+        NEW.damage_characteristics_list := array_prepend(NEW.damage_characteristics, array_remove(NEW.damage_characteristics_list, NEW.damage_characteristics));
+    ELSIF cardinality(NEW.damage_characteristics_list) > 0 THEN
+        NEW.damage_characteristics := NEW.damage_characteristics_list[1];
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: last_record_update(); Type: FUNCTION; Schema: report; Owner: -
 --
 
@@ -3617,6 +3675,8 @@ CREATE TABLE report.inquiry_sample (
     building_id geocoder.geocoder_id NOT NULL,
     facade_scan_risk report.facade_scan_risk,
     metadata jsonb,
+    damage_cause_list report.foundation_damage_cause[] DEFAULT '{}'::report.foundation_damage_cause[] NOT NULL,
+    damage_characteristics_list report.foundation_damage_characteristics[] DEFAULT '{}'::report.foundation_damage_characteristics[] NOT NULL,
     CONSTRAINT inquiry_sample_built_year_not_future CHECK (((built_year IS NULL) OR ((built_year)::date <= CURRENT_DATE))),
     CONSTRAINT inquiry_sample_settlement_speed_nonpositive CHECK (((settlement_speed IS NULL) OR (settlement_speed <= (0)::double precision)))
 );
@@ -3648,6 +3708,20 @@ COMMENT ON COLUMN report.inquiry_sample.update_date IS 'Timestamp of last record
 --
 
 COMMENT ON COLUMN report.inquiry_sample.delete_date IS 'Timestamp of soft delete';
+
+
+--
+-- Name: COLUMN inquiry_sample.damage_cause_list; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry_sample.damage_cause_list IS 'Every damage cause the report names, hoofdoorzaak first. damage_cause is always its first item (trigger inquiry_sample_damage_lists).';
+
+
+--
+-- Name: COLUMN inquiry_sample.damage_characteristics_list; Type: COMMENT; Schema: report; Owner: -
+--
+
+COMMENT ON COLUMN report.inquiry_sample.damage_characteristics_list IS 'Every damage characteristic the report names, the main one first. damage_characteristics is always its first item (trigger inquiry_sample_damage_lists).';
 
 
 --
@@ -7820,6 +7894,13 @@ CREATE INDEX recovery_type_idx ON report.recovery USING btree (type);
 
 
 --
+-- Name: inquiry_sample inquiry_sample_damage_lists; Type: TRIGGER; Schema: report; Owner: -
+--
+
+CREATE TRIGGER inquiry_sample_damage_lists BEFORE INSERT OR UPDATE OF damage_cause, damage_cause_list, damage_characteristics, damage_characteristics_list ON report.inquiry_sample FOR EACH ROW EXECUTE FUNCTION report.inquiry_sample_damage_lists();
+
+
+--
 -- Name: incident update_date_record; Type: TRIGGER; Schema: report; Owner: -
 --
 
@@ -8538,5 +8619,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1Ij72YjuQOvmfLd5DShEDmSR7mElqdS5Kfd9ecAUVRo4GoMt4D3V5cx8FkUKvzw
+\unrestrict Y0pY6k0Vhkc0rLMZPP1JovkU52zsCOh8Gx1fRbyRocV7qwFfgpfyXIiSU6PF3j0
 
