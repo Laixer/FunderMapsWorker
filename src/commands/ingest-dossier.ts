@@ -7,6 +7,10 @@ import {
   EMPTY_CONTEXT,
   extraAddresses,
   parseAddress,
+  parseAddressList,
+  selectListedAddresses,
+  type AddressList,
+  type ListedAddress,
   pickCandidate,
   type Candidate,
   type DossierContext,
@@ -149,6 +153,47 @@ export async function resolveAddress(text: string, ctx: DossierContext): Promise
   const id = pickCandidate(rows, ctx);
   if (id) return rows.find((r) => r.id === id) ?? null;
   return ctx.fallbackAddressId ? { id: ctx.fallbackAddressId, buildingId: null, city: null, postalCode: null } : null;
+}
+
+/**
+ * A range or list of numbers on one street ("Harddraverstraat 46 t/m 52A,
+ * 52C en 54C", #186): every BAG address it names, in the one city we can
+ * stand behind (lib/address-resolve.ts selectListedAddresses). An empty
+ * answer leaves the text unresolved for the reviewer. It never falls back to
+ * a single address: a block of panden landing on one front door the document
+ * does not name (dossier 2494, 54B) is worse than no link at all.
+ */
+export const MAX_LISTED_ADDRESSES = 200;
+
+export async function resolveAddressList(list: AddressList, ctx: DossierContext): Promise<ListedAddress[]> {
+  const rows = (
+    await sql<{ id: string; building_id: string | null; city: string; postal_code: string | null; street: string; building_number: string }[]>`
+      SELECT a.external_id AS id, a.building_id, a.city, a.postal_code, a.street, a.building_number
+        FROM geocoder.address a
+       WHERE lower(a.street) = lower(${list.street})
+       LIMIT 20000`
+  ).map((r) => ({ id: r.id, buildingId: r.building_id, city: r.city, postalCode: r.postal_code, street: r.street, buildingNumber: r.building_number }));
+  const hits = selectListedAddresses(list, rows, ctx);
+  if (hits.length > MAX_LISTED_ADDRESSES) return [];
+  return hits.sort((a, b) => a.buildingNumber.localeCompare(b.buildingNumber, "nl", { numeric: true }));
+}
+
+/**
+ * Where a value the report wrote "per address" lands: one target per address.
+ * A single address keeps the text the report wrote; an expanded range gives
+ * each row its own address as text, because extraction_field is unique on
+ * (reading, field, value, address_text) and forty rows with one text would
+ * collapse into the first.
+ */
+export async function placeAddressText(text: string, ctx: DossierContext): Promise<{ targets: { id: string; text: string }[]; hits: Candidate[] }> {
+  const list = parseAddressList(text);
+  if (list) {
+    const hits = await resolveAddressList(list, ctx);
+    if (hits.length === 1) return { targets: [{ id: hits[0]!.id, text }], hits };
+    return { targets: hits.map((h) => ({ id: h.id, text: `${h.street} ${h.buildingNumber}` })), hits };
+  }
+  const hit = await resolveAddress(text, ctx);
+  return hit ? { targets: [{ id: hit.id, text }], hits: [hit] } : { targets: [], hits: [] };
 }
 
 export interface IngestResult {
@@ -618,13 +663,18 @@ export async function ingestDossier(payload: {
       // the reviewer sees it -- but a resolved id is what commit needs.
       const dossierIdNow = payload.dossier_id ?? result.dossierId;
       const ctx = await loadDossierContext(dossierIdNow);
+      // A range ("Olympiaweg 20-92") becomes one target per address (#186).
+      const placed = new Map<string, { id: string; text: string }[]>();
       const addressIds = new Map<string, string | null>();
       const candidates = new Map<string, Candidate>();
       for (const f of fields) {
-        if (!f.address || addressIds.has(f.address)) continue;
-        const hit = await resolveAddress(f.address, ctx);
-        addressIds.set(f.address, hit?.id ?? null);
-        if (hit) candidates.set(hit.id, hit);
+        if (!f.address || placed.has(f.address)) continue;
+        const { targets, hits } = await placeAddressText(f.address, ctx);
+        placed.set(f.address, targets);
+        if (!targets.length) addressIds.set(f.address, null);
+        for (const t of targets) addressIds.set(t.text, t.id);
+        for (const h of hits) candidates.set(h.id, h);
+        if (targets.length > 1) log.step(`${f.address} → ${targets.length} addresses`);
       }
       // The timeline: one entry per reading, written by the pipeline itself.
       // The structured rows above stay the source of truth; this line is what
@@ -646,19 +696,24 @@ export async function ingestDossier(payload: {
       const locatable = result.lane === "text" || result.lane === "document" ? sourceText : "";
       for (const f of fields) {
         const loc = locateEvidence(f.evidence, locatable);
-        // A value from an inadmissible source is kept, not discarded: the
-        // reviewer should see what the document said and why we will not take
-        // it. 'rejected' plus the reason in the evidence makes that legible.
-        await sql`
-          INSERT INTO dataops.extraction_field
-            (extraction_id, field, value, confidence, evidence, evidence_page, evidence_offset,
-             state, address_text, address_id)
-          VALUES (${ex!.id}, ${f.field}, ${f.value}, ${f.confidence},
-                  ${f.rejected ? `${f.rejected}\n\nCitaat uit het document: ${f.evidence ?? ""}` : f.evidence},
-                  ${loc?.page ?? null}, ${loc?.offset ?? null},
-                  ${f.rejected ? "rejected" : "pending"},
-                  ${f.address ?? null}, ${f.address ? (addressIds.get(f.address) ?? null) : null})
-          ON CONFLICT DO NOTHING`;
+        const targets = f.address && placed.get(f.address)?.length
+          ? placed.get(f.address)!
+          : [{ id: null as string | null, text: f.address ?? null }];
+        for (const t of targets) {
+          // A value from an inadmissible source is kept, not discarded: the
+          // reviewer should see what the document said and why we will not take
+          // it. 'rejected' plus the reason in the evidence makes that legible.
+          await sql`
+            INSERT INTO dataops.extraction_field
+              (extraction_id, field, value, confidence, evidence, evidence_page, evidence_offset,
+               state, address_text, address_id)
+            VALUES (${ex!.id}, ${f.field}, ${f.value}, ${f.confidence},
+                    ${f.rejected ? `${f.rejected}\n\nCitaat uit het document: ${f.evidence ?? ""}` : f.evidence},
+                    ${loc?.page ?? null}, ${loc?.offset ?? null},
+                    ${f.rejected ? "rejected" : "pending"},
+                    ${t.text}, ${t.id})
+            ON CONFLICT DO NOTHING`;
+        }
       }
 
       // The addresses the document names beyond the pand it was filed under

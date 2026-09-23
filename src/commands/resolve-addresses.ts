@@ -18,11 +18,23 @@
  * re-run: what is resolved is skipped next time.
  *
  *   bun run src/commands/resolve-addresses.ts [--dossier <id>] [--limit N] [--apply]
+ *
+ * --ranges (#186): the texts that name a range or list of numbers ("Olympiaweg
+ * 20-92", "Harddraverstraat 46 t/m 52A, 52C en 54C"). Each pending value on
+ * such a text is spread over every address the range names -- the row itself
+ * moves to one of them, copies go to the rest -- whether it was unresolved or
+ * sat on one address. A single link outside the range (dossier 2494: 54B, a
+ * number the document never writes) is replaced; a link inside it, perhaps set
+ * by hand, is kept and the others are added beside it. A range we cannot
+ * expand is left exactly as it is.
+ *
+ *   bun run src/commands/resolve-addresses.ts --ranges [--dossier <id>] [--apply]
  */
 
 import { log } from "../lib/log.ts";
 import { sql } from "../db.ts";
-import { loadDossierContext, resolveAddress } from "./ingest-dossier.ts";
+import { loadDossierContext, placeAddressText, resolveAddress } from "./ingest-dossier.ts";
+import { parseAddressList } from "../lib/address-resolve.ts";
 
 interface Pending {
   dossier_id: number;
@@ -97,6 +109,105 @@ async function main(opts: { dossier?: number; limit?: number; apply: boolean }) 
   log.info(opts.apply ? "done" : "dry run — nothing written", counts);
 }
 
+interface RangeValue {
+  id: number;
+  dossier_id: number;
+  extraction_id: number;
+  field: string;
+  value: string | null;
+  address_text: string;
+  address_id: string | null;
+}
+
+// Two numbers joined by a range word or a list separator (Postgres ARE: \y is
+// a word boundary). A cheap cut in SQL; parseAddressList has the last word.
+const RANGE_PREFILTER = String.raw`\d\s*[a-z]?\s*(t\s*/\s*m|tot en met|-|,|&|\+|\yen\y)\s*\d`;
+
+async function expandRanges(opts: { dossier?: number; apply: boolean }) {
+  // A cheap pre-filter in SQL (two numbers joined by a range word or a list
+  // separator); parseAddressList decides.
+  const rows = (await sql<RangeValue[]>`
+    SELECT f.id, d.id AS dossier_id, f.extraction_id, f.field, f.value, f.address_text, f.address_id
+      FROM dataops.extraction_field f
+      JOIN dataops.extraction e ON e.id = f.extraction_id
+      JOIN dataops.artifact a ON a.id = e.artifact_id
+      JOIN dataops.dossier d ON d.id = a.dossier_id
+     WHERE d.outcome IS NULL AND d.inquiry_id IS NULL AND f.state = 'pending'
+       AND f.address_text ~* ${RANGE_PREFILTER}
+       ${opts.dossier ? sql`AND d.id = ${opts.dossier}` : sql``}
+     ORDER BY d.id, f.id`).filter((r) => parseAddressList(r.address_text));
+
+  const counts = { values: rows.length, texts: 0, expanded_texts: 0, unexpandable_texts: 0, moved: 0, copies: 0, moved_off_wrong_address: 0, kept_in_range: 0 };
+  const byDossier = new Map<number, RangeValue[]>();
+  for (const r of rows) byDossier.set(r.dossier_id, [...(byDossier.get(r.dossier_id) ?? []), r]);
+
+  for (const [dossierId, values] of byDossier) {
+    const ctx = await loadDossierContext(dossierId);
+    // What the values already point at counts as known: it settles which
+    // city a street like Stadionweg is in when the dossier has no pand.
+    for (const v of values) if (v.address_id) ctx.knownAddressIds.add(v.address_id);
+    const texts = new Map<string, RangeValue[]>();
+    for (const v of values) texts.set(v.address_text, [...(texts.get(v.address_text) ?? []), v]);
+    const expandedHere: string[] = [];
+
+    for (const [text, vs] of texts) {
+      counts.texts++;
+      const { targets, hits } = await placeAddressText(text, ctx);
+      if (!targets.length) {
+        // Not in our BAG under this name, or a street in several cities we
+        // cannot choose between: leave the values exactly as they are. We can
+        // show a link is wrong only when we know what the range covers.
+        counts.unexpandable_texts++;
+        log.step(`#${dossierId} ${text} → not expandable, left as is`);
+        continue;
+      }
+      counts.expanded_texts++;
+      expandedHere.push(`${text} (${targets.length})`);
+      log.step(`#${dossierId} ${text} → ${targets.length} address(es) × ${vs.length} value(s)`);
+      const targetIds = new Set(targets.map((t) => t.id));
+
+      for (const v of vs) {
+        const own = v.address_id && targetIds.has(v.address_id) ? targets.find((t) => t.id === v.address_id)! : targets[0]!;
+        if (v.address_id && targetIds.has(v.address_id)) counts.kept_in_range++;
+        else if (v.address_id) counts.moved_off_wrong_address++;
+        counts.moved++;
+        counts.copies += targets.length - 1;
+        if (!opts.apply) continue;
+        await sql`UPDATE dataops.extraction_field SET address_id = ${own.id}, address_text = ${own.text}
+                   WHERE id = ${v.id} AND state = 'pending'`;
+        for (const t of targets) {
+          if (t.id === own.id) continue;
+          await sql`
+            INSERT INTO dataops.extraction_field
+              (extraction_id, field, value, confidence, evidence, evidence_page, evidence_offset,
+               state, address_text, address_id, current_value)
+            SELECT extraction_id, field, value, confidence, evidence, evidence_page, evidence_offset,
+                   'pending', ${t.text}, ${t.id}, current_value
+              FROM dataops.extraction_field WHERE id = ${v.id}
+            ON CONFLICT DO NOTHING`;
+        }
+      }
+      if (opts.apply) {
+        for (const h of hits) {
+          if (!h.buildingId || h.buildingId === ctx.buildingId) continue;
+          await sql`
+            INSERT INTO dataops.dossier_address (dossier_id, address_id, address_text, source, state)
+            VALUES (${dossierId}, ${h.id}, ${text}, 'pipeline', 'pending')
+            ON CONFLICT (dossier_id, address_id) DO NOTHING`;
+        }
+      }
+    }
+    if (opts.apply && expandedHere.length) {
+      await sql`
+        INSERT INTO dataops.dossier_entry (dossier_id, kind, actor_kind, actor, text, body, visible_to_melder)
+        VALUES (${dossierId}, 'finding', 'pipeline', 'resolve-addresses',
+                ${`Adresreeksen uitgesplitst: ${expandedHere.slice(0, 6).join(", ")}${expandedHere.length > 6 ? ` … (+${expandedHere.length - 6})` : ""}`},
+                ${sql.json({ expanded: expandedHere })}, false)`;
+    }
+  }
+  log.info(opts.apply ? "done" : "dry run — nothing written", counts);
+}
+
 if (import.meta.main) {
   const argv = process.argv.slice(2);
   const arg = (k: string) => {
@@ -105,7 +216,9 @@ if (import.meta.main) {
   };
   log.banner("Data Ops — resolve addresses");
   try {
-    await main({ dossier: arg("dossier") ? Number(arg("dossier")) : undefined, limit: arg("limit") ? Number(arg("limit")) : undefined, apply: argv.includes("--apply") });
+    const dossier = arg("dossier") ? Number(arg("dossier")) : undefined;
+    if (argv.includes("--ranges")) await expandRanges({ dossier, apply: argv.includes("--apply") });
+    else await main({ dossier, limit: arg("limit") ? Number(arg("limit")) : undefined, apply: argv.includes("--apply") });
     process.exit(0);
   } catch (e) {
     log.error(String(e));
