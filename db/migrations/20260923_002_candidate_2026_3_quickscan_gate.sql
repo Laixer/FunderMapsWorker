@@ -13,14 +13,17 @@
 --   9,433 qs_valid    unchanged
 --     788 qs_expired  a QuickScan older than 3 years that still wins today
 --     376 fo_leading  a funderingsonderzoek from the last 5 years loses to it
---   1,162 panden change in at least one risk field; none ends with no risk.
---   Control (rule off vs data.model_risk_static_2024_1): 0 mismatches.
+--     841 panden change in at least one risk field (788 + 53); none ends
+--         with no risk. Control (rule off vs model_risk_static_2024_1): 0.
 --
--- Most changes are a risk becoming NULL, not a different class. For
--- qs_expired that is the rule: 777 lose the unclassified class that Worker
--- #181 gave them from the QuickScan on 2026-09-20. For fo_leading, 299 of 376
--- lose it because the leading onderzoek's record carries none of the fields
--- compute_unclassified_risk reads -- see the PR for that design question.
+-- For qs_expired most changes are a risk becoming NULL: that is the rule.
+-- 777 lose the unclassified class Worker #181 gave them from the QuickScan
+-- on 2026-09-20. For fo_leading, reading A (the QuickScan ignored outright)
+-- emptied the unclassified class of 299 of the 376, because the onderzoek's
+-- record carries none of the fields compute_unclassified_risk reads, while
+-- 371 still had a valid QuickScan. Reading B (below, chosen by Yorick
+-- 2026-09-23) lets a valid QuickScan fill what the onderzoek leaves empty:
+-- 53 panden change, all but 3 to a different class, not to nothing.
 --
 -- What this candidate is. The frozen model's SQL with ONE change: the
 -- QuickScan term of the four risk COALESCEs (and the matching reliability
@@ -29,7 +32,9 @@
 -- 20260920_005), including the construction-year fallback wrapper.
 --
 --   gate 'fo_leading'  a funderingsonderzoek dated within 5 years exists
---                      -> the QuickScan does not override; normal chain
+--                      -> the onderzoek's own terms lead; where they give
+--                         nothing for a field, a QuickScan within 3 years
+--                         fills it before cluster and indicative (reading B)
 --   gate 'qs_valid'    otherwise, QuickScan dated within 3 years
 --                      -> the QuickScan overrides all four risks (as today)
 --   gate 'qs_expired'  otherwise -> the QuickScan does not override
@@ -170,6 +175,7 @@ SELECT
             ARRAY['drystand', 'fungus_infection', 'bio_fungus_infection']::report.foundation_damage_cause[],
             established.enforcement_term, established.overall_quality, established.recovery_advised
         ),
+        qs_fallback.risk,
         data.compute_damage_risk(
             false,
             cluster.damage_cause,
@@ -195,6 +201,7 @@ SELECT
             ARRAY['bio_infection']::report.foundation_damage_cause[],
             established.enforcement_term, established.overall_quality, established.recovery_advised
         ),
+        qs_fallback.risk,
         data.compute_damage_risk(
             false,
             cluster.damage_cause,
@@ -220,6 +227,7 @@ SELECT
             ARRAY['drainage']::report.foundation_damage_cause[],
             established.enforcement_term, established.overall_quality, established.recovery_advised
         ),
+        qs_fallback.risk,
         data.compute_damage_risk(
             false,
             cluster.damage_cause,
@@ -244,6 +252,7 @@ SELECT
             established.enforcement_term, established.overall_quality,
             established.recovery_advised, established.damage_cause
         ),
+        qs_fallback.risk,
         data.compute_unclassified_risk(
             cluster_recovery_sample.type IS NOT NULL, 'e', 'd',
             cluster.enforcement_term, cluster.overall_quality,
@@ -284,7 +293,15 @@ FROM gated g
     LATERAL (SELECT CASE
         WHEN NOT apply_rule OR g.gate = 'qs_valid'
             THEN established.facade_scan_risk::text::data.foundation_risk_indication
-    END) AS qs_term(risk)
+    END) AS qs_term(risk),
+    -- Reading B (Yorick, 2026-09-23): under fo_leading the onderzoek's own
+    -- terms come first; where they produce nothing for a field, a QuickScan
+    -- that is still within 3 years fills it, ahead of cluster and indicative.
+    LATERAL (SELECT CASE
+        WHEN apply_rule AND g.gate = 'fo_leading'
+         AND g.qs_date >= current_date - interval '3 years'
+            THEN established.facade_scan_risk::text::data.foundation_risk_indication
+    END) AS qs_fallback(risk)
 ) base;
 $$;
 
