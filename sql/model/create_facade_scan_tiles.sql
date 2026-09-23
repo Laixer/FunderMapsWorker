@@ -16,9 +16,9 @@
 --
 -- maplayer.facade_scan (the view) is NOT dropped: it still feeds the
 -- nightly GPKG export to s3://fundermaps-data/mapset/, which is the
--- permanent model history. The refresh below repeats the view's joins
--- rather than selecting from it, because the tiles need the CBS ids the
--- view does not expose and the archived GPKG schema must not drift.
+-- permanent model history, so its row set must not shrink. The refresh
+-- below selects from the view and keeps only QuickScan (addendum) rows;
+-- the filter lives here, not in the view (db/migrations/20260918_003).
 
 CREATE TABLE IF NOT EXISTS maplayer.facade_scan_tiles (
     external_id text PRIMARY KEY,
@@ -46,7 +46,11 @@ CREATE TABLE IF NOT EXISTS maplayer.facade_scan_tiles (
     facade_scan_risk text,
     risk text,
     priority text,
-    geom geometry(MultiPolygon, 3857)
+    geom geometry(MultiPolygon, 3857),
+    -- facade_scan_risk grouped the way the melder mails do: a/b = laag,
+    -- c = midden, d/e = hoog. Not published in the tiles (the Martin
+    -- function below does not select it); WebFront groups on the client.
+    risk_class text
 );
 
 CREATE INDEX IF NOT EXISTS facade_scan_tiles_geom_idx
@@ -62,7 +66,7 @@ AS $$
     INSERT INTO maplayer.facade_scan_tiles (
         external_id, neighborhood_id, district_id, municipality_id,
         height, owner, skewed_parallel_facade, skewed_perpendicular_facade,
-        facade_type, settlement_speed, facade_scan_risk, risk, priority, geom
+        facade_type, settlement_speed, facade_scan_risk, risk, risk_class, priority, geom
     )
     SELECT
         f.external_id,
@@ -77,9 +81,18 @@ AS $$
         f.settlement_speed::text,
         f.facade_scan_risk::text,
         f.risk::text,
+        CASE f.facade_scan_risk::text
+            WHEN 'a' THEN 'laag'
+            WHEN 'b' THEN 'laag'
+            WHEN 'c' THEN 'midden'
+            WHEN 'd' THEN 'hoog'
+            WHEN 'e' THEN 'hoog'
+            ELSE NULL
+        END,
         f.priority::text,
         ST_Multi(ST_Transform(f.geom, 3857))
-    FROM maplayer.facade_scan f;
+    FROM maplayer.facade_scan f
+    WHERE f.inquiry_type = 'facade_scan';
 
     ANALYZE maplayer.facade_scan_tiles;
 $$;
