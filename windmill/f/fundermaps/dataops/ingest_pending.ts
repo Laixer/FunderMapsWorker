@@ -104,7 +104,7 @@ export async function main(pg: Postgresql, s3: S3, openrouter: string, limit: nu
 
 /** The worker image lacks poppler/ImageMagick/`file`; they vanish on a container restart. */
 async function ensureTools() {
-  const missing = (await Promise.all(["pdftotext", "pdftoppm", "convert", "file"].map((b) => Bun.which(b)))).some((p) => !p);
+  const missing = (await Promise.all(["pdftotext", "pdftoppm", "convert", "file", "vips", "tiffset"].map((b) => Bun.which(b)))).some((p) => !p);
   if (!missing) return;
   console.log("installing pdf/image tools");
   await $`apt-get update -qq`.quiet().nothrow();
@@ -113,6 +113,9 @@ async function ensureTools() {
   // plugin, split out of libheif since Ubuntu 24.04 / Debian trixie. Older
   // images have it built in, so a missing package is not an error.
   await $`env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libheif-plugin-libde265`.quiet().nothrow();
+  // Archive TIFFs: vips as a second reader, libtiff's tiffinfo/tiffset to
+  // repair fax scans that lack their Photometric tag (src/providers/pdf.ts).
+  await $`env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libvips-tools libtiff-tools`.quiet().nothrow();
 }
 
 /** FunderMapsWorker at main, cached per container. Returns the short commit. */
