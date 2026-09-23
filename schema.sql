@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 35aHI7VKzfz4ysbPHQ5VkgaQdhFX3EQNkPdYVfhrkGf8f89GBHlbOuVi3hiV2IO
+\restrict D0QkBNdIfCzwZaE2tX5S62dkfZ9U3nIeoOQLpFSS4dkA4XN6vZioFhQtZcMD7bm
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2164,7 +2164,7 @@ CREATE PROCEDURE maplayer.refresh_facade_scan_tiles()
         f.settlement_speed::text,
         f.facade_scan_risk::text,
         f.risk::text,
-        CASE f.risk::text
+        CASE f.facade_scan_risk::text
             WHEN 'a' THEN 'laag'
             WHEN 'b' THEN 'laag'
             WHEN 'c' THEN 'midden'
@@ -8179,5 +8179,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 35aHI7VKzfz4ysbPHQ5VkgaQdhFX3EQNkPdYVfhrkGf8f89GBHlbOuVi3hiV2IO
+\unrestrict D0QkBNdIfCzwZaE2tX5S62dkfZ9U3nIeoOQLpFSS4dkA4XN6vZioFhQtZcMD7bm
 
