@@ -370,31 +370,49 @@ ALTER PROCEDURE data.refresh_model_risk_2026_3() OWNER TO fundermaps;
 GRANT SELECT ON data.model_risk_2026_3 TO fundermaps_windmill;
 GRANT SELECT ON data.model_compare_2026_3 TO fundermaps_windmill;
 
-CALL data.refresh_model_risk_2026_3();
+-- ---------------------------------------------------------------------------
+-- Build and register. A schema-only database (the CI bootstrap from
+-- schema.sql) has the sample and model matviews unpopulated, and reading them
+-- errors; there the candidate is registered but not built.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    populated boolean := (SELECT bool_and(relispopulated) FROM pg_class
+                           WHERE oid IN ('data.building_sample'::regclass,
+                                         'data.cluster_sample'::regclass,
+                                         'data.supercluster_sample'::regclass,
+                                         'data.model_risk_static_2024_1'::regclass));
+    fingerprint jsonb;
+BEGIN
+    IF populated THEN
+        CALL data.refresh_model_risk_2026_3();
+        fingerprint := jsonb_build_object(
+            'note', 'row counts are fingerprints taken when this row was inserted',
+            'scope_rows',         (SELECT count(*) FROM data.model_risk_2026_3),
+            'gate',               (SELECT jsonb_object_agg(gate, n) FROM (SELECT gate, count(*) n FROM data.model_risk_2026_3 GROUP BY gate) x),
+            'panden_changed',     (SELECT count(DISTINCT building_id) FROM data.model_compare_2026_3),
+            'control_mismatches', (SELECT count(*) FROM data.model_risk_2026_3_compute(false) c
+                                     JOIN data.model_risk_static_2024_1 m USING (building_id)
+                                    WHERE (c.drystand_risk, c.bio_infection_risk, c.dewatering_depth_risk, c.unclassified_risk,
+                                           c.drystand_risk_reliability, c.bio_infection_risk_reliability, c.dewatering_depth_risk_reliability)
+                                          IS DISTINCT FROM
+                                          (m.drystand_risk, m.bio_infection_risk, m.dewatering_depth_risk, m.unclassified_risk,
+                                           m.drystand_risk_reliability, m.bio_infection_risk_reliability, m.dewatering_depth_risk_reliability)),
+            'building_sample',    jsonb_build_object('rows', (SELECT count(*) FROM data.building_sample)),
+            'inquiry',            jsonb_build_object('rows', (SELECT count(*) FROM report.inquiry))
+        );
+    ELSE
+        fingerprint := jsonb_build_object(
+            'note', 'not built: sample/model matviews unpopulated (schema-only database); CALL data.refresh_model_risk_2026_3() after the first refresh');
+    END IF;
 
--- ---------------------------------------------------------------------------
--- Register the candidate, with the faithfulness check and the headline counts.
--- ---------------------------------------------------------------------------
-INSERT INTO data.model_version (slug, title, status, is_default, notes, inputs)
-SELECT
-    'model-2026.3-rc1',
-    'QuickScan precedence gate: 3-year window, recent onderzoek leads (candidate)',
-    'candidate',
-    false,
-    'model-2024.1 with one change: the QuickScan override of the four risks fires only when no funderingsonderzoek (foundation_research, inspectionpit, second_opinion, additional_research) is dated within 5 years AND the QuickScan is dated within 3 years (Don''s rule, 2026-07-27/09-06/09-11). Reliability of a QuickScan-driven risk unchanged (established). Built for the panden whose building_sample carries a facade_scan_risk; elsewhere identical to 2024.1 by construction. Diff: data.model_compare_2026_3.',
-    jsonb_build_object(
-        'note', 'row counts are fingerprints taken when this row was inserted',
-        'scope_rows',         (SELECT count(*) FROM data.model_risk_2026_3),
-        'gate',               (SELECT jsonb_object_agg(gate, n) FROM (SELECT gate, count(*) n FROM data.model_risk_2026_3 GROUP BY gate) x),
-        'panden_changed',     (SELECT count(DISTINCT building_id) FROM data.model_compare_2026_3),
-        'control_mismatches', (SELECT count(*) FROM data.model_risk_2026_3_compute(false) c
-                                 JOIN data.model_risk_static_2024_1 m USING (building_id)
-                                WHERE (c.drystand_risk, c.bio_infection_risk, c.dewatering_depth_risk, c.unclassified_risk,
-                                       c.drystand_risk_reliability, c.bio_infection_risk_reliability, c.dewatering_depth_risk_reliability)
-                                      IS DISTINCT FROM
-                                      (m.drystand_risk, m.bio_infection_risk, m.dewatering_depth_risk, m.unclassified_risk,
-                                       m.drystand_risk_reliability, m.bio_infection_risk_reliability, m.dewatering_depth_risk_reliability)),
-        'building_sample',    jsonb_build_object('rows', (SELECT count(*) FROM data.building_sample)),
-        'inquiry',            jsonb_build_object('rows', (SELECT count(*) FROM report.inquiry))
-    )
-WHERE NOT EXISTS (SELECT 1 FROM data.model_version WHERE slug = 'model-2026.3-rc1');
+    INSERT INTO data.model_version (slug, title, status, is_default, notes, inputs)
+    SELECT
+        'model-2026.3-rc1',
+        'QuickScan precedence gate: 3-year window, recent onderzoek leads (candidate)',
+        'candidate',
+        false,
+        'model-2024.1 with one change: the QuickScan override of the four risks fires only when no funderingsonderzoek (foundation_research, inspectionpit, second_opinion, additional_research) is dated within 5 years AND the QuickScan is dated within 3 years (Don''s rule, 2026-07-27/09-06/09-11). Reliability of a QuickScan-driven risk unchanged (established). Built for the panden whose building_sample carries a facade_scan_risk; elsewhere identical to 2024.1 by construction. Diff: data.model_compare_2026_3.',
+        fingerprint
+    WHERE NOT EXISTS (SELECT 1 FROM data.model_version WHERE slug = 'model-2026.3-rc1');
+END $$;
