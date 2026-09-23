@@ -279,11 +279,42 @@ export async function toBrowserImage(path: string, outDir: string): Promise<{ pa
         return { path: dst, mime: lossless ? "image/png" : "image/jpeg", converted: true };
       }
     }
+    // A third reason (2026-09-23, dossier 5551): the Noord-Hollands Archief
+    // delivers Group-4 fax TIFFs with no PhotometricInterpretation tag (262).
+    // The coder is present, but ImageMagick says "improper image header" and
+    // vips "required field 262 missing". Fax scans are WhiteIsZero by
+    // convention, so write that tag on a copy and try both again.
+    const repaired = await repairFaxTiff(path, outDir);
+    if (repaired) {
+      const png = join(outDir, `${stem}.png`);
+      const c = await spawn(["convert", `${repaired}[0]`, png]);
+      if (c.exitCode === 0 && (await Bun.file(png).exists())) return { path: png, mime: "image/png", converted: true };
+      if (vipsCanTry(mime)) {
+        const v = await spawn(["vips", "copy", `${repaired}[page=0]`, png]);
+        if (v.exitCode === 0 && (await Bun.file(png).exists())) return { path: png, mime: "image/png", converted: true };
+      }
+    }
     throw new Error(
       `cannot convert ${mime} to a browser image: ${first}${await missingCoderHint(mime)}`,
     );
   }
   return { path: dst, mime: lossless ? "image/png" : "image/jpeg", converted: true };
+}
+
+/**
+ * A copy of a CCITT (fax) TIFF with the missing PhotometricInterpretation tag
+ * set to WhiteIsZero, or null when the file is not that case or libtiff's
+ * tools are not on this box. Never touches the original.
+ */
+export async function repairFaxTiff(path: string, outDir: string): Promise<string | null> {
+  if (!Bun.which("tiffinfo") || !Bun.which("tiffset")) return null;
+  const info = await spawn(["tiffinfo", path]);
+  const text = `${info.stdout}\n${info.stderr}`;
+  if (!/Compression Scheme:\s*CCITT/i.test(text) || /Photometric Interpretation:/i.test(text)) return null;
+  const copy = join(outDir, `${basename(path).replace(/\.[^.]+$/, "")}.fixed.tif`);
+  await Bun.write(copy, Bun.file(path));
+  const s = await spawn(["tiffset", "-s", "262", "0", copy]);
+  return s.exitCode === 0 ? copy : null;
 }
 
 /** Is `vips` on this box, and is it worth asking about this format? */
