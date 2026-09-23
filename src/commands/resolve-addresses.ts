@@ -137,7 +137,7 @@ async function expandRanges(opts: { dossier?: number; apply: boolean }) {
        ${opts.dossier ? sql`AND d.id = ${opts.dossier}` : sql``}
      ORDER BY d.id, f.id`).filter((r) => parseAddressList(r.address_text));
 
-  const counts = { values: rows.length, texts: 0, expanded_texts: 0, unexpandable_texts: 0, moved: 0, copies: 0, moved_off_wrong_address: 0, kept_in_range: 0 };
+  const counts = { values: rows.length, texts: 0, expanded_texts: 0, unexpandable_texts: 0, moved: 0, copies: 0, moved_off_wrong_address: 0, kept_in_range: 0, superseded_overlap: 0 };
   const byDossier = new Map<number, RangeValue[]>();
   for (const r of rows) byDossier.set(r.dossier_id, [...(byDossier.get(r.dossier_id) ?? []), r]);
 
@@ -167,11 +167,28 @@ async function expandRanges(opts: { dossier?: number; apply: boolean }) {
       const targetIds = new Set(targets.map((t) => t.id));
 
       for (const v of vs) {
-        const own = v.address_id && targetIds.has(v.address_id) ? targets.find((t) => t.id === v.address_id)! : targets[0]!;
+        // Two ranges in one document can overlap ("164-170" and "170-182"):
+        // the same value may already sit on some of these addresses, and the
+        // reading is unique on (field, value, address text). The row moves to
+        // an address that is still free; if none is, the value is covered
+        // everywhere already and the row is superseded (kept, with its history).
+        const taken = new Set(
+          (await sql<{ address_text: string }[]>`
+            SELECT address_text FROM dataops.extraction_field
+             WHERE extraction_id = ${v.extraction_id} AND field = ${v.field} AND value = ${v.value}
+               AND id <> ${v.id} AND address_text IN ${sql(targets.map((t) => t.text))}`).map((r) => r.address_text),
+        );
+        const free = targets.filter((t) => !taken.has(t.text));
+        const own = free.find((t) => t.id === v.address_id) ?? free[0] ?? null;
         if (v.address_id && targetIds.has(v.address_id)) counts.kept_in_range++;
         else if (v.address_id) counts.moved_off_wrong_address++;
+        if (!own) {
+          counts.superseded_overlap++;
+          if (opts.apply) await sql`UPDATE dataops.extraction_field SET state = 'superseded' WHERE id = ${v.id} AND state = 'pending'`;
+          continue;
+        }
         counts.moved++;
-        counts.copies += targets.length - 1;
+        counts.copies += free.length - 1;
         if (!opts.apply) continue;
         await sql`UPDATE dataops.extraction_field SET address_id = ${own.id}, address_text = ${own.text}
                    WHERE id = ${v.id} AND state = 'pending'`;
