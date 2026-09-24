@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { inquiryRegistrations, readRegistrations, sharedRegistration } from "./qs-registration.ts";
+import { duplicateNote, inquiryRegistrations, readRegistrations, sharedRegistration } from "./qs-registration.ts";
 
 // Layout text as pdftotext -layout prints a Funderingsattest (FM2026-000323).
 const ATTEST = `
@@ -73,5 +73,12 @@ describe("sharedRegistration", () => {
       [{ system: "nafo", number: "105901", evidence: "" }],
       [{ system: "funderconsult", number: "105901", evidence: "" }],
     )).toBeNull();
+  });
+});
+
+describe("duplicateNote", () => {
+  test("names the registration and the date of the QuickScan we already have", () => {
+    const note = duplicateNote({ system: "nafo", number: "105895", evidence: "" }, "2026-09-23");
+    expect(note).toBe("Deze QuickScan (registratienummer 105895) stond al in FunderMaps, van 23-09-2026. Er is niets veranderd; het risico houdt er al rekening mee.");
   });
 });
