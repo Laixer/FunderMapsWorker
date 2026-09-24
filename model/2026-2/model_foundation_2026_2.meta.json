@@ -73,9 +73,9 @@
   "verbose": -1,
   "num_threads": 4
  },
- "best_iteration": 164,
- "n_train": 174659,
- "n_valid": 37726,
+ "best_iteration": 185,
+ "n_train": 173916,
+ "n_valid": 37648,
  "label_date": "2026-09-24",
  "knn": {
   "K": 30,
@@ -87,5 +87,5 @@
   "local_radius_m": 250.0,
   "municipal_min_labels": 30
  },
- "trained_at": "2026-09-24T08:02:44"
+ "trained_at": "2026-09-24T11:51:25"
 }

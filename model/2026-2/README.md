@@ -39,9 +39,10 @@ every method does, in municipalities without local reports (Sneek). Hence the
 Re-score: `python train_predict.py [--label-date YYYY-MM-DD] [--rebuild]` (about 11 min, 4.6 GB peak on agent0), then `TRUNCATE` and reload (step 2).
 
 ## Last run (2026-09-24)
-- Families: no_pile 59.8% · concrete 31.4% · wood 8.7%.
-- Evidence: none 66.9% · local 17.0% · municipal 16.0%.
-- Wood share by evidence tier: local 21.5%, municipal 10.8%, none 5.0%.
+- Labels: report samples without `quickscan` (vervallen) and without `facade_scan` (QuickScan addendum, our own output = circular).
+- Families: no_pile 59.0% · concrete 32.6% · wood 8.4%.
+- Evidence: none 67.5% · local 16.8% · municipal 15.8%.
+- Wood share by evidence tier: local 21.4%, municipal 9.2%, none 5.0%.
 
 ## Read with care
 - **Two-thirds of panden have no nearby report** (`evidence = none`). For them the model falls back on building attributes and context, and under-predicts wood. That's the known wood under-prediction as evidence thins out. Always show `evidence` next to the prediction.

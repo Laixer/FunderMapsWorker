@@ -37,7 +37,7 @@ CREATE TABLE data.model_foundation_2026_2 (
 );
 
 COMMENT ON TABLE data.model_foundation_2026_2 IS
-'Candidate model-2026.2 (Worker #152): LightGBM foundation-family probabilities per pand, trained offline on report labels (quickscans excluded). evidence: local = a report label in the same buurt x era or within 250 m; municipal = municipality has >= 30 labels; none = neither. Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
+'Candidate model-2026.2 (Worker #152): LightGBM foundation-family probabilities per pand, trained offline on report labels (quickscan and facade_scan excluded). evidence: local = a report label in the same buurt x era or within 250 m; municipal = municipality has >= 30 labels; none = neither. Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
 
 -- Martin function source: GET /foundation_candidate/{z}/{x}/{y}.
 -- Geometry comes from maplayer.building_tiles (refreshed nightly), so the
