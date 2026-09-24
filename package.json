@@ -11,6 +11,7 @@
     "normalize-artifacts": "bun run src/commands/normalize-artifacts.ts",
     "load-loket-export": "bun run src/commands/load-loket-export.ts",
     "resolve-addresses": "bun run src/commands/resolve-addresses.ts",
+    "check-qs-duplicates": "bun run src/commands/check-qs-duplicates.ts",
     "migrate": "bun run src/commands/migrate.ts",
     "test": "bun test",
     "typecheck": "bun run --bun tsc --noEmit"
