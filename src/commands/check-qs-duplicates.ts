@@ -5,14 +5,21 @@
  * registration number from the PDF (text and file name) and compare it with
  * the QuickScans already on the dossier's pand. Read-only: it reports, it
  * never closes a dossier or sends a mail. Closing a certain duplicate (and so
- * the melder's "verwerkt" mail) is the API's job, after Yorick's review.
+ * the melder's "verwerkt" mail) goes through the API, so the mail fires
+ * exactly as when a reviewer closes it in Data Studio.
+ *
+ * --close closes every `dubbel` dossier via POST /api/dataops/dossier/:id/outcome
+ * (outcome duplicate, with the registration and the existing QuickScan as the
+ * note the melder reads). Off by default. It needs FUNDERMAPS_API_URL and
+ * FUNDERMAPS_API_KEY: an fmsk key of a user in the platform organisation,
+ * issued by Yorick -- automated mail to melders is his go (#219).
  *
  * Verdicts:
  *   dubbel    the pand already has a QuickScan with the same registration
  *   nieuw     a registration was read, and no QuickScan on the pand has it
  *   onbekend  no registration could be read; a human decides, as before
  *
- *   bun run src/commands/check-qs-duplicates.ts [--dossier <id>] [--json]
+ *   bun run src/commands/check-qs-duplicates.ts [--dossier <id>] [--json] [--close]
  */
 
 import { mkdtemp, rm } from "node:fs/promises";
@@ -26,6 +33,7 @@ import {
   inquiryRegistrations,
   readRegistrations,
   sharedRegistration,
+  duplicateNote,
   type Registration,
 } from "../lib/qs-registration.ts";
 
@@ -110,6 +118,23 @@ export async function checkDossiers(opts: { dossier?: number }): Promise<Verdict
   return out;
 }
 
+async function closeDuplicates(verdicts: Verdict[]): Promise<number> {
+  const url = process.env["FUNDERMAPS_API_URL"]?.replace(/\/$/, "");
+  const key = process.env["FUNDERMAPS_API_KEY"];
+  if (!url || !key) throw new Error("--close needs FUNDERMAPS_API_URL and FUNDERMAPS_API_KEY");
+  let closed = 0;
+  for (const v of verdicts.filter((x) => x.verdict === "dubbel")) {
+    const res = await fetch(`${url}/api/dataops/dossier/${v.dossierId}/outcome`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome: "duplicate", note: duplicateNote(v.match!.registration, v.match!.documentDate) }),
+    });
+    if (res.ok) { closed++; log.info(`${v.reference ?? v.dossierId}: closed as duplicate`); }
+    else log.warn(`${v.reference ?? v.dossierId}: close failed, HTTP ${res.status} ${await res.text()}`);
+  }
+  return closed;
+}
+
 function print(verdicts: Verdict[]): void {
   if (!verdicts.length) { log.info("no open melden dossiers with a QuickScan"); return; }
   for (const v of verdicts) {
@@ -131,6 +156,7 @@ if (import.meta.main) {
     const verdicts = await checkDossiers({ dossier: arg("dossier") ? Number(arg("dossier")) : undefined });
     if (argv.includes("--json")) process.stdout.write(JSON.stringify(verdicts, null, 2) + "\n");
     else { log.banner("Data Ops — QuickScan duplicates"); print(verdicts); }
+    if (argv.includes("--close")) log.info(`closed ${await closeDuplicates(verdicts)} duplicate dossier(s)`);
     process.exit(0);
   } catch (e) {
     log.error(String(e));

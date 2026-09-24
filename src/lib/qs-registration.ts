@@ -83,3 +83,10 @@ export function sharedRegistration(submitted: Registration[], existing: Registra
   const have = new Set(existing.map(key));
   return submitted.find((r) => have.has(key(r))) ?? null;
 }
+
+/** The note on a closed duplicate; the melder reads it in the "verwerkt" mail. */
+export function duplicateNote(registration: Registration, existingDate: string): string {
+  const label = registration.system === "nafo" ? `registratienummer ${registration.number}` : `REG-${registration.number}`;
+  const [y, m, d] = existingDate.split("-");
+  return `Deze QuickScan (${label}) stond al in FunderMaps, van ${d}-${m}-${y}. Er is niets veranderd; het risico houdt er al rekening mee.`;
+}
