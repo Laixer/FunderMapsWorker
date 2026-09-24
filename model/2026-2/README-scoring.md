@@ -39,14 +39,15 @@ cd ~/ft-research
 (`03_gm1900_city.sql` is only needed for the study's Sneek subset, not here.)
 
 The script builds the **labels** itself from `samples.csv`, using the same rules as `scripts/10_labels.py`:
-- It drops deleted samples and inquiries, and all `quickscan` samples (those are circular).
+- It drops deleted samples and inquiries, and all `quickscan` (vervallen) and `facade_scan` (QuickScan addendum) samples. The addendum is our own model
+  output read back, so it's circular. Vervallen made Utrecht worse in the v2 study, so Don decided 2026-09-24 to keep it out; he reviews them per report in #218.
 - `document_date` must be on or before `--label-date` and on or after BAG built year minus 5 years.
 - It keeps one leading sample per pand, ordered by inquiry-type rank, then newest `document_date`, then `sample_id`.
 - It maps the leading sample to a family: wood, no_pile or concrete. Panden whose leading sample is
   `combined`/`other` are left unlabelled.
 
-At label date 2026-09-24 this gives 213,676 labelled panden, of which 212,385 exist in `buildings.csv.gz`.
-That matches the study.
+At label date 2026-09-24 this gives 212,835 labelled panden, of which 211,564 exist in `buildings.csv.gz`.
+The study had 213,676 / 212,385: it still included `facade_scan`.
 
 ## Features (36, identical to the study's `LGB_FULL`)
 
@@ -89,16 +90,19 @@ contains the best iteration only.
 
 ## Last run (2026-09-24, label date 2026-09-24)
 
-- Wall time 10:58, peak RSS 4.55 GB. 11,321,489 rows written.
-- Training: 174,659 rows, with 37,726 held out for validation (grouped by inquiry). Best iteration 164,
-  validation multi_logloss 0.315.
-- Family: no_pile 59.8%, concrete 31.4%, wood 8.7%.
-- Evidence: none 66.9%, local 17.0%, municipal 16.0%.
-- Wood share by evidence tier: local 21.5%, municipal 10.8%, none 5.0%.
+- Wall time 11:50, peak RSS 4.72 GB. 11,321,489 rows written.
+- Labels: 211,564 (wood 81,005 / no_pile 70,972 / concrete 59,587). Facade_scan excluded.
+- Training: 173,916 rows, with 37,648 held out for validation (grouped by inquiry). Best iteration 185,
+  validation multi_logloss 0.329.
+- Family: no_pile 59.0%, concrete 32.6%, wood 8.4%.
+- Evidence: none 67.5%, local 16.8%, municipal 15.8%.
+- Wood share by evidence tier: local 21.4%, municipal 9.2%, none 5.0%.
 - In-sample sanity on labelled panden (**not** an accuracy estimate):
   - 0.971 as scored (own label visible).
-  - 0.965 with the LOO training features.
-- Out-of-sample accuracy is in `../results.csv` (M6c):
+  - 0.966 with the LOO training features.
+- Against the first run (which still had facade_scan labels): 821 fewer labels. Wood went from 8.7% to 8.4%,
+  and wood in `municipal` from 10.8% to 9.2%.
+- Out-of-sample accuracy from the study, which still had facade_scan labels, is in `../results.csv` (M6c). It was not re-run:
   - 0.858 on a random 20% of reports.
   - 0.768 on held-out municipalities.
   - 0.39 in Súdwest-Fryslân and 0.11 in Sneek, where local labels are scarce.

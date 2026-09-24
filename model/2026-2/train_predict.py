@@ -100,7 +100,7 @@ def build_base(label_date, rebuild):
         WHEN 'note' THEN 3 WHEN 'additional_research' THEN 4 WHEN 'demolition_research' THEN 5
         WHEN 'architectural_research' THEN 6 WHEN 'archive_research' THEN 7 ELSE 100 END AS type_rank
     FROM s JOIN fam f USING (foundation_type)
-    WHERE NOT sample_deleted AND NOT inquiry_deleted AND inquiry_type <> 'quickscan'
+    WHERE NOT sample_deleted AND NOT inquiry_deleted AND inquiry_type NOT IN ('quickscan', 'facade_scan')
       AND document_date <= DATE '{label_date}'
       AND (bag_built_year IS NULL OR document_date >= make_date(bag_built_year - 5, 1, 1));
     CREATE TABLE lab AS
