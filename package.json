@@ -21,7 +21,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1133.0",
+    "@aws-sdk/client-s3": "^3.1138.0",
     "postgres": "^3.4.9",
     "zod": "^4.6.5"
   }
