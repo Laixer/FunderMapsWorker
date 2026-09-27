@@ -68,6 +68,17 @@ PARAMS = dict(objective='multiclass', num_class=3, learning_rate=0.05, num_leave
               feature_fraction=0.8, bagging_fraction=0.8, bagging_freq=1, lambda_l2=1.0, verbose=-1, num_threads=4)
 
 
+# model d (oplanger split) -- identical to the study script ft-research/model_d/d.py
+D_PARAMS = dict(objective='binary', learning_rate=0.05, num_leaves=63, min_data_in_leaf=50, feature_fraction=0.8,
+                bagging_fraction=0.8, bagging_freq=1, lambda_l2=1.0, verbose=-1, num_threads=4, seed=7)
+D_CY_FILL = 1960.0
+D_KNN_COLS = ['dk_W', 'dk_d1', 'dk_p', 'dk_near10']
+# grade = f(evidence tier, confidence band), lookup from the out-of-sample study (grade_lookup.csv)
+EV_TIERS = ['buurt', 'nabij', 'municipal', 'none']
+GRADE_BANDS = [0, .5, .6, .7, .8, .9, .95, 1.0001]
+BAND_LBL = ['<0.5', '0.5-0.6', '0.6-0.7', '0.7-0.8', '0.8-0.9', '0.9-0.95', '>=0.95']
+
+
 def log(msg):
     rss = max(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss) / 1024 / 1024
     print(f'[{time.time() - T0:7.1f}s | peak {rss:4.2f} GB] {msg}', flush=True)
@@ -104,9 +115,21 @@ def build_base(label_date, rebuild):
       AND document_date <= DATE '{label_date}'
       AND (bag_built_year IS NULL OR document_date >= make_date(bag_built_year - 5, 1, 1));
     CREATE TABLE lab AS
-    SELECT building_id, CASE family WHEN 'wood' THEN 0 WHEN 'no_pile' THEN 1 ELSE 2 END AS yv, inquiry_id
+    SELECT building_id, CASE family WHEN 'wood' THEN 0 WHEN 'no_pile' THEN 1 ELSE 2 END AS yv, inquiry_id,
+      CASE WHEN family = 'wood' THEN (foundation_type = 'wood_charger')::INT END AS charger
     FROM (SELECT *, row_number() OVER (PARTITION BY building_id ORDER BY type_rank, document_date DESC, sample_id DESC) rn
           FROM elig) WHERE rn = 1 AND family <> 'other';
+    -- own-pand evidence from the reliable old QuickScans (Don 2026-09-26): they count on their own pand only,
+    -- never as a training label. Newest sample per pand, as a 4-type code (0 wood, 1 no_pile, 2 concrete, 3 oplanger).
+    CREATE TABLE qs AS
+    SELECT building_id, t4 FROM (
+      SELECT s.building_id, CASE WHEN s.foundation_type = 'wood_charger' THEN 3 WHEN f.family = 'wood' THEN 0
+          WHEN f.family = 'no_pile' THEN 1 ELSE 2 END AS t4,
+        row_number() OVER (PARTITION BY s.building_id ORDER BY s.document_date DESC, s.sample_id DESC) rn
+      FROM s JOIN fam f USING (foundation_type)
+      WHERE NOT s.sample_deleted AND NOT s.inquiry_deleted AND f.family <> 'other'
+        AND s.inquiry_id IN (SELECT inquiry_id FROM read_csv_auto('{HERE}/qs_reliable_inquiries.csv', header=true))
+    ) WHERE rn = 1;
     DROP TABLE s; DROP TABLE elig;
     """)
     log('labels built: ' + str(con.sql('SELECT count(*) FROM lab').fetchone()[0]))
@@ -144,10 +167,11 @@ def build_base(label_date, rebuild):
       ctx.n/9.0 AS ctx_density, ctx.scy/nullif(ctx.ncy,0) AS ctx_mean_cy, ctx.n1930/ctx.n::DOUBLE AS ctx_share_pre1930,
       ctx.n1965/ctx.n::DOUBLE AS ctx_share_pre1965, ctx.sh/nullif(ctx.nh,0) AS ctx_mean_height,
       bu.buurt_n, bu.buurt_median_cy, bu.buurt_share_pre1930, bu.buurt_mean_ground_level, bu.buurt_mean_height,
-      clu.cluster_id, lab.yv, lab.inquiry_id
+      clu.cluster_id, lab.yv, lab.inquiry_id, lab.charger, qs.t4 AS qs_t4
     FROM b
     JOIN soil_codes sc ON sc.soil_k = coalesce(b.soil, 'NA')
     LEFT JOIN lab USING (building_id)
+    LEFT JOIN qs USING (building_id)
     LEFT JOIN clu USING (building_id)
     LEFT JOIN ctx ON ctx.gx = floor(b.x/200)::INT AND ctx.gy = floor(b.y/200)::INT
     LEFT JOIN bu USING (buurt);
@@ -172,7 +196,7 @@ def build_base(label_date, rebuild):
       f.cy, f.height, f.address_count, f.ground_level, f.surface_area, f.soil_cat, f.gw_level, f.pleistocene_depth,
       f.subsidence_velocity, f.ctx_density, f.ctx_mean_cy, f.ctx_share_pre1930, f.ctx_share_pre1965, f.ctx_mean_height,
       f.buurt_n, f.buurt_median_cy, f.buurt_share_pre1930, f.buurt_mean_ground_level, f.buurt_mean_height, f.x, f.y,
-      f.yv::TINYINT AS yv, f.inquiry_id,
+      f.yv::TINYINT AS yv, f.inquiry_id, f.charger::TINYINT AS charger, f.qs_t4::TINYINT AS qs_t4,
       coalesce(be.c0,0)::INT be_c0, coalesce(be.c1,0)::INT be_c1, coalesce(be.c2,0)::INT be_c2,
       coalesce(beq.c0,0)::INT beq_c0, coalesce(beq.c1,0)::INT beq_c1, coalesce(beq.c2,0)::INT beq_c2,
       coalesce(cl.c0,0)::INT cl_c0, coalesce(cl.c1,0)::INT cl_c1, coalesce(cl.c2,0)::INT cl_c2,
@@ -220,6 +244,28 @@ def knn_block(tree, Y, cy_tr, inq_tr, xy, cy, self_idx=None, inq=None):
         pk = cnt / np.maximum(W, 1e-9)[:, None]
     pk[W < 1e-6] = np.nan
     return np.column_stack([W, d1, d10, pk, near10]).astype(np.float32)   # knn_W,d1,d10,p*3,near10*3
+
+
+def knn_charger(xy_tr, cy_tr, c_tr, inq_tr, xy, cy, inq=None):
+    """Model d kNN: weighted oplanger share among the K nearest wood labels. inq given -> drop same-inquiry
+    neighbours (report-grouped LOO for training rows)."""
+    tree = cKDTree(xy_tr)
+    out = np.empty((len(xy), 4), np.float32)
+    for s in range(0, len(xy), KNN_CHUNK):
+        e = min(s + KNN_CHUNK, len(xy))
+        d, idx = tree.query(xy[s:e], k=K + (60 if inq is not None else 0), workers=4)
+        valid = np.ones_like(d, bool)
+        if inq is not None:
+            valid &= inq_tr[idx] != inq[s:e, None]
+        valid &= np.cumsum(valid, 1) <= K
+        w = np.exp(-d / D0) * np.exp(-np.abs(cy_tr[idx] - cy[s:e, None]) / T0_CY) * valid
+        W = w.sum(1)
+        p = (w * c_tr[idx]).sum(1) / np.maximum(W, 1e-9)
+        p[W < 1e-6] = np.nan
+        f10 = valid & (np.cumsum(valid, 1) <= 10)
+        near10 = (c_tr[idx] * f10).sum(1) / np.maximum(f10.sum(1), 1)
+        out[s:e] = np.column_stack([W, np.where(valid, d, np.inf).min(1), p, near10])
+    return out
 
 
 def share_feats(c):
@@ -333,11 +379,83 @@ def main():
         P[s:e] = mdl.predict(X[s:e], num_iteration=best)
         log(f'predict {e:,}/{N:,}')
 
-    # evidence tier
-    local = (be_n_all >= 1) | (X[:, col['knn_d1']] <= LOCAL_RADIUS_M)
+    # ------------------------------------------------------------------------------------------ model a
+    # label-free LightGBM (attributes + context only). Better than c where a municipality has no reports of its
+    # own (73% vs 57% with whole municipalities held out); c is better where the buurt has reports.
+    nb = len(LGB_BASE)
+    Xa_tr = X[lab_idx][:, :nb]
+    da = lgb.Dataset(Xa_tr[~va], y_lab[~va], feature_name=LGB_BASE, categorical_feature=cat, free_raw_data=True)
+    dav = lgb.Dataset(Xa_tr[va], y_lab[va], feature_name=LGB_BASE, categorical_feature=cat, reference=da)
+    mdl_a = lgb.train(PARAMS, da, 2000, valid_sets=[dav], callbacks=[lgb.early_stopping(50, verbose=False)])
+    del Xa_tr, da, dav
+    Pa = np.empty((N, 3), np.float32)
+    for s in range(0, N, CHUNK):
+        e = min(s + CHUNK, N)
+        Pa[s:e] = mdl_a.predict(X[s:e, :nb], num_iteration=mdl_a.best_iteration)
+    mdl_a.save_model(os.path.join(OUT, MODEL_NAME + '_a.lgb'), num_iteration=mdl_a.best_iteration)
+    log(f'model a trained (best_iteration {mdl_a.best_iteration}) and scored')
+
+    # evidence tier: buurt = a label in the same buurt x era; nabij = only a label <= 250 m; then municipal / none
+    buurt = be_n_all >= 1
+    local = buurt | (X[:, col['knn_d1']] <= LOCAL_RADIUS_M)
     municipal = gm_nlab >= MUNICIPAL_MIN_LABELS
-    evidence = np.where(local, 0, np.where(municipal, 1, 2)).astype(np.int8)
+    evidence = np.where(buurt, 0, np.where(local, 1, np.where(municipal, 2, 3))).astype(np.int8)
+    Xd = X[:, :nb + 2].copy()                                 # LGB_BASE + x, y for model d
     del X
+
+    # the blend (Don, 2026-09-26): c where the buurt has labels, else the mean of a and c
+    P = np.where(buurt[:, None], P, (P + Pa) / 2).astype(np.float32)
+    del Pa
+
+    # ------------------------------------------------------------------------------------------ model d
+    # splits wood into wood pile vs wood pile with concrete top (Don, 2026-09-27). Binary LightGBM on the wood
+    # labels only; the family stays the blend's decision, d only splits a wood.
+    pf = pq.ParquetFile(base)
+    rd = lambda c: pf.read(columns=[c]).column(0).to_numpy(zero_copy_only=False)
+    charger = rd('charger')
+    qs_t4 = rd('qs_t4')
+    wl = lab_idx[y_lab == 0]
+    ch_w = charger[wl].astype(np.int8)
+    xy = Xd[:, nb:nb + 2].astype(np.float64)
+    cyd = Xd[:, col['cy']].astype(np.float64)
+    cyd[np.isnan(cyd)] = D_CY_FILL
+    inq_w = inq_lab[y_lab == 0]
+    kd_tr = knn_charger(xy[wl], cyd[wl], ch_w, inq_w, xy[wl], cyd[wl], inq=inq_w)
+    dfeats = LGB_BASE + ['x', 'y'] + D_KNN_COLS
+    Xw = np.column_stack([Xd[wl], kd_tr])
+    vd = np.array([int(hashlib.md5(('v' + str(v)).encode()).hexdigest()[:8], 16) % 10 == 0 for v in inq_w])
+    dd = lgb.Dataset(Xw[~vd], ch_w[~vd], feature_name=dfeats, categorical_feature=['soil_cat'])
+    ddv = lgb.Dataset(Xw[vd], ch_w[vd], feature_name=dfeats, categorical_feature=['soil_cat'], reference=dd)
+    mdl_d = lgb.train(D_PARAMS, dd, 2000, valid_sets=[ddv], callbacks=[lgb.early_stopping(50, verbose=False)])
+    mdl_d.save_model(os.path.join(OUT, MODEL_NAME + '_d.lgb'), num_iteration=mdl_d.best_iteration)
+    del Xw, dd, ddv, kd_tr
+    p_opl = np.empty(N, np.float32)
+    for s in range(0, N, CHUNK):
+        e = min(s + CHUNK, N)
+        kk = knn_charger(xy[wl], cyd[wl], ch_w, inq_w, xy[s:e], cyd[s:e])
+        p_opl[s:e] = mdl_d.predict(np.column_stack([Xd[s:e], kk]), num_iteration=mdl_d.best_iteration)
+    del Xd, xy, cyd
+    log(f'model d trained on {len(wl):,} wood labels ({ch_w.mean():.1%} oplanger, best_iteration {mdl_d.best_iteration}) and scored')
+
+    # ------------------------------------------------------------------------------------------ final type + grade
+    # 4 types: 0 wood, 1 no_pile, 2 concrete, 3 wood_charger (oplanger)
+    fam = P.argmax(1).astype(np.int8)
+    t4 = np.where(fam == 0, np.where(p_opl >= 0.5, 3, 0), fam).astype(np.int8)
+    conf = P.max(1)
+    band = np.digitize(conf, GRADE_BANDS[1:-1])                   # 0..6, bands as in grade_lookup.csv
+    lk = pd.read_csv(os.path.join(HERE, 'grade_lookup.csv'))
+    grid = np.full((4, len(BAND_LBL)), '', object)
+    for r in lk.itertuples():
+        grid[EV_TIERS.index(r.evidence), BAND_LBL.index(r.band)] = r.grade
+    grade = grid[evidence, band]
+    # data leads (Don, 2026-09-26: "als iets bekend is op pand geldt dat, anders het model")
+    lab_t4 = np.full(N, -1, np.int8)
+    lab_t4[lab_idx] = np.where(y_lab == 0, np.where(charger[lab_idx] == 1, 3, 0), y_lab)
+    qs_ok = ~np.isnan(qs_t4.astype(np.float64))
+    source = np.where(lab_t4 >= 0, 1, np.where(qs_ok, 2, 0)).astype(np.int8)   # 0 model, 1 report, 2 quickscan
+    t4 = np.where(source == 1, lab_t4, np.where(source == 2, np.nan_to_num(qs_t4.astype(np.float64)).astype(np.int8), t4))
+    grade = np.where(source > 0, 'vastgesteld', grade)
+    family = np.where(t4 == 3, 0, t4).astype(np.int8)
 
     # probabilities in thousandths that sum to exactly 1000 (largest remainder)
     raw = P.astype(np.float64) * 1000
@@ -348,10 +466,10 @@ def main():
     for r in range(3):
         add = short > r
         q[np.arange(N)[add], order[add, r]] += 1
-    fam = P.argmax(1).astype(np.int8)
-    conf = q[np.arange(N), fam]
+    conf_q = q.max(1)
     pd.DataFrame({'rid': np.arange(N, dtype=np.int32), 'p_wood': q[:, 0], 'p_no_pile': q[:, 1], 'p_concrete': q[:, 2],
-                  'fam': fam, 'conf': conf, 'ev': evidence}).to_parquet(os.path.join(WORK, 'pred.parquet'), index=False)
+                  'p_opl': np.round(p_opl * 1000).astype(np.int16), 'fam': family, 't4': t4, 'conf': conf_q,
+                  'ev': evidence, 'grade': grade, 'src': source}).to_parquet(os.path.join(WORK, 'pred.parquet'), index=False)
 
     out = os.path.join(OUT, MODEL_NAME + '.csv.gz')
     con = duckdb.connect()
@@ -359,29 +477,42 @@ def main():
     con.execute(f"""
     COPY (
       SELECT b.building_id, (p.p_wood / 1000.0)::DECIMAL(4,3) AS p_wood, (p.p_no_pile / 1000.0)::DECIMAL(4,3) AS p_no_pile,
-        (p.p_concrete / 1000.0)::DECIMAL(4,3) AS p_concrete,
-        ['wood','no_pile','concrete'][p.fam + 1] AS family, (p.conf / 1000.0)::DECIMAL(4,3) AS confidence,
-        ['local','municipal','none'][p.ev + 1] AS evidence
+        (p.p_concrete / 1000.0)::DECIMAL(4,3) AS p_concrete, (p.p_opl / 1000.0)::DECIMAL(4,3) AS p_oplanger,
+        ['wood','no_pile','concrete'][p.fam + 1] AS family,
+        ['wood','no_pile','concrete','wood_charger'][p.t4 + 1] AS foundation_type,
+        (p.conf / 1000.0)::DECIMAL(4,3) AS confidence,
+        ['buurt','nabij','municipal','none'][p.ev + 1] AS evidence, p.grade,
+        ['model','report','quickscan'][p.src + 1] AS source
       FROM read_parquet('{WORK}/pred.parquet') p JOIN read_parquet('{base}') b USING (rid) ORDER BY p.rid
     ) TO '{out}' (FORMAT csv, HEADER, COMPRESSION gzip);
     """)
     log(f'wrote {out}')
+    meta_path = os.path.join(OUT, MODEL_NAME + '.meta.json')
+    meta = json.load(open(meta_path))
+    meta.update(model='model-2026.2 blend (c where the buurt has labels, else mean(a, c)) + d (oplanger split)',
+                best_iteration_a=mdl_a.best_iteration, best_iteration_d=mdl_d.best_iteration, features_a=LGB_BASE,
+                features_d=dfeats, d_params=D_PARAMS, d_knn=dict(K=K, d0=D0, t0=T0_CY, cy_fill=D_CY_FILL),
+                n_wood_labels=int(len(wl)), qs_reliable_inquiries=int(pd.read_csv(os.path.join(HERE, 'qs_reliable_inquiries.csv')).shape[0]))
+    json.dump(meta, open(meta_path, 'w'), indent=1)
 
     # ------------------------------------------------------------------------------------------ report
     print('\nrows written:', N)
-    print('\nfamily (argmax):')
-    print(pd.Series(fam).map(dict(enumerate(FAM))).value_counts().rename('panden').to_frame()
-          .assign(pct=lambda d: (100 * d.panden / N).round(1)).to_string())
+    T4 = ['wood', 'no_pile', 'concrete', 'wood_charger']
+    for name, v in [('foundation type (final)', pd.Series(t4).map(dict(enumerate(T4)))), ('grade', pd.Series(grade)),
+                    ('source', pd.Series(source).map({0: 'model', 1: 'report', 2: 'quickscan'}))]:
+        print(f'\n{name}:')
+        print(v.value_counts().rename('panden').to_frame().assign(pct=lambda d: (100 * d.panden / N).round(1)).to_string())
+    fam = P.argmax(1)
     print('\nevidence tier:')
-    evs = pd.Series(evidence).map({0: 'local', 1: 'municipal', 2: 'none'})
+    evs = pd.Series(evidence).map(dict(enumerate(EV_TIERS)))
     print(evs.value_counts().rename('panden').to_frame().assign(pct=lambda d: (100 * d.panden / N).round(1)).to_string())
     print('\nfamily x evidence (row %):')
     print((pd.crosstab(evs, pd.Series(fam).map(dict(enumerate(FAM))), normalize='index') * 100).round(1).to_string())
-    print('\nmean p per evidence tier:')
+    print('\nmean p per evidence tier (blend):')
     print(pd.DataFrame(P, columns=FAM).groupby(evs.values).mean().round(3).to_string())
 
     print('\nSANITY (IN-SAMPLE, labelled panden -- not an accuracy estimate):')
-    for name, pp in [('scored output (all-label features, own label visible)', P[lab_idx]),
+    for name, pp in [('scored output (blend, all-label features, own label visible)', P[lab_idx]),
                      ('training features (report-grouped LOO)', p_loo)]:
         pr = pp.argmax(1)
         print(f'  {name}: accuracy {np.mean(pr == y_lab):.3f}, mean p_wood {pp[:, 0].mean():.3f} vs observed {np.mean(y_lab == 0):.3f}')

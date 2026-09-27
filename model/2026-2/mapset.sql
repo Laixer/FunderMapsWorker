@@ -12,9 +12,10 @@ BEGIN;
 INSERT INTO application.mapset_layer (id, name, fields, "order")
 VALUES ('foundation-candidate', 'Funderingstype kandidaat 2026.2',
         '[{"name": "Houten paal", "color": "8c3a28"},
+          {"name": "Houten paal met betonoplanger", "color": "8f7a2e"},
           {"name": "Betonnen paal", "color": "6a6c70"},
           {"name": "Ondiepe fundering", "color": "ce0015"},
-          {"name": "Lichte kleur = geen lokaal bewijs", "color": "c9a79f"}]'::jsonb,
+          {"name": "Lichte kleur = betrouwbaarheid zwak", "color": "c9a79f"}]'::jsonb,
         0);
 
 INSERT INTO application.mapset (id, name, style, layers, public, icon, note, "order")

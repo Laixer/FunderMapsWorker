@@ -6,15 +6,24 @@
 -- threshold tree. The read-only study of 2026-09-24 (~/ft-research on agent0,
 -- explainer chapter 4) found a LightGBM model ("M6c") on pand attributes,
 -- vendor soil/groundwater, neighbourhood context and nearby report labels
--- clearly better when tested per report and per municipality:
---   random 20% by report      86% vs 57% (tree) family accuracy
---   held-out municipalities    77% vs 39%
---   Utrecht                    84% vs 51% (false wood 37.5% -> 0.1%)
--- and no method works in a municipality without local reports (Sneek).
+-- clearly better when tested per report and per municipality. Reworked 2026-09-27 to the model Don
+-- approved on 2026-09-26/27 (explainer chapters 10-11):
+--   family  = blend: model c (LightGBM with nearby report labels) where the buurt has
+--             labels, else the mean of c and model a (label-free LightGBM)
+--   type    = model d splits a wood family into wood pile / wood pile with concrete top
+--   data leads: a report on the pand, else one of the 100 reliable old QuickScans
+--             (qs_reliable_inquiries.csv), overrides the model ("vastgesteld")
+--   grade   = f(evidence tier, confidence), lookup from the out-of-sample study
+-- Tested vs model-2024.1 (family, same test sets):
+--   random 20% by report      86% vs 74%
+--   held-out municipalities   74% vs 39%
+--   4 test areas pooled       72% vs 50%   (Sudwest-Fryslan 40% vs 45%, Sneek 12% vs 17%: graded 'zwak')
+--   oplanger split (d)        88% within wood where the buurt has reports, 84% held-out municipalities
 --
 -- What this creates, nothing else touched:
---   data.model_foundation_2026_2      one row per pand: p(wood/no_pile/concrete),
---                                      argmax family, confidence, evidence tier.
+--   data.model_foundation_2026_2      one row per pand: blend p(wood/no_pile/concrete),
+--                                      p(oplanger | wood), final family + foundation type,
+--                                      confidence, evidence tier, grade, source.
 --                                      Filled OFFLINE by model/2026-2/train_predict.py
 --                                      (\copy of its CSV) — never computed in SQL.
 --   maplayer.foundation_candidate()   Martin function source for a mapset that is
@@ -29,15 +38,19 @@ CREATE TABLE data.model_foundation_2026_2 (
     p_wood        real NOT NULL,
     p_no_pile     real NOT NULL,
     p_concrete    real NOT NULL,
+    p_oplanger    real NOT NULL,
     family        text NOT NULL CHECK (family IN ('wood', 'no_pile', 'concrete')),
+    foundation_type text NOT NULL CHECK (foundation_type IN ('wood', 'wood_charger', 'no_pile', 'concrete')),
     confidence    real NOT NULL,
-    evidence      text NOT NULL CHECK (evidence IN ('local', 'municipal', 'none')),
-    model_version text NOT NULL DEFAULT 'model-2026.2-rc1',
+    evidence      text NOT NULL CHECK (evidence IN ('buurt', 'nabij', 'municipal', 'none')),
+    grade         text NOT NULL CHECK (grade IN ('vastgesteld', 'zeer betrouwbaar', 'betrouwbaar', 'redelijk', 'zwak')),
+    source        text NOT NULL CHECK (source IN ('report', 'quickscan', 'model')),
+    model_version text NOT NULL DEFAULT 'model-2026.2-rc2',
     computed_at   timestamptz NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE data.model_foundation_2026_2 IS
-'Candidate model-2026.2 (Worker #152): LightGBM foundation-family probabilities per pand, trained offline on report labels (quickscan and facade_scan excluded). evidence: local = a report label in the same buurt x era or within 250 m; municipal = municipality has >= 30 labels; none = neither. Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
+'Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
 
 -- Martin function source: GET /foundation_candidate/{z}/{x}/{y}.
 -- Geometry comes from maplayer.building_tiles (refreshed nightly), so the
@@ -62,6 +75,10 @@ BEGIN
             SELECT
                 t.building_id,
                 c.family,
+                c.foundation_type,
+                c.grade,
+                c.source,
+                c.p_oplanger::double precision AS p_oplanger,
                 c.p_wood::double precision     AS p_wood,
                 c.p_no_pile::double precision  AS p_no_pile,
                 c.p_concrete::double precision AS p_concrete,
@@ -80,6 +97,8 @@ BEGIN
         FROM (
             SELECT
                 c.family,
+                c.foundation_type,
+                c.grade,
                 c.confidence::double precision AS confidence,
                 c.evidence,
                 t.height,
@@ -98,7 +117,7 @@ $$;
 
 -- TileJSON metadata for Martin ("fields" is mandatory, see create_building_tiles.sql).
 COMMENT ON FUNCTION maplayer.foundation_candidate(integer, integer, integer) IS
-'{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
+'{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_oplanger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
 
 ALTER TABLE data.model_foundation_2026_2 OWNER TO fundermaps;
 ALTER FUNCTION maplayer.foundation_candidate(integer, integer, integer) OWNER TO fundermaps;

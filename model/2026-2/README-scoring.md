@@ -1,5 +1,13 @@
 # Foundation-type model 2026.2 (M6c): production scoring
 
+> **rc2 (2026-09-27):** the pipeline below (model c) is unchanged, and now also trains **model a** (the same
+> LightGBM on `LGB_BASE` only), blends them (c where the buurt has labels, else mean(a, c)), trains **model d**
+> (binary LightGBM on the wood labels: `wood_charger` or not; features `LGB_BASE` + x, y + a report-grouped kNN
+> share of concrete tops among nearby wood labels), overrides with own evidence (report, else a reliable old
+> QuickScan) and grades each pand from `grade_lookup.csv`. See README.md for the output columns and last-run
+> numbers; about 16 min and 5.4 GB peak. The study behind a/d and the grade: ft-research `reliability/`
+> (11_oos_abc.py, 21_grade_abc.py, 22_grade_blend.py) and `model_d/d.py`, explainer chapters 10–11.
+
 `train_predict.py` trains the winning model from the 2026-09-24 study (`../scripts/30_models.py`, method
 **M6c**) once, on all labelled panden, and scores every pand in `data.building_precomputed`.
 
