@@ -49,7 +49,7 @@ municipalities (always "wood pile" would score 53% / 19%).
 4. Merge WebFront #309 (the layer style).
 5. Check: `https://tiles.fundermaps.com/foundation_candidate` returns TileJSON, and the layer appears in maps for a FunderMaps B.V. user.
 
-Re-score: `python train_predict.py [--label-date YYYY-MM-DD] [--rebuild]` (about 16 min, 5.4 GB peak on agent0), then `TRUNCATE` and reload (step 2).
+Re-score: `python train_predict.py [--label-date YYYY-MM-DD] [--rebuild]`, then `python pool_clusters.py` (one type per building cluster, Don 2026-09-28), (about 16 min, 5.4 GB peak on agent0), then `TRUNCATE` and reload (step 2).
 
 ## Last run (2026-09-27, rc2, label date 2026-09-24)
 - Labels: report samples without `quickscan` (vervallen) and without `facade_scan` (QuickScan addendum, our own
