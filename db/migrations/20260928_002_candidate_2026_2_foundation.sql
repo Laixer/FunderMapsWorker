@@ -30,7 +30,8 @@
 --                                      linked ONLY to the FunderMaps B.V. organisation
 --                                      (Don: "zichtbaar voor de admin in maps").
 -- Not served to customers, not read by model-2024.1, the Webservice or the API.
--- Drop with: DROP FUNCTION maplayer.foundation_candidate(integer,integer,integer);
+-- Drop with: DELETE FROM data.model_version WHERE slug = 'model-2026.2-rc2';
+--            DROP FUNCTION maplayer.foundation_candidate(integer,integer,integer);
 --            DROP TABLE data.model_foundation_2026_2;
 
 CREATE TABLE data.model_foundation_2026_2 (
@@ -130,3 +131,18 @@ BEGIN
             TO fundermaps_tileserver;
     END IF;
 END $$;
+
+-- Register the candidate (rc2 supersedes rc1 of 20260920_001, the cell-prior build on the evaluation sample).
+INSERT INTO data.model_version (slug, title, status, is_default, notes, inputs)
+SELECT
+    'model-2026.2-rc2',
+    'Foundation type: blend of LightGBM c/a + oplanger split (d), own evidence first, graded (candidate)',
+    'candidate',
+    false,
+    'Approved by Don 2026-09-26/28 as THE foundation-type model; shown only to FunderMaps B.V. beside model-2024.1. Family = model c (label features) where the buurt has report labels, else mean(c, a) (label-free); model d splits wood into wood / wood_charger; a report on the pand, else one of 100 reliable old QuickScans, overrides the model (grade vastgesteld); grade from the out-of-sample lookup. Out-of-sample family accuracy vs 2024.1: 86% vs 74% (random reports), 74% vs 39% (held-out municipalities), 72% vs 50% (4 test areas). Scored offline by model/2026-2/train_predict.py and loaded with \copy. Next version with GeoTOP: model-2026.4.',
+    jsonb_build_object(
+        'note', 'row counts are fingerprints taken when this row was inserted; the table is loaded after this migration',
+        'inquiry_sample', jsonb_build_object('rows', (SELECT count(*) FROM report.inquiry_sample)),
+        'building_precomputed', jsonb_build_object('rows', (SELECT count(*) FROM data.building_precomputed))
+    )
+WHERE NOT EXISTS (SELECT 1 FROM data.model_version WHERE slug = 'model-2026.2-rc2');

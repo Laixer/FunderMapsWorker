@@ -1,5 +1,5 @@
 -- model-2026.2 candidate: the map layer, visible ONLY to FunderMaps B.V.
--- Apply AFTER the migration 20260924_001 and AFTER the table is loaded
+-- Apply AFTER the migration 20260928_002 and AFTER the table is loaded
 -- (see README.md). Plain configuration rows; remove with the three DELETEs
 -- at the bottom (commented out).
 --

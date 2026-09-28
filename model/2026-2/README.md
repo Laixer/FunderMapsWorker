@@ -33,10 +33,10 @@ municipalities (always "wood pile" would score 53% / 19%).
 | `model_foundation_2026_2.meta.json` | feature order, params and best iteration of the last run |
 | `requirements.txt` | Python deps (not Bun: this step is Python/LightGBM) |
 | `mapset.sql` | the FunderMaps B.V.-only mapset, run after the table is loaded |
-| `../../db/migrations/20260924_001_candidate_2026_2_foundation.sql` | table `data.model_foundation_2026_2` + Martin function `maplayer.foundation_candidate` |
+| `../../db/migrations/20260928_002_candidate_2026_2_foundation.sql` | table `data.model_foundation_2026_2` + Martin function `maplayer.foundation_candidate` |
 
 ## Apply (Yorick)
-1. `bun run migrate` (prod: `~/bin/fm-migrate-prod.sh`) applies `20260924_001`.
+1. `bun run migrate` (prod: `~/bin/fm-migrate-prod.sh`) applies `20260928_002`.
 2. Load the scores. The last run is on agent0 at
    `~/ft-research/worker_run/2026-2/out/model_foundation_2026_2.csv.gz`, 11,321,489 rows:
    ```sql
