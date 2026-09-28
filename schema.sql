@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Y0pY6k0Vhkc0rLMZPP1JovkU52zsCOh8Gx1fRbyRocV7qwFfgpfyXIiSU6PF3j0
+\restrict avwsXCgYQcK4BkYCeglPpNw7Fd427G5RD7Jd5kYF2Kz2DpIWRDm7oexSo1e7iPb
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -3666,8 +3666,8 @@ CREATE TABLE report.inquiry_sample (
     threshold_updown_skewed boolean,
     threshold_front_level report.height,
     threshold_back_level report.height,
-    skewed_parallel report.length,
-    skewed_perpendicular report.length,
+    skewed_parallel numeric(7,2),
+    skewed_perpendicular numeric(7,2),
     skewed_parallel_facade report.rotation_type,
     settlement_speed double precision,
     skewed_window_frame boolean,
@@ -8619,5 +8619,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Y0pY6k0Vhkc0rLMZPP1JovkU52zsCOh8Gx1fRbyRocV7qwFfgpfyXIiSU6PF3j0
+\unrestrict avwsXCgYQcK4BkYCeglPpNw7Fd427G5RD7Jd5kYF2Kz2DpIWRDm7oexSo1e7iPb
 
