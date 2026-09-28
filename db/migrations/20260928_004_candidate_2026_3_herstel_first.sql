@@ -11,7 +11,7 @@
 -- Change: with apply_rule, both QuickScan terms (qs_term, qs_fallback) are empty when the pand has a
 -- recovery_sample, so the established herstel term decides. With apply_rule = false the function
 -- still reproduces model-2024.1 exactly (the control). Everything else is copied unchanged from
--- 20260923_005. The frozen live model (2024.1) is untouched; the candidate is not served.
+-- 20260928_003. The frozen live model (2024.1) is untouched; the candidate is not served.
 -- Re-run CALL data.refresh_model_risk_2026_3() after.
 
 CREATE OR REPLACE FUNCTION data.model_risk_2026_3_compute(apply_rule boolean)
