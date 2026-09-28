@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict avwsXCgYQcK4BkYCeglPpNw7Fd427G5RD7Jd5kYF2Kz2DpIWRDm7oexSo1e7iPb
+\restrict BHmQNm1ukgtJHSFtRxuIgaMSuCLZ1Yg61KOxKOgH3tPQwe5rcpCctv1WIG9ZBJz
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2016,6 +2016,77 @@ $$;
 --
 
 COMMENT ON FUNCTION maplayer.facade_scan(z integer, x integer, y integer) IS '{"description": "FunderMaps QuickScan facade observations (dynamic)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "facade_scan", "minzoom": 12, "maxzoom": 16, "fields": {"external_id": "String", "neighborhood_id": "String", "district_id": "String", "municipality_id": "String", "height": "Number", "owner": "String", "skewed_parallel_facade": "String", "skewed_perpendicular_facade": "String", "facade_type": "String", "settlement_speed": "String", "facade_scan_risk": "String", "risk": "String", "priority": "String"}}]}';
+
+
+--
+-- Name: foundation_candidate(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
+--
+
+CREATE FUNCTION maplayer.foundation_candidate(z integer, x integer, y integer) RETURNS bytea
+    LANGUAGE plpgsql STABLE PARALLEL SAFE
+    AS $$
+DECLARE
+    env geometry;
+    mvt bytea;
+BEGIN
+    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
+        RETURN ''::bytea;
+    END IF;
+
+    env := ST_TileEnvelope(z, x, y);
+
+    IF z >= 14 THEN
+        SELECT ST_AsMVT(tile, 'foundation_candidate', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                t.building_id,
+                c.family,
+                c.foundation_type,
+                c.grade,
+                c.source,
+                c.p_oplanger::double precision AS p_oplanger,
+                c.p_wood::double precision     AS p_wood,
+                c.p_no_pile::double precision  AS p_no_pile,
+                c.p_concrete::double precision AS p_concrete,
+                c.confidence::double precision AS confidence,
+                c.evidence,
+                t.foundation_type              AS current_type,
+                t.height,
+                ST_AsMVTGeom(t.geom, env, 4096, 64, true) AS geom
+            FROM maplayer.building_tiles t
+            JOIN data.model_foundation_2026_2 c ON c.building_id = t.building_id
+            WHERE t.geom && env
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    ELSE
+        SELECT ST_AsMVT(tile, 'foundation_candidate', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                c.family,
+                c.foundation_type,
+                c.grade,
+                c.confidence::double precision AS confidence,
+                c.evidence,
+                t.height,
+                ST_AsMVTGeom(t.geom_simple, env, 4096, 8, true) AS geom
+            FROM maplayer.building_tiles t
+            JOIN data.model_foundation_2026_2 c ON c.building_id = t.building_id
+            WHERE t.geom_simple && env
+              AND t.surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    END IF;
+
+    RETURN coalesce(mvt, ''::bytea);
+END;
+$$;
+
+
+--
+-- Name: FUNCTION foundation_candidate(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON FUNCTION maplayer.foundation_candidate(z integer, x integer, y integer) IS '{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_oplanger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
 
 
 --
@@ -4537,6 +4608,39 @@ COMMENT ON TABLE data.model_evaluation_stratum_weight IS 'True national size of 
 
 
 --
+-- Name: model_foundation_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_foundation_2026_2 (
+    building_id text NOT NULL,
+    p_wood real NOT NULL,
+    p_no_pile real NOT NULL,
+    p_concrete real NOT NULL,
+    p_oplanger real NOT NULL,
+    family text NOT NULL,
+    foundation_type text NOT NULL,
+    confidence real NOT NULL,
+    evidence text NOT NULL,
+    grade text NOT NULL,
+    source text NOT NULL,
+    model_version text DEFAULT 'model-2026.2-rc2'::text NOT NULL,
+    computed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT model_foundation_2026_2_evidence_check CHECK ((evidence = ANY (ARRAY['buurt'::text, 'nabij'::text, 'municipal'::text, 'none'::text]))),
+    CONSTRAINT model_foundation_2026_2_family_check CHECK ((family = ANY (ARRAY['wood'::text, 'no_pile'::text, 'concrete'::text]))),
+    CONSTRAINT model_foundation_2026_2_foundation_type_check CHECK ((foundation_type = ANY (ARRAY['wood'::text, 'wood_charger'::text, 'no_pile'::text, 'concrete'::text]))),
+    CONSTRAINT model_foundation_2026_2_grade_check CHECK ((grade = ANY (ARRAY['vastgesteld'::text, 'zeer betrouwbaar'::text, 'betrouwbaar'::text, 'redelijk'::text, 'zwak'::text]))),
+    CONSTRAINT model_foundation_2026_2_source_check CHECK ((source = ANY (ARRAY['report'::text, 'quickscan'::text, 'model'::text])))
+);
+
+
+--
+-- Name: TABLE model_foundation_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_foundation_2026_2 IS 'Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
+
+
+--
 -- Name: model_gevelscan; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -6560,6 +6664,14 @@ ALTER TABLE ONLY data.model_evaluation_sample
 
 ALTER TABLE ONLY data.model_evaluation_stratum_weight
     ADD CONSTRAINT model_evaluation_stratum_weight_pkey PRIMARY KEY (sample_version, stratum);
+
+
+--
+-- Name: model_foundation_2026_2 model_foundation_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
+--
+
+ALTER TABLE ONLY data.model_foundation_2026_2
+    ADD CONSTRAINT model_foundation_2026_2_pkey PRIMARY KEY (building_id);
 
 
 --
@@ -8619,5 +8731,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict avwsXCgYQcK4BkYCeglPpNw7Fd427G5RD7Jd5kYF2Kz2DpIWRDm7oexSo1e7iPb
+\unrestrict BHmQNm1ukgtJHSFtRxuIgaMSuCLZ1Yg61KOxKOgH3tPQwe5rcpCctv1WIG9ZBJz
 
