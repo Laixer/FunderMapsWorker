@@ -27,6 +27,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'out', 'model_foundation_2026_2.csv.gz')
 RAW = os.path.join(HERE, 'out', 'model_foundation_2026_2.unpooled.csv.gz')
 CLUSTERS = os.path.join(os.path.dirname(HERE), 'data', 'clusters.csv.gz')
+# Bouwkundige eenheden (Don 2026-09-28, units_nl.py): when present they replace the DBSCAN clusters.
+UNITS = os.path.join(os.path.dirname(HERE), 'data', 'units.csv.gz')
 FAM = ['wood', 'no_pile', 'concrete']
 GRADE_RANK = {'zwak': 0, 'redelijk': 1, 'betrouwbaar': 2, 'zeer betrouwbaar': 3, 'vastgesteld': 4}
 
@@ -35,7 +37,12 @@ def main():
     if not os.path.exists(RAW):
         shutil.copyfile(OUT, RAW)
     d = pd.read_csv(RAW)
-    cl = pd.read_csv(CLUSTERS, usecols=['building_id', 'cluster_id']).drop_duplicates('building_id')
+    if os.path.exists(UNITS):
+        cl = pd.read_csv(UNITS, usecols=['id', 'unit_id']).rename(columns={'id': 'building_id', 'unit_id': 'cluster_id'})
+        print('grouping by bouwkundige eenheden', UNITS)
+    else:
+        cl = pd.read_csv(CLUSTERS, usecols=['building_id', 'cluster_id'])
+    cl = cl.drop_duplicates('building_id')
     d = d.merge(cl, on='building_id', how='left')
     model = (d.source == 'model') & d.cluster_id.notna()
 
