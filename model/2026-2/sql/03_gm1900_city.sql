@@ -1,0 +1,2 @@
+-- Woonplaats (address.city) per pand in Sudwest-Fryslan, to carve out the Sneek subset (read-only).
+\copy (SELECT DISTINCT ON (a.building_id) a.building_id::text AS building_id, a.city FROM geocoder.address a JOIN data.building_precomputed bp ON bp.building_id = a.building_id::text JOIN geocoder.neighborhood nb ON nb.id = bp.neighborhood_id JOIN geocoder.district d ON d.id = nb.district_id JOIN geocoder.municipality m ON m.id = d.municipality_id WHERE m.external_id = 'GM1900' ORDER BY a.building_id, a.city) TO STDOUT WITH CSV HEADER
