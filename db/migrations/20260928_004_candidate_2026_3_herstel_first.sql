@@ -8,8 +8,12 @@
 -- Prod 2026-09-25 (read-only): 42 repaired panden carry a QuickScan class; 21 of them are not A
 -- (B 3, C 13, D 1, E 4). Those 21 move to A in the candidate.
 --
--- Change: with apply_rule, both QuickScan terms (qs_term, qs_fallback) are empty when the pand has a
--- recovery_sample, so the established herstel term decides. With apply_rule = false the function
+-- Change: with apply_rule, both QuickScan terms (qs_term, qs_fallback) are empty when the pand has an
+-- EXECUTED recovery_sample (status = 'executed', not deleted), so the established herstel term decides.
+-- A planned herstel or one without a status does not beat a QuickScan (Yorick, 2026-10-02): of the
+-- panden involved, 28 have an executed herstel, 21 one without status and 1 a planned one. This is the
+-- rule the NHR plan asks for (only executed herstel may put a pand on A), applied here to the gate only;
+-- the herstel term itself is unchanged. With apply_rule = false the function
 -- still reproduces model-2024.1 exactly (the control). Everything else is copied unchanged from
 -- 20260928_003. The frozen live model (2024.1) is untouched; the candidate is not served.
 -- Re-run CALL data.refresh_model_risk_2026_3() after.
@@ -219,6 +223,15 @@ FROM gated g
         WHERE rs.building_id = bp.building_id
         ORDER BY rs.building_id, rs.create_date DESC
     ) recovery ON true
+    -- The gate only: an executed, not deleted herstel. The herstel term below keeps 2024.1's choice.
+    LEFT JOIN LATERAL (
+        SELECT true AS yes
+        FROM report.recovery_sample rs
+        WHERE rs.building_id = bp.building_id
+          AND rs.status = 'executed'
+          AND rs.delete_date IS NULL
+        LIMIT 1
+    ) executed_recovery ON true
     LEFT JOIN data.cluster_recovery_sample ON cluster_recovery_sample.cluster_id = bc.cluster_id,
     LATERAL (SELECT round((bp.ground_level - bpl.depth)::numeric, 2)) AS pile_length(pile_length),
     LATERAL (SELECT COALESCE(
@@ -232,11 +245,11 @@ FROM gated g
             bp.address_count
         )
     )) AS foundation_type(ft),
-    -- Worker #222: a registered herstel beats any QuickScan (only under the rule).
+    -- Worker #222: an executed herstel beats any QuickScan (only under the rule).
     LATERAL (SELECT CASE
         WHEN NOT apply_rule
             THEN established.facade_scan_risk::text::data.foundation_risk_indication
-        WHEN g.gate = 'qs_valid' AND recovery.type IS NULL
+        WHEN g.gate = 'qs_valid' AND executed_recovery.yes IS NULL
             THEN established.facade_scan_risk::text::data.foundation_risk_indication
     END) AS qs_term(risk),
     -- Reading B (Yorick, 2026-09-23): under fo_leading the onderzoek's own
@@ -245,7 +258,7 @@ FROM gated g
     LATERAL (SELECT CASE
         WHEN apply_rule AND g.gate = 'fo_leading'
          AND g.qs_date >= current_date - interval '3 years'
-         AND recovery.type IS NULL
+         AND executed_recovery.yes IS NULL
             THEN established.facade_scan_risk::text::data.foundation_risk_indication
     END) AS qs_fallback(risk)
 ) base;
