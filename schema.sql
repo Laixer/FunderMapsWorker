@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict BHmQNm1ukgtJHSFtRxuIgaMSuCLZ1Yg61KOxKOgH3tPQwe5rcpCctv1WIG9ZBJz
+\restrict SDw7sRWhvoYf43kpDcZSykHGfIIdtieKCvewFX9a8hSNeuBCmadgujpIimubvAt
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1426,6 +1426,7 @@ qs AS (
       FROM report.inquiry_sample s
       JOIN report.inquiry i ON i.id = s.inquiry_id
      WHERE s.facade_scan_risk IS NOT NULL
+       AND i.type = 'facade_scan'
        AND s.building_id::text IN (SELECT building_id FROM scope)
      GROUP BY 1
 ),
@@ -1600,6 +1601,15 @@ FROM gated g
         WHERE rs.building_id = bp.building_id
         ORDER BY rs.building_id, rs.create_date DESC
     ) recovery ON true
+    -- The gate only: an executed, not deleted herstel. The herstel term below keeps 2024.1's choice.
+    LEFT JOIN LATERAL (
+        SELECT true AS yes
+        FROM report.recovery_sample rs
+        WHERE rs.building_id = bp.building_id
+          AND rs.status = 'executed'
+          AND rs.delete_date IS NULL
+        LIMIT 1
+    ) executed_recovery ON true
     LEFT JOIN data.cluster_recovery_sample ON cluster_recovery_sample.cluster_id = bc.cluster_id,
     LATERAL (SELECT round((bp.ground_level - bpl.depth)::numeric, 2)) AS pile_length(pile_length),
     LATERAL (SELECT COALESCE(
@@ -1613,8 +1623,11 @@ FROM gated g
             bp.address_count
         )
     )) AS foundation_type(ft),
+    -- Worker #222: an executed herstel beats any QuickScan (only under the rule).
     LATERAL (SELECT CASE
-        WHEN NOT apply_rule OR g.gate = 'qs_valid'
+        WHEN NOT apply_rule
+            THEN established.facade_scan_risk::text::data.foundation_risk_indication
+        WHEN g.gate = 'qs_valid' AND executed_recovery.yes IS NULL
             THEN established.facade_scan_risk::text::data.foundation_risk_indication
     END) AS qs_term(risk),
     -- Reading B (Yorick, 2026-09-23): under fo_leading the onderzoek's own
@@ -1623,6 +1636,7 @@ FROM gated g
     LATERAL (SELECT CASE
         WHEN apply_rule AND g.gate = 'fo_leading'
          AND g.qs_date >= current_date - interval '3 years'
+         AND executed_recovery.yes IS NULL
             THEN established.facade_scan_risk::text::data.foundation_risk_indication
     END) AS qs_fallback(risk)
 ) base;
@@ -8731,5 +8745,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict BHmQNm1ukgtJHSFtRxuIgaMSuCLZ1Yg61KOxKOgH3tPQwe5rcpCctv1WIG9ZBJz
+\unrestrict SDw7sRWhvoYf43kpDcZSykHGfIIdtieKCvewFX9a8hSNeuBCmadgujpIimubvAt
 
