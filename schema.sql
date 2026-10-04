@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict SDw7sRWhvoYf43kpDcZSykHGfIIdtieKCvewFX9a8hSNeuBCmadgujpIimubvAt
+\restrict v799FzoDd7p9horK6xfCpYLNY9ti2tBZJNfkmAt0TagaSRFfCn6MY42Yfk4WgiG
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -5168,7 +5168,9 @@ CREATE TABLE dataops.dossier (
     outcome_note text,
     outcome_at timestamp with time zone,
     audit_inquiry_id integer,
-    recovery_id integer
+    recovery_id integer,
+    assigned_to uuid,
+    assigned_at timestamp with time zone
 );
 
 
@@ -5233,6 +5235,20 @@ COMMENT ON COLUMN dataops.dossier.audit_inquiry_id IS 'The rapportage this dossi
 --
 
 COMMENT ON COLUMN dataops.dossier.recovery_id IS 'The herstel recorded from this dossier (report.recovery). Independent of inquiry_id: a herstel drawing can yield both.';
+
+
+--
+-- Name: COLUMN dossier.assigned_to; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier.assigned_to IS 'The colleague this dossier is handed to (API #222). NULL = in the general queue. Set and cleared by POST /api/dataops/dossier/:id/assign.';
+
+
+--
+-- Name: COLUMN dossier.assigned_at; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier.assigned_at IS 'When assigned_to was last set; NULL when nobody holds the dossier.';
 
 
 --
@@ -7509,6 +7525,13 @@ CREATE INDEX dossier_address_dossier_idx ON dataops.dossier_address USING btree 
 
 
 --
+-- Name: dossier_assigned_to_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_assigned_to_idx ON dataops.dossier USING btree (assigned_to) WHERE (assigned_to IS NOT NULL);
+
+
+--
 -- Name: dossier_audit_inquiry_id_idx; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -8486,6 +8509,14 @@ ALTER TABLE ONLY dataops.dossier_address
 
 
 --
+-- Name: dossier dossier_assigned_to_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier
+    ADD CONSTRAINT dossier_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
 -- Name: dossier dossier_audit_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -8745,5 +8776,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SDw7sRWhvoYf43kpDcZSykHGfIIdtieKCvewFX9a8hSNeuBCmadgujpIimubvAt
+\unrestrict v799FzoDd7p9horK6xfCpYLNY9ti2tBZJNfkmAt0TagaSRFfCn6MY42Yfk4WgiG
 
