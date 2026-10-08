@@ -369,29 +369,30 @@ AS $$
         WHEN has_recovery THEN 'a'::data.foundation_risk_indication
         WHEN data.is_safe_foundation(ft) THEN 'a'::data.foundation_risk_indication
 
-        -- No-pile family (excl bearing_floor for risk calc, matching current behavior)
+        -- No-pile family, bearing_floor included (Don, 2026-10-08: "gewoon een type in de familie
+        -- no_pile"; leaving it out sent 1,396 panden to the construction-year fallback)
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity IS NULL AND gwl < 0.6
             THEN 'c'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity IS NULL AND gwl >= 0.6
             THEN 'b'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity < -1.0 AND gwl < 0.6
             THEN 'e'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity < -1.0 AND gwl >= 0.6
             THEN 'd'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity >= -1.0 AND gwl < 0.6
             THEN 'd'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity >= -1.0 AND gwl >= 0.6
             THEN 'c'::data.foundation_risk_indication
 
