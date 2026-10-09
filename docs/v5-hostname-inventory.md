@@ -8,8 +8,9 @@ records list` for all 7 zones, `get_bucket_cors` on all 5 Spaces buckets,
 every repo under `~/src` (76 literal hits, list at the end).
 
 **Rule of thumb:** the SPAs are hostname-agnostic (`window.location.origin` everywhere),
-so a frontend move is *only* DNS + App Platform domain + the three server-side allowlists
-(OIDC `redirect_uris`, API `TRUSTED_ORIGINS`/ingress CORS, Spaces CORS). The API and the
+so a frontend move is *only* DNS + App Platform domain + the two server-side allowlists
+(API `TRUSTED_ORIGINS`/ingress CORS, Spaces CORS). The third, the OIDC `redirect_uris`,
+went with the OAuth provider in 2026-10 (see 2a). The API and the
 tile server are the two things with their **own** hostname baked into other components.
 
 ## 1. Public hostnames → what serves them
@@ -47,23 +48,15 @@ and `rsend` CNAMEs → forge.rmta.net, MX → inbound-smtp.eu-west-1.amazonaws.c
 External monitor: DO Uptime check `ws-prod /v4/health` → https://ws.fundermaps.com/v4/health
 (only external availability check in the estate).
 
-## 2. Server-side allowlists (the three that break logins/uploads when a hostname moves)
+## 2. Server-side allowlists (the ones that break logins/uploads when a hostname moves)
 
-### 2a. OIDC clients — `application.oauth_application` (prod)
+### 2a. OIDC clients — removed
 
-| client_id | redirect_uris | post_logout_redirect_uris |
-|---|---|---|
-| webfront | https://maps.fundermaps.com/auth/callback | https://maps.fundermaps.com/ |
-| clientapp | https://app.fundermaps.com/auth/callback, https://studio.fundermaps.com/auth/callback | https://app.fundermaps.com/login, https://studio.fundermaps.com/login |
-| managementfront | https://admin.fundermaps.com/auth/callback | https://admin.fundermaps.com/login |
-| grafana | https://analytics.fundermaps.com/login/generic_oauth | — |
-
-The SPAs build `redirect_uri` from `window.location.origin` (`src/services/oidc.ts` in all
-three), so a new hostname needs only a new row entry here. Registration SQL for the current
-rows: `sql/migrate/register_*_oidc_client.sql`, `add_studio_origin_clientapp.sql`,
-`enable_clientapp_end_session.sql` (git history). Note the funderingskaart.nl /
-funderingsrisicokaart.nl aliases of maps are **not** registered → login only works on
-maps.fundermaps.com.
+The apps authenticate with the Better Auth session cookie since the cookie-auth migration
+(2026-09). The OAuth/OIDC provider, its clients (`application.oauth_application`: webfront,
+clientapp, managementfront; grafana was deregistered earlier) and their `redirect_uris` were
+removed in 2026-10 (FunderMapsApi#236, migration `20261009_006`). Nothing to update here on a
+hostname move.
 
 ### 2b. API origin allowlists — fundermaps-api-prod
 
@@ -76,8 +69,6 @@ maps.fundermaps.com.
 - `BASE_URL=https://api.fundermaps.com` (Better Auth issuer/base; cookies are host-only on
   this host — no `crossSubDomainCookies`, so a `*.funderdata.nl` frontend + fundermaps.com
   API cannot share a cookie; see the open design call in the 5.0 plan).
-- `LOGIN_PAGE_URL` default `https://auth.fundermaps.com/login` (config.ts), `consentPage`
-  hard-coded `https://admin.fundermaps.com/oauth/consent` (auth.ts; never reached).
 - Defaults in `src/config.ts` that are hostnames: `STUDIO_URL=https://studio.fundermaps.com`
   (links in report e-mails), `INTAKE_URL=https://melden.fundermaps.com` (links in melder
   e-mails), `REPORT_RENDER_URL=https://whale-app-nm9uv.ondigitalocean.app` (what Gotenberg
@@ -143,15 +134,16 @@ tile host = edit the style JSON + rebuild the image + the three `VITE_*` values 
   (cold). Virtual-host URLs of `fundermaps-tileset` are baked into two frontends (§3).
 - **E-mail**: Resend on `funderdata.nl` (DNS §1); `MAIL_FROM` default `noreply@funderdata.nl`.
 - **Grafana**: `GF_SERVER_ROOT_URL=https://analytics.fundermaps.com`; its generic-OAuth
-  config is not in the app spec (set in Grafana itself); OIDC row in §2a.
+  config is not in the app spec (set in Grafana itself) and is disabled
+  (`GF_AUTH_GENERIC_OAUTH_ENABLED=false`); the API no longer offers OAuth (§2a).
 
 ## 6. Move checklist per hostname class
 
 1. **API host** (api.fundermaps.com): 7 `VITE_FUNDERMAPS_URL` builds + Intake `NUXT_*`,
-   `BASE_URL`, both `TRUSTED_ORIGINS` copies, OIDC issuer for Grafana, `preconnect` in
+   `BASE_URL`, both `TRUSTED_ORIGINS` copies, `preconnect` in
    WebFront, docs/README examples.
-2. **Frontend host** (any SPA): DNS + App Platform domain, OIDC `redirect_uris` +
-   `post_logout_redirect_uris`, `TRUSTED_ORIGINS` (env + ingress CORS), Spaces CORS if it
+2. **Frontend host** (any SPA): DNS + App Platform domain, `TRUSTED_ORIGINS` (env +
+   ingress CORS), the auth SPA's `?redirect=` allowlist, Spaces CORS if it
    uploads/reads Spaces directly, `STUDIO_URL`/`INTAKE_URL` if it is studio/melden,
    `REPORT_RENDER_URL` + tileset CORS if it is report, UserMenu links if maps/admin.
 3. **Tile host**: style JSON in `tileserver/styles/`, 3 `VITE_*` values, 3 hard-coded
