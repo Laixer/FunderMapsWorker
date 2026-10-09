@@ -76,6 +76,15 @@ GRANT SELECT ON dataops.dossier, dataops.extraction, dataops.dossier_entry, data
 GRANT SELECT ON data.product_tracker_daily, data.refresh_log TO grafana;
 GRANT SELECT ON application.contractor TO grafana;
 
+-- Secret-bearing tables nobody reads through these roles (migration
+-- 20261009_003): application.application holds the legacy app secrets, apikey
+-- the key hash and readable prefix. Grafana's usage board needs only the
+-- who/when columns of apikey; the webservice keeps apikey to verify keys.
+REVOKE SELECT ON application.application FROM fundermaps_webservice, grafana;
+REVOKE SELECT ON application.apikey FROM grafana;
+GRANT SELECT (name, reference_id, last_request, request_count, enabled)
+    ON application.apikey TO grafana;
+
 -- Passkeys (Better Auth passkey plugin): API full CRUD, others read without
 -- the public key material.
 GRANT SELECT, INSERT, UPDATE, DELETE ON application.passkey TO fundermaps_webapp;
