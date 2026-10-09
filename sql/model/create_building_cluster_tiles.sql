@@ -39,6 +39,10 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
 BEGIN
+    -- Exact argument types and pg_catalog operators on purpose: this runs as
+    -- its owner (SECURITY DEFINER) while PUBLIC may CREATE in schema public,
+    -- so any call that needs an implicit cast (numeric 5.0 -> float8, enum or
+    -- domain '=') could be won by an exact-type overload planted there.
     -- Build the next generation NEXT TO the live table. Martin keeps serving
     -- maplayer.building_cluster_tiles untouched while this runs (~6.5 min);
     -- the old TRUNCATE + INSERT held an ACCESS EXCLUSIVE
@@ -58,7 +62,7 @@ BEGIN
         ST_Multi(ST_Transform(u.geom, 3857)),
         -- 5.0 Mercator units ≈ 3 m at NL latitude, matching building_tiles:
         -- invisible at z12–13, collapses dense outlines to a few points.
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(u.geom, 3857), 5.0))
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(u.geom, 3857), 5.0::double precision))
     FROM (
         SELECT
             bc.cluster_id,

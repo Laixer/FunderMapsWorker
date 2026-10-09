@@ -78,6 +78,10 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
 BEGIN
+    -- Exact argument types and pg_catalog operators on purpose: this runs as
+    -- its owner (SECURITY DEFINER) while PUBLIC may CREATE in schema public,
+    -- so any call that needs an implicit cast (numeric 5.0 -> float8, enum or
+    -- domain '=') could be won by an exact-type overload planted there.
     -- Build the next generation NEXT TO the live table. Martin keeps serving
     -- maplayer.building_tiles untouched while this runs (~8 min for
     -- building_tiles); the old TRUNCATE + INSERT held an ACCESS EXCLUSIVE
@@ -131,14 +135,14 @@ BEGIN
         EXISTS (
             SELECT FROM report.inquiry_sample s
             JOIN report.inquiry mi ON mi.id = s.inquiry_id
-            WHERE s.building_id = bgh.building_id
-              AND mi.type = 'monitoring'
+            WHERE s.building_id OPERATOR(pg_catalog.=) bgh.building_id
+              AND mi.type OPERATOR(pg_catalog.=) 'monitoring'
         ),
         bgh.surface_area::double precision,
         ST_Transform(bgh.geom, 3857),
         -- 5.0 Mercator units ≈ 3 m at NL latitude: invisible at z12–13,
         -- collapses a 40-vertex floor plan to a handful of points.
-        ST_SimplifyPreserveTopology(ST_Transform(bgh.geom, 3857), 5.0)
+        ST_SimplifyPreserveTopology(ST_Transform(bgh.geom, 3857), 5.0::double precision)
     FROM data.building_geo_hierarchy bgh
     -- bgh.inquiry_id is the inquiry the model picked; its attribution
     -- names the contractor that performed the research.
