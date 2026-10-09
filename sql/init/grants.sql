@@ -62,11 +62,8 @@ GRANT SELECT
 -- grant those columns explicitly instead of the whole table. (Applied to prod
 -- 2026-09-07; apikey already had table-level SELECT via the default privileges.)
 REVOKE SELECT ON application.session, application.auth_key FROM grafana;
-GRANT SELECT (id, user_id, created_at, updated_at, expires_at, ip_address, user_agent,
-              impersonated_by, active_organization_id)
-    ON application.session TO grafana;
-GRANT SELECT (id, user_id, name, last_used, created_at, updated_at, expires_at)
-    ON application.auth_key TO grafana;
+GRANT SELECT (id, user_id, created_at) ON application.session TO grafana;
+GRANT SELECT (user_id, name, last_used) ON application.auth_key TO grafana;
 
 -- Grafana reads the intake pipeline state (Operations board) and the daily
 -- usage rollup + refresh log in data (Usage & billing, "model refresh age").
@@ -85,11 +82,33 @@ REVOKE SELECT ON application.apikey FROM grafana;
 GRANT SELECT (name, reference_id, last_request, request_count, enabled)
     ON application.apikey TO grafana;
 
--- Passkeys (Better Auth passkey plugin): API full CRUD, others read without
--- the public key material.
+-- Passkeys (Better Auth passkey plugin): API full CRUD; nothing else reads them.
 GRANT SELECT, INSERT, UPDATE, DELETE ON application.passkey TO fundermaps_webapp;
-GRANT SELECT ON application.passkey TO fundermaps_webservice;
-GRANT SELECT (id, name, user_id, device_type, backed_up, created_at, aaguid) ON application.passkey TO grafana;
+REVOKE SELECT ON application.passkey FROM fundermaps_webservice, grafana;
+
+-- Least privilege for the read-only roles (migration 20261009_007): the
+-- schema-wide SELECTs above cover objects neither reads.
+REVOKE SELECT ON application.application_user, application.invitation,
+                 application.organization, application.organization_custom_role,
+                 application.organization_geolock_district,
+                 application.organization_geolock_municipality,
+                 application.organization_geolock_neighborhood, application."user",
+                 data.building_elevation, data.building_geographic_region,
+                 data.building_groundwater_level, data.building_height,
+                 data.building_ownership, data.building_sample, data.building_subsidence,
+                 data.building_subsidence_history, data.model_risk_static_2024_1,
+                 data.product_tracker_daily, geocoder.building_active,
+                 geocoder.municipality, geocoder.residence, geocoder.state, report.incident
+    FROM fundermaps_webservice;
+REVOKE ALL ON SEQUENCE report.inquiry_id_seq, report.inquiry_sample_id_seq,
+                       report.recovery_id_seq, report.recovery_sample_id_seq,
+                       application.attribution_id_seq
+    FROM fundermaps_webservice;
+REVOKE SELECT ON application.application_user, application.api_key_rate_limit,
+                 application.invitation, application.organization_custom_role,
+                 application.organization_user, data.model_version, geocoder.address,
+                 maplayer.bundle, report.dossier_event
+    FROM grafana;
 
 -- The refresh_data_model flow (fundermaps_windmill) refreshes the rollup and
 -- writes one refresh_log row per run.
