@@ -269,6 +269,11 @@ Regels voor het bewijs:
   alleen jaar en maand bekend: de 1e; alleen een jaar: 1 januari van dat jaar.
   Meerdere data: de datum van de tekening zelf, niet die van een latere
   wijziging of een archiefstempel. Niet leesbaar: null. Verzin geen datum.
+- Een plakker of stempel met een (vergunnings)nummer, een maand en een jaar,
+  vaak over meerdere regels geschreven ("11533.1/01 1933" = nummer 11533.1,
+  januari 1933), IS een datum: de maand en het jaar van de vergunning. Geef
+  1933-01-01. Gebruik die als het titelblok geen datum heeft; staat er in het
+  titelblok wel een datum, dan wint het titelblok.
 
 Antwoord met alleen JSON:
 {"foundation_type": "...", "confidence": 0.0, "evidence": "wat je op de tekening ziet waaruit dit blijkt", "page": 1,
