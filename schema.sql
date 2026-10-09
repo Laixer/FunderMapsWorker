@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Ycnigqy80c2q3vu2G8eZJ6SIDPU8CFRkO5Oje0vzhP9XdtoiGt8jx4vcq7xb7YV
+\restrict Ir4kNfqbC4wiFAWw1FCPgesgkCKzSQr8Lm2RO5jONc0azMT9WRWbBQnHPB4yTJE
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2348,9 +2348,6 @@ BEGIN
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
         GRANT SELECT ON maplayer.building_cluster_tiles_next TO fundermaps_tileserver;
     END IF;
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
-        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN ON maplayer.building_cluster_tiles_next TO fundermaps_windmill;
-    END IF;
 
     -- Swap. The only exclusive lock on the live table is taken here and
     -- released at COMMIT a few milliseconds later. Rather than queue behind
@@ -2455,9 +2452,6 @@ BEGIN
 
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
         GRANT SELECT ON maplayer.building_tiles_next TO fundermaps_tileserver;
-    END IF;
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
-        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN ON maplayer.building_tiles_next TO fundermaps_windmill;
     END IF;
 
     -- Swap. The only exclusive lock on the live table is taken here and
@@ -8313,5 +8307,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Ycnigqy80c2q3vu2G8eZJ6SIDPU8CFRkO5Oje0vzhP9XdtoiGt8jx4vcq7xb7YV
+\unrestrict Ir4kNfqbC4wiFAWw1FCPgesgkCKzSQr8Lm2RO5jONc0azMT9WRWbBQnHPB4yTJE
 
