@@ -1,0 +1,15 @@
+# Windmill worker + GDAL.
+#
+# The stock Windmill image has no ogr2ogr. The nightly GPKG export
+# (process_mapset → fundermaps-archive) moves off the queue worker droplet
+# into a Windmill script, and that script needs ogr2ogr. See README.md.
+#
+# WINDMILL_VERSION must match the Windmill server (App Platform app
+# fundermaps-windmill-prod, image tag) — worker and server move together.
+ARG WINDMILL_VERSION=1.821
+FROM ghcr.io/windmill-labs/windmill:${WINDMILL_VERSION}
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gdal-bin \
+    && rm -rf /var/lib/apt/lists/* \
+    && ogr2ogr --version
