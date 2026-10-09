@@ -158,9 +158,6 @@ BEGIN
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
         GRANT SELECT ON maplayer.building_tiles_next TO fundermaps_tileserver;
     END IF;
-    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
-        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN ON maplayer.building_tiles_next TO fundermaps_windmill;
-    END IF;
 
     -- Swap. The only exclusive lock on the live table is taken here and
     -- released at COMMIT a few milliseconds later. Rather than queue behind
@@ -281,13 +278,12 @@ BEGIN
 END $$;
 
 -- The nightly rebuild runs from the Windmill flow
--- f/fundermaps/data/refresh_data_model as fundermaps_windmill.
+-- f/fundermaps/data/refresh_data_model as fundermaps_windmill. The procedure is
+-- SECURITY DEFINER, so Windmill needs only EXECUTE on it (migration
+-- 20261009_005), not privileges on the tables it builds (20261009_009).
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_windmill') THEN
         GRANT USAGE ON SCHEMA maplayer TO fundermaps_windmill;
-        GRANT SELECT, INSERT, TRUNCATE, MAINTAIN
-            ON maplayer.building_tiles TO fundermaps_windmill;
-        GRANT SELECT ON data.building_geo_hierarchy TO fundermaps_windmill;
     END IF;
 END $$;
