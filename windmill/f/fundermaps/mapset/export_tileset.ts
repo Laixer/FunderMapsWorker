@@ -12,8 +12,10 @@
 // Upload constraints (same as the queue worker's, see its process-mapset.ts):
 //   * Multipart uploads to the cold bucket fail (BadDigest on
 //     CompleteMultipartUpload). The AWS SDK's Upload and Bun's S3 write both
-//     go multipart on big files, so this does ONE presigned PUT that streams
-//     the file from disk — memory stays flat on the 4 GB worker.
+//     go multipart on big files, so this does ONE presigned PUT.
+//   * That PUT must stream from disk: the worker has 4 GB. Bun's fetch reads
+//     a Bun.file body into memory first — the first analysis_full test was
+//     OOM-killed at 3.1 GB (2026-10-09) — so curl does the PUT.
 //   * A single PUT is capped at 5 GB. analysis_full is ~3.35 GB; past 5 GB the
 //     fix is splitting the export, not multipart.
 //
@@ -21,7 +23,7 @@
 // runs write to `mapset-shadow/` so they never overwrite the real archive.
 
 import { S3Client, SQL } from "bun";
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -46,7 +48,11 @@ const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5_000;
 const OGR2OGR_TIMEOUT_MS = 2 * 60 * 60 * 1000; // same 2 h cap as the queue worker
+const UPLOAD_TIMEOUT_S = 3600;
 const SINGLE_PUT_LIMIT = 5 * 1024 ** 3;
+// A killed run (OOM, cancel) skips its `finally` and leaves a multi-GB temp dir
+// behind; the next run removes ones older than any run can take.
+const STALE_WORKDIR_MS = 4 * 60 * 60 * 1000;
 
 export async function main(
   db: Postgresql,
@@ -70,6 +76,7 @@ export async function main(
   const day = String(now.getUTCDate()).padStart(2, "0");
   const key = `${prefix}/${now.getUTCFullYear()}/${MONTHS[now.getUTCMonth()]}/${day}/${tileset}.gpkg`;
 
+  await removeStaleWorkDirs(tileset);
   const started = performance.now();
   const workDir = await mkdtemp(join(tmpdir(), `fm-${tileset}-`));
   const gpkg = join(workDir, `${tileset}.gpkg`);
@@ -144,16 +151,36 @@ async function upload(s3: S3, bucket: string, key: string, file: string, bytes: 
     bucket,
     virtualHostedStyle: !(s3.pathStyle ?? true),
   });
-  const url = client.presign(key, { method: "PUT", expiresIn: 3600 });
-  const res = await fetch(url, {
-    method: "PUT",
-    body: Bun.file(file),
-    headers: { "Content-Length": String(bytes) },
-  });
-  if (!res.ok) throw new Error(`PUT ${key}: ${res.status} ${(await res.text()).slice(0, 500)}`);
+  const url = client.presign(key, { method: "PUT", expiresIn: UPLOAD_TIMEOUT_S + 600 });
+
+  // curl -T streams the file with a Content-Length in one PUT. The presigned
+  // URL goes in on stdin (`--config -`) so the signature stays out of `ps`.
+  const proc = Bun.spawn(
+    ["curl", "--fail-with-body", "--silent", "--show-error", "--max-time", String(UPLOAD_TIMEOUT_S),
+     "--upload-file", file, "--config", "-"],
+    { stdin: new Blob([`url = "${url}"\n`]), stdout: "pipe", stderr: "pipe" },
+  );
+  const [code, out, err] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  if (code !== 0) throw new Error(`PUT ${key}: curl exited ${code}: ${(err + out).trim().slice(0, 500)}`);
 
   const remote = await client.stat(key);
   if (remote.size !== bytes) throw new Error(`PUT ${key}: stored ${remote.size} bytes, expected ${bytes}`);
+}
+
+async function removeStaleWorkDirs(tileset: string) {
+  const dir = tmpdir();
+  for (const name of await readdir(dir)) {
+    if (!name.startsWith(`fm-${tileset}-`)) continue;
+    const path = join(dir, name);
+    const age = Date.now() - (await stat(path)).mtimeMs;
+    if (age < STALE_WORKDIR_MS) continue;
+    console.log(`${tileset}: removing stale ${path} (${Math.round(age / 3_600_000)} h old)`);
+    await rm(path, { recursive: true, force: true });
+  }
 }
 
 async function withRetries(what: string, fn: () => Promise<void>) {
