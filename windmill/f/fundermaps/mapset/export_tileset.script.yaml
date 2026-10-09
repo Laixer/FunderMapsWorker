@@ -1,0 +1,35 @@
+summary: Export Tileset to Archive
+description: 'Exports one maplayer bundle (`maplayer.<tileset>`) from PostGIS to
+  GeoPackage with ogr2ogr and uploads it as one streaming PUT to
+  `fundermaps-archive/<prefix>/YYYY/mon/DD/<tileset>.gpkg`. Replaces the queue
+  worker''s process_mapset (fundermaps-worker-0). Needs the GDAL worker image
+  (windmill-worker/ in FunderMapsWorker). Shadow runs use prefix mapset-shadow.'
+lock: '!inline f/fundermaps/mapset/export_tileset.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties:
+    db:
+      type: object
+      description: ''
+      format: resource-postgresql
+    s3:
+      type: object
+      description: Spaces credentials; the bucket comes from `bucket`, not the resource
+      format: resource-s3
+    tileset:
+      type: string
+      description: maplayer.bundle tileset, e.g. analysis_full
+    bucket:
+      type: string
+      description: ''
+      default: fundermaps-archive
+    prefix:
+      type: string
+      description: mapset for the real archive, mapset-shadow for side-by-side runs
+      default: mapset
+  required:
+    - db
+    - s3
+    - tileset
