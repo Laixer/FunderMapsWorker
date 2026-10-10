@@ -12,7 +12,7 @@ The `note` field is doing three unrelated jobs, and only one of them is actually
 
 | What it holds | Rows | Where | Remedy |
 |---|---|---|---|
-| **A · Supply chain** — who sourced the dossier, who passed it on, and their reference number | 5,174 | `inquiry.note` | New columns. The party chain has three links and we record one. |
+| **A · Supply chain** — who sourced the dossier, who passed it on, and their reference number | thousands | `inquiry.note` | New columns. The party chain has three links and we record one. |
 | **B · QuickScan outcome** — final assessment + recommended action | 864 / 849 | `inquiry_sample.note` | New enums. One field exists but is the wrong scale; the other has no field at all. |
 | **C · Data-quality caveats** — "this value is an assumption" | ~800 | `inquiry.note` | A short controlled vocabulary (*kenmerken*). |
 
@@ -35,9 +35,9 @@ Pattern frequency, split by which table holds it — the split is the finding:
 
 | Pattern | `inquiry` | `inquiry_sample` |
 |---|---:|---:|
-| `doorlevering vanuit …` | **5,174** | 0 |
-| FRO-QuickScan / NAFO | **4,383** | **4,382** |
-| FunderScan | 794 | 901 |
+| `doorlevering vanuit …` | **thousands** | 0 |
+| supplier product 1 | **thousands** | **thousands** |
+| supplier product 2 | hundreds | hundreds |
 | `bouwkundige eenheid` | 469 | 0 |
 | `eindbeoordeling …` | 1 | **864** |
 | `handelingsperspectief …` | 0 | **849** |
@@ -51,8 +51,8 @@ Provenance and caveats live on the **dossier**; assessment outcomes live on the
 
 ### These notes were written by a machine
 
-`FRO-QuickScan NAFO doorlevering vanuit FunderConsult bron: FundonService` occurs
-**4,382 times byte-identically**. That is a template emitted by an import, not
+`<product> doorlevering vanuit <intermediary> bron: <origin supplier>` occurs
+**thousands of times byte-identically**. That is a template emitted by an import, not
 something 26,000 dossiers' worth of people typed. Two consequences:
 
 1. **Backfill is safe and near-lossless** — the strings parse deterministically.
@@ -64,36 +64,36 @@ something 26,000 dossiers' worth of people typed. Two consequences:
 
 ## 2. Finding A — the supply chain has three links and we record one
 
-For the 5,174 dossiers carrying `doorlevering vanuit`, the recorded contractor is:
+For the dossiers carrying `doorlevering vanuit`, the recorded contractor is:
 
-| `attribution.contractor` | n |
+| `attribution.contractor` | share |
 |---|---:|
-| VastgoedNED | 4,381 |
-| FunderMaps B.V. | 792 |
-| Perfectkeur | 1 |
+| one contractor of record | ~85% |
+| FunderMaps B.V. | ~15% |
+| other | 1 dossier |
 
 But the note says the chain is:
 
 ```
-FundonService  ──bron──▶  FunderConsult  ──doorlevering──▶  VastgoedNED  ──▶  FunderMaps
+<origin>       ──bron──▶  <intermediary> ──doorlevering──▶  <contractor> ──▶  FunderMaps
    (origin)                (intermediary)                    (contractor)
       ?                          ?                          recorded
 ```
 
 **Two of the three parties are unqueryable.** You cannot answer "how much of the
-archive originated at FundonService", which is a commercial question, not a
+archive originated at a given supplier", which is a commercial question, not a
 technical one.
 
-There is also an **external reference** in the note — `FRO-QuickScan 4906`,
-`FunderScan REG-…`, `FunderScan-object …` — a foreign key into the supplier's own
+There is also an **external reference** in the note — a supplier product name plus
+a number (`… 4906`, `REG-…`, `…-object …`) — a foreign key into the supplier's own
 system. Today reconciling a supplier's list against ours means grepping free text.
 
 ### Relationship to `dataops-pipeline.md`
 
 The Data Ops design already has `dataops.dossier.channel` for intake **mechanism**
 (email / upload / bulk drop / API). Supplier chain is a **different axis**: commercial
-provenance, not transport. A dossier can arrive by email *from* FunderConsult
-*originating at* FundonService. Both axes are needed, and this spec covers the one
+provenance, not transport. A dossier can arrive by email *from* an intermediary
+*originating at* another supplier. Both axes are needed, and this spec covers the one
 the existing 26k rows already carry.
 
 ---
@@ -178,9 +178,9 @@ wherever the cardinality allows.
 --     grow a link without retyping report.inquiry.
 CREATE TABLE report.inquiry_provenance (
   inquiry_id           integer PRIMARY KEY REFERENCES report.inquiry(id) ON DELETE CASCADE,
-  source_contractor_id integer REFERENCES application.contractor(id),  -- bron          (FundonService)
-  relayed_by_id        integer REFERENCES application.contractor(id),  -- doorlevering  (FunderConsult)
-  intake_product       text,                                           -- 'fro-quickscan' | 'funderscan'
+  source_contractor_id integer REFERENCES application.contractor(id),  -- bron          (origin supplier)
+  relayed_by_id        integer REFERENCES application.contractor(id),  -- doorlevering  (intermediary)
+  intake_product       text,                                           -- supplier product slug
   external_reference   text,                                           -- '4906', 'REG-…'
   create_date          timestamptz NOT NULL DEFAULT now()
 );
@@ -223,7 +223,7 @@ came from exactly that coupling — see the `application.*` enum→text incident
 ```
 GET  /api/inquiry?kenmerk=funderingstype-aanname[,…]   # AND semantics
 GET  /api/inquiry?bron=<contractorId>
-GET  /api/inquiry?product=fro-quickscan
+GET  /api/inquiry?product=<product-slug>
 GET  /api/inquiry?ref=4906                             # exact, for reconciliation
 POST /api/inquiry/:id/kenmerk      { kenmerk }
 DEL  /api/inquiry/:id/kenmerk/:k
@@ -268,18 +268,18 @@ parse has been eyeballed against a sample.
 -- illustrative; real version lives in sql/migrate/
 INSERT INTO report.inquiry_provenance (inquiry_id, relayed_by_id, intake_product, external_reference)
 SELECT i.id,
-       (SELECT id FROM application.contractor WHERE name ILIKE 'FunderConsult'),
-       CASE WHEN i.note ~* 'fro-?quickscan' THEN 'fro-quickscan'
-            WHEN i.note ~* 'funderscan'     THEN 'funderscan' END,
-       substring(i.note FROM '(?:FRO-QuickScan|REG-)\s*([0-9]{3,})')
+       (SELECT id FROM application.contractor WHERE name ILIKE '<intermediary>'),
+       CASE WHEN i.note ~* '<product-1-pattern>' THEN '<product-1-slug>'
+            WHEN i.note ~* '<product-2-pattern>' THEN '<product-2-slug>' END,
+       substring(i.note FROM '(?:<product-1-prefix>|REG-)\s*([0-9]{3,})')
 FROM report.inquiry i
 WHERE i.delete_date IS NULL AND i.note ILIKE '%doorlevering vanuit%'
 ON CONFLICT (inquiry_id) DO NOTHING;
 ```
 
-Coverage to expect: **A** ~5,174 · **B** ~864 / ~849 · **C** ~800.
+Coverage to expect: **A** every relayed dossier · **B** ~864 / ~849 · **C** ~800.
 
-`FundonService` and `FunderConsult` must exist in `application.contractor` first —
+The origin supplier and the intermediary must exist in `application.contractor` first —
 check before running, create if absent.
 
 **Only strip the note once the columns are verified**, and only the machine-written
@@ -296,7 +296,7 @@ template portion. Anything a human appended stays.
 4. Backfill migrations, verified against a sample before any note is touched.
 5. Studio UI.
 6. *Optional, later:* carry `funderingstype-aanname` into the Webservice so the
-   caveat reaches the banks and NWWI with the value it qualifies. **This is the
+   caveat reaches the report and portfolio customers with the value it qualifies. **This is the
    commercial payoff and it is also the one step that changes customer-facing
    output — it wants its own decision, not a ride-along.**
 
@@ -311,5 +311,5 @@ template portion. Anything a human appended stays.
    becomes tags in eighteen months.
 4. **Why is `facade_scan_risk` empty on 863 of 864?** Worth knowing before adding
    two fields next to it.
-5. **Does `eindbeoordeling` mean the same thing across suppliers?** If FundonService
-   and FunderScan grade differently, one enum flattens a real difference.
+5. **Does `eindbeoordeling` mean the same thing across suppliers?** If the two supplier
+   products grade differently, one enum flattens a real difference.
