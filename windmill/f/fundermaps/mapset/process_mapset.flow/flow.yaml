@@ -32,6 +32,28 @@ value:
                   type: javascript
                   expr: flow_input.iter.value
               path: f/fundermaps/mapset/process_tileset
+          - id: d
+            summary: Shadow export via export_tileset (side-by-side, step 3)
+            value:
+              type: script
+              input_transforms:
+                bucket:
+                  type: static
+                  value: fundermaps-archive
+                db:
+                  type: static
+                  value: $res:f/fundermaps/managed_pg
+                prefix:
+                  type: static
+                  value: mapset-shadow
+                s3:
+                  type: static
+                  value: $res:f/fundermaps/s3
+                tileset:
+                  type: javascript
+                  expr: flow_input.iter.value
+              path: f/fundermaps/mapset/export_tileset
+            continue_on_error: true
         iterator:
           type: javascript
           expr: results.a.map(r => r.tileset)
