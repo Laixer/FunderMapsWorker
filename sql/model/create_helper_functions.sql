@@ -262,7 +262,14 @@ AS $$
 $$;
 
 --------------------------------------------------------------------------------
--- Unclassified risk (catch-all when damage cause doesn't match specific categories)
+-- Unclassified ("overig") risk: from enforcement term, quality, recovery advice
+-- and damage cause
+--
+-- Urgent on a short enforcement term, advised recovery, bad quality, or ANY
+-- damage cause. A cause that already has its own risk (drystand, bacteria,
+-- fungus) pushes this risk to the urgent class as well. That is intended
+-- (Don, 2026-09-23, #201): this is not a catch-all for the causes the three
+-- specific risks do not cover.
 --
 -- Established tier: recovery → 'a', urgent → 'e', long → 'b'
 -- Cluster tier:     cluster_recovery → 'e', urgent → 'd', long → 'b'

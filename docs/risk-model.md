@@ -15,7 +15,7 @@ For every active "house"-type BAG building in the Netherlands (≈ 11.2M rows), 
 
 - A **foundation type** prediction (`report.foundation_type` enum, 18 values).
 - Three **damage-mode risks** — `drystand_risk`, `dewatering_depth_risk`, `bio_infection_risk` — each on the `data.foundation_risk_indication` ENUM `('a','b','c','d','e')` where `a` = safe and `e` = critical.
-- A catch-all `unclassified_risk`.
+- An `unclassified_risk` ("overig"), from enforcement term, quality, recovery advice and damage cause (§6.6).
 - For each risk and the foundation type, a **reliability tier** (`data.reliability` ENUM: `indicative` < `cluster` < `supercluster` < `established`). Since Issue #1005, the `supercluster` tier applies **only to `foundation_type`** (a structural characteristic); all risk values and other inquiry-derived signal inherit at most from the `cluster` tier.
 - Numeric features used to derive the risks (`drystand`, `dewatering_depth`, `velocity`, `ground_water_level`, `ground_level`, `height`, `surface_area`).
 - A **restoration cost estimate** (€).
@@ -352,7 +352,7 @@ If the sample's `damage_cause` is not in the array, the function returns NULL an
 
 ### 6.6 `data.compute_unclassified_risk(...)`
 
-Catch-all when `damage_cause` doesn't match any of the three specific causes. Tier-parameterised: **established** uses `recovery_risk='a', urgent_risk='e'`; **cluster** uses `'e','d'`.
+The unclassified ("overig") risk, derived from enforcement term, quality, recovery advice and damage cause. It goes to the urgent class on a short enforcement term, advised recovery, bad quality, or **any** damage cause, including one that already has its own risk (drystand, bacteria, fungus). That is intended (Don, 2026-09-23, Worker #201): it is not a catch-all for causes the three specific risks miss. Tier-parameterised: **established** uses `recovery_risk='a', urgent_risk='e'`; **cluster** uses `'e','d'`.
 
 ```sql
 SELECT CASE
