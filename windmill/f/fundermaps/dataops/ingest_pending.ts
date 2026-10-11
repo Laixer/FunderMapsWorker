@@ -21,6 +21,13 @@ type S3 = { endPoint?: string; region?: string; accessKey: string; secretKey: st
 
 const WORKER_DIR = "/tmp/fundermaps-worker";
 const WORKER_REPO = "https://github.com/Laixer/FunderMapsWorker.git";
+/**
+ * The exact Worker commit this runner imports. Pinned on purpose: the ingest
+ * lane runs a commit someone chose, not whatever lands on main next. To ship
+ * Worker changes here, set this to a commit on main, in Windmill and in the
+ * windmill/ mirror together.
+ */
+const WORKER_REF = "e761477ceeb21c018e624cea8ce9c2de5007510e";
 /** Where intake and pipeline objects live; the s3 resource's own bucket is fundermaps-data. */
 const BUCKET = "fundermaps";
 
@@ -118,16 +125,28 @@ async function ensureTools() {
   await $`env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libvips-tools libtiff-tools`.quiet().nothrow();
 }
 
-/** FunderMapsWorker at main, cached per container. Returns the short commit. */
+/**
+ * FunderMapsWorker at exactly WORKER_REF, cached per container; fetched only
+ * when the pin moves. Throws before any Worker code is imported if the
+ * checkout is anything else. Returns the short commit.
+ */
 async function ensureWorker(): Promise<string> {
-  const cached = await Bun.file(`${WORKER_DIR}/.git/HEAD`).exists();
-  if (cached) {
-    await $`git -C ${WORKER_DIR} fetch -q --depth 1 origin main`.quiet();
-    await $`git -C ${WORKER_DIR} reset -q --hard origin/main`.quiet();
-  } else {
-    await $`rm -rf ${WORKER_DIR}`.quiet();
-    await $`git clone -q --depth 1 ${WORKER_REPO} ${WORKER_DIR}`.quiet();
+  const headOf = async () =>
+    (await Bun.file(`${WORKER_DIR}/.git/HEAD`).exists())
+      ? (await $`git -C ${WORKER_DIR} rev-parse HEAD`.quiet().nothrow().text()).trim()
+      : "";
+  const have = await headOf();
+  if (have !== WORKER_REF) {
+    if (!have) {
+      await $`rm -rf ${WORKER_DIR}`.quiet();
+      await $`git init -q ${WORKER_DIR}`.quiet();
+      await $`git -C ${WORKER_DIR} remote add origin ${WORKER_REPO}`.quiet();
+    }
+    await $`git -C ${WORKER_DIR} fetch -q --depth 1 origin ${WORKER_REF}`.quiet();
+    await $`git -C ${WORKER_DIR} checkout -q --force --detach FETCH_HEAD`.quiet();
   }
+  const head = await headOf();
+  if (head !== WORKER_REF) throw new Error(`Worker checkout is ${head || "missing"}, expected ${WORKER_REF}`);
   await $`bun install --frozen-lockfile --silent`.cwd(WORKER_DIR).quiet();
-  return (await $`git -C ${WORKER_DIR} rev-parse --short HEAD`.text()).trim();
+  return head.slice(0, 7);
 }
