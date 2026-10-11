@@ -273,7 +273,7 @@ for a commercial decision. A framework built before it has a second occupant is
 a framework built against guesses.
 
 Steps 1–3 need no decision from anyone and do not touch a customer. Step 6 needs
-Don, and should not land while the NWWI v4 cutover and the C# Webservice EOL
+Don, and should not land while the customers' v4 cutover and the C# Webservice EOL
 (August 2026) are still in flight — adding a second version axis mid-migration
 is how support tickets become archaeology.
 

@@ -8,7 +8,7 @@
 -- surveyors pick when forced to choose one, not what they see.
 --
 -- The cheap path Don and Yorick settled on: a list BESIDE the scalar, the
--- scalar stays the hoofdoorzaak. /v4/product/* (Rabobank, NWWI, Calcasa), the
+-- scalar stays the hoofdoorzaak. /v4/product/* (every product customer), the
 -- model matviews and the tiles keep reading damage_cause and do not change.
 -- Array columns rather than a child table: existing reads stay untouched and
 -- the lists carry no attributes of their own.
