@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
+\restrict ggPQKLJjGgKab82GgodjhyVdYSwrLHI8KPTByr8OAJBEKhYygcJqseReMQhfpZh
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4513,6 +4513,74 @@ COMMENT ON VIEW data.model_risk_static IS 'Pointer at the default model version.
 
 
 --
+-- Name: model_risk_static_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.model_risk_static_2026_3 AS
+ SELECT d.building_id,
+    d.address_count,
+    d.neighborhood_id,
+    d.construction_year,
+    d.construction_year_reliability,
+    d.foundation_type,
+    d.foundation_type_reliability,
+    d.restoration_costs,
+    d.drystand,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.drystand_risk
+            ELSE q.drystand_risk
+        END AS drystand_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.drystand_risk_reliability
+            ELSE q.drystand_risk_reliability
+        END AS drystand_risk_reliability,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.bio_infection_risk
+            ELSE q.bio_infection_risk
+        END AS bio_infection_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.bio_infection_risk_reliability
+            ELSE q.bio_infection_risk_reliability
+        END AS bio_infection_risk_reliability,
+    d.dewatering_depth,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.dewatering_depth_risk
+            ELSE q.dewatering_depth_risk
+        END AS dewatering_depth_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.dewatering_depth_risk_reliability
+            ELSE q.dewatering_depth_risk_reliability
+        END AS dewatering_depth_risk_reliability,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.unclassified_risk
+            ELSE q.unclassified_risk
+        END AS unclassified_risk,
+    d.height,
+    d.velocity,
+    d.ground_water_level,
+    d.ground_level,
+    d.soil,
+    d.surface_area,
+    d.owner,
+    d.inquiry_id,
+    d.inquiry_type,
+    d.damage_cause,
+    d.enforcement_term,
+    d.overall_quality,
+    d.recovery_type
+   FROM (data.model_risk_static_2024_1 d
+     LEFT JOIN data.model_risk_2026_3_compute(true) q(building_id, neighborhood_id, gate, qs_risk, qs_date, fo_date, drystand_risk, drystand_risk_reliability, bio_infection_risk, bio_infection_risk_reliability, dewatering_depth_risk, dewatering_depth_risk_reliability, unclassified_risk) ON ((q.building_id = d.building_id)))
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW model_risk_static_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS 'model-2026.3 for every pand: the model-2024.1 row, with the four risks and three risk labels from data.model_risk_2026_3_compute(true) where the pand has a QuickScan class. Refresh after data.model_risk_static_2024_1 (Windmill f/fundermaps/data/refresh_risk_model). See docs/model-versioning.md.';
+
+
+--
 -- Name: model_version; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -7104,6 +7172,20 @@ CREATE UNIQUE INDEX model_risk_static_2024_1_pkey ON data.model_risk_static_2024
 
 
 --
+-- Name: model_risk_static_2026_3_neighborhood_id_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE INDEX model_risk_static_2026_3_neighborhood_id_idx ON data.model_risk_static_2026_3 USING btree (neighborhood_id);
+
+
+--
+-- Name: model_risk_static_2026_3_pkey; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX model_risk_static_2026_3_pkey ON data.model_risk_static_2026_3 USING btree (building_id);
+
+
+--
 -- Name: model_version_one_default_idx; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -8425,5 +8507,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
+\unrestrict ggPQKLJjGgKab82GgodjhyVdYSwrLHI8KPTByr8OAJBEKhYygcJqseReMQhfpZh
 
