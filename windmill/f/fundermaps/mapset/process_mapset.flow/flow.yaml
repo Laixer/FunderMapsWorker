@@ -1,7 +1,9 @@
 summary: Process Map Tilesets
-description: Fetches all enabled bundles from maplayer.bundle, then processes
-  each tileset sequentially by submitting a per-tileset worker job and waiting
-  for completion. Runs after the daily risk model refresh.
+description: 'Fetches all enabled bundles from maplayer.bundle, then exports each
+  tileset sequentially with export_tileset (ogr2ogr → GPKG →
+  fundermaps-archive/mapset/YYYY/mon/DD/). Runs after the daily risk model
+  refresh. The queue worker (fundermaps-worker-0) is no longer involved since
+  the 2026-10-12 cut-over (Worker #147).'
 value:
   modules:
     - id: a
@@ -21,19 +23,7 @@ value:
         type: forloopflow
         modules:
           - id: c
-            summary: Process tileset
-            value:
-              type: script
-              input_transforms:
-                db:
-                  type: static
-                  value: $res:f/fundermaps/managed_pg
-                tileset:
-                  type: javascript
-                  expr: flow_input.iter.value
-              path: f/fundermaps/mapset/process_tileset
-          - id: d
-            summary: Shadow export via export_tileset (side-by-side, step 3)
+            summary: Export tileset to archive
             value:
               type: script
               input_transforms:
@@ -45,7 +35,7 @@ value:
                   value: $res:f/fundermaps/managed_pg
                 prefix:
                   type: static
-                  value: mapset-shadow
+                  value: mapset
                 s3:
                   type: static
                   value: $res:f/fundermaps/s3
@@ -53,7 +43,10 @@ value:
                   type: javascript
                   expr: flow_input.iter.value
               path: f/fundermaps/mapset/export_tileset
-            continue_on_error: true
+            retry:
+              constant:
+                attempts: 1
+                seconds: 60
         iterator:
           type: javascript
           expr: results.a.map(r => r.tileset)
