@@ -1,11 +1,8 @@
 {
   "name": "fundermaps-worker",
-  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run src/index.ts",
-    "dev": "bun --watch run src/index.ts",
     "load-dataset": "bun run src/commands/load-dataset.ts",
     "ingest-dossier": "bun run src/commands/ingest-dossier.ts",
     "normalize-artifacts": "bun run src/commands/normalize-artifacts.ts",

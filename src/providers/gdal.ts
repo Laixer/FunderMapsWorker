@@ -18,14 +18,6 @@ export async function gdalVersion(): Promise<[number, number, number]> {
   return cachedVersion;
 }
 
-export async function fromPostgis(
-  output: string,
-  ...args: string[]
-): Promise<void> {
-  const input = pgConnectionString();
-  await ogr2ogr(input, output, ...args);
-}
-
 export async function toPostgis(
   input: string,
   ...args: string[]

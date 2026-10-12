@@ -26,35 +26,6 @@ export function validateFileExtension(
   }
 }
 
-export function datePath(
-  withMonth = true,
-  withDay = true
-): string {
-  const now = new Date();
-  const year = now.getFullYear().toString();
-  const month = now
-    .toLocaleString("en", { month: "short" })
-    .toLowerCase();
-  const day = now.getDate().toString().padStart(2, "0");
-
-  let path = year;
-  if (withMonth) path += `/${month}`;
-  if (withDay) path += `/${day}`;
-  return path;
-}
-
-export async function collectFilesWithExtension(
-  directory: string,
-  extension: string
-): Promise<string[]> {
-  const glob = new Bun.Glob(`**/*${extension}`);
-  const results: string[] = [];
-  for await (const path of glob.scan({ cwd: directory, absolute: true })) {
-    results.push(path);
-  }
-  return results;
-}
-
 export async function httpDownloadFile(
   url: string,
   destPath: string

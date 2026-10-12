@@ -5,7 +5,7 @@ scripts can run `ogr2ogr`. It exists for the GPKG archive export
 (`f/fundermaps/mapset/export_tileset` →
 `fundermaps-archive/mapset/<date>/<tileset>.gpkg`), which runs on this worker
 since the 2026-10-12 cut-over. The queue worker droplet (`fundermaps-worker-0`)
-that used to do it gets no jobs any more and is to be retired (#147).
+that used to do it was deleted the same day (#147).
 
 ## Where it runs
 

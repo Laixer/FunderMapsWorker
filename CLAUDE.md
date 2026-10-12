@@ -4,56 +4,59 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FunderMaps Worker is a polling-based background job processor built with **Bun** and **TypeScript**. It reads jobs from a PostgreSQL queue (`application.worker_jobs`) and executes them concurrently.
+FunderMaps Worker is the data-side repository of FunderMaps, built with **Bun** and **TypeScript**. It holds:
 
-**Since the 2026-10-12 cut-over nothing submits jobs to that queue any more** (#147): the last one, the GPKG archive export (`process_mapset`), runs as the Windmill script `f/fundermaps/mapset/export_tileset` on the Windmill worker (image in `windmill-worker/`). The queue worker (`fundermaps-worker-0`) idles until it is retired; the job code below is kept until then.
+- the **database schema** (`schema.sql`, `db/migrations/`, `sql/`) — this repo owns it; no other repo runs migrations;
+- **command-line tools** for data work (`src/commands/`): the BAG / 3DBAG / subsidence loader, the dossier ingest and its helpers, the migration runner;
+- the **Windmill workspace mirror** (`windmill/`) and the **Windmill worker image** (`windmill-worker/`, Windmill + GDAL);
+- the **tileserver** deploy config (`tileserver/`, Martin).
+
+**There is no background worker any more.** Until 2026-10-12 this repo also ran a polling job processor on a droplet (`fundermaps-worker-0`) that read `application.worker_jobs`. Its last job, the GPKG archive export (`process_mapset`), now runs as the Windmill script `f/fundermaps/mapset/export_tileset`; the droplet, the queue loop, the container image and the queue table are gone (#147). The name "Worker" is history.
 
 ## Commands
 
 ```bash
-bun run dev          # Start with --watch (auto-reload)
-bun run start        # Start without watch
-bun install          # Install dependencies
+bun install               # Install dependencies
+bun test                  # Unit tests (src/**/*.test.ts)
+bun run typecheck         # tsc --noEmit
+bun run migrate           # Apply db/migrations/ (see db/migrations/README.md)
+bun run load-dataset <dataset_input> [layer ...] [--delete-after] [--tmp-dir=PATH]
+bun run ingest-dossier | normalize-artifacts | load-loket-export | resolve-addresses | check-qs-duplicates
 ```
 
-No test runner or linter is configured. TypeScript strict mode is the primary safety net.
+The commands are run directly (`bun run <script>`, or `bun run src/commands/<file>.ts` for the ones without a script); there is no long-running process to start.
 
 ## Architecture
 
-**Main loop** (`src/index.ts`): recover stale jobs → poll pending jobs → process up to `MAX_CONCURRENT` (default 3) in parallel → sleep `POLL_INTERVAL` (default 30s) → repeat.
-
-**Job lifecycle**: pending → processing → completed/failed. Failed jobs reschedule themselves to `pending` with `process_after = NOW() + 30 * 2^(n-1) seconds` (so retry waits are 30s, 60s, 120s, 240s, …). The cap is per-row: `worker_jobs.max_retries` (schema default **3**; `0` means infinite). When the row exhausts its retries the status flips to `failed` and `last_error` records why.
-
-**Stale-job recovery**: at the top of each poll cycle, any `processing` job whose `updated_at` is older than `STALE_THRESHOLD_HOURS = 2` is reset to `pending` with a `Reset: stuck in processing …` note. This is how we recover from OOM kills, crashed pods, or any path where `safeDbUpdate` couldn't write a terminal state.
-
 ### Layers
 
-- **`src/commands/`** — Job handlers. **`process_mapset`** is the only job type still dispatched through the queue (canonical underscore form stored in `application.worker_jobs.job_type`, submitted by Windmill; dispatch normalizes `-` → `_`). The former export/pdf/mail/cleanup jobs moved to **Windmill**, which runs its own implementations directly and no longer inserts into `worker_jobs`. **`load_dataset`** (BAG / 3DBAG / subsidence ingest) is no longer queued either — it runs as a direct CLI call: `bun run load-dataset <dataset_input> [layer ...] [--delete-after] [--tmp-dir=PATH]` (`commands/load-dataset.ts` keeps an `import.meta.main` entrypoint).
-- **`src/providers/`** — External service wrappers for the surviving paths: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, tippecanoe. The Mailgun and Gotenberg providers were removed along with the `send_mail` and `generate_pdf` jobs (mail/PDF now live in the API + Windmill).
-- **`src/lib/`** — Internal utilities: structured logger, concurrent queue, subprocess spawning with timeout, file/HTTP helpers.
-- **`src/config.ts`** — Zod-validated environment config. All env vars prefixed `FUNDERMAPS_`.
+- **`src/commands/`** — One file per command-line tool. `load-dataset` (BAG / 3DBAG / subsidence ingest) and `migrate` are run by hand from the ops VM; the dossier tools also run from Windmill (`f/fundermaps/dataops/ingest_pending` checks this repo out at a pinned commit).
+- **`src/providers/`** — External service wrappers: S3 (DigitalOcean Spaces), GDAL/ogr2ogr, PDF tooling, the vision/LLM client.
+- **`src/lib/`** — Internal utilities: structured logger, subprocess spawning with timeout, file/HTTP helpers, the migration runner's logic, address and evidence matching.
+- **`src/config.ts`** — Zod-validated environment config. Database and S3 variables are prefixed `FUNDERMAPS_`.
 - **`src/db.ts`** — PostgreSQL connection pool (uses `postgres` library with SSL prefer mode).
 - **`db/migrations/`** — Ledger-tracked schema migrations, applied with `bun run migrate` (ledger `application.schema_migrations`, contract in `db/migrations/README.md`). `sql/migrate/` is the pre-ledger history, not replayed.
 - **`sql/`** — Hand-written SQL: `load/` (BAG/subsidence/3DBAG ingest), `model/` (risk model refresh), `migrate/` (legacy one-shot migrations, see above).
+- **`windmill/`** — Git mirror of the Windmill workspace (scripts, flows, schedules); the workspace is edited in Windmill and mirrored here for review. See `windmill/README.md`.
+- **`windmill-worker/`** — The Windmill worker image: stock Windmill plus `gdal-bin`, built on the worker droplet. See its README.
 
 ### Key patterns
 
-- **Subprocess execution**: GDAL and tippecanoe are invoked as child processes via `src/lib/subprocess.ts` which wraps `Bun.spawn` with timeout and stdio capture.
+- **Subprocess execution**: GDAL and the PDF tools are invoked as child processes via `src/lib/subprocess.ts`, which wraps `Bun.spawn` with timeout and bounded stdio capture.
 - **Path alias**: `@/*` maps to `./src/*` (configured in tsconfig.json).
-- **Payload validation**: Each command validates its payload with Zod schemas before execution.
-- **S3 buckets**: `fundermaps-archive` (**cold storage** — the nightly GPKG exports under `mapset/` and the monthly keepers under `mapset-archive/`; this is the permanent static-model history), `fundermaps-data` (source datasets, exports, funda media), `fundermaps-tileset` (basemap fonts/sprites/styles; the vector tilesets themselves were retired in favour of the Martin tileserver), `fundermaps` (PDFs/artifacts), `fundermaps-development` (default).
-  - Cold-bucket gotchas: **multipart upload fails** (`BadDigest` on `CompleteMultipartUpload`), so uploads must be single-part `PutObject` — capped at 5 GB, and `analysis_full` is ~3.34 GB. **Spaces cannot server-side copy between buckets at all** (`NotImplemented: … cross-region or cross-cluster CopyObject`), only within one bucket. 30-day minimum retention.
+- **Bun's global types** come from `"types": ["bun"]` in `tsconfig.json` — no source file needs to import from `"bun"` for them.
+- **S3 buckets**: `fundermaps-archive` (**cold storage** — the GPKG exports under `mapset/` and the monthly keepers under `mapset-archive/`; this is the permanent static-model history), `fundermaps-data` (source datasets, exports, funda media), `fundermaps-tileset` (basemap fonts/sprites/styles; the vector tilesets themselves were retired in favour of the Martin tileserver), `fundermaps` (PDFs/artifacts), `fundermaps-development` (default).
+  - Cold-bucket gotchas: **multipart upload fails** (`BadDigest` on `CompleteMultipartUpload`), so uploads must be a single PUT — capped at 5 GB, and `analysis_full` is ~3.35 GB. **Spaces cannot server-side copy between buckets at all** (`NotImplemented: … cross-region or cross-cluster CopyObject`), only within one bucket. 30-day minimum retention.
+
+### The GPKG archive export
+
+Runs in Windmill, not here: `f/fundermaps/mapset/process_mapset` (called at the end of `f/fundermaps/data/refresh_data_model`) loops over the enabled rows of `maplayer.bundle` and runs `export_tileset` for each — `ogr2ogr` of `maplayer.<tileset>` to GeoPackage, one streaming PUT (via `curl`; Bun's `fetch` buffers a file body in memory) to `fundermaps-archive/mapset/YYYY/mon/DD/<tileset>.gpkg` — then writes one `data.refresh_log` row per export (job `export_tileset`, size and row count in `detail`). Source in `windmill/f/fundermaps/mapset/`.
 
 ## System Dependencies (for local dev)
 
-The `process_mapset` and `load_dataset` commands require `ogr2ogr` (GDAL ≥3.0) and `tippecanoe` installed on the system. See `Containerfile` for the full build setup.
-
-## Container Build
-
-Uses a multi-stage `Containerfile`: builds tippecanoe from source, then creates a minimal Bun runtime image with `gdal-bin` and `libsqlite3-0`.
+`load-dataset` requires `ogr2ogr` (GDAL ≥ 3.0) on the system. The dossier tools need the PDF utilities `src/providers/pdf.ts` shells out to.
 
 ## Operational constraints
 
-- **`MAX_TILESET_WORKERS=1` must be set in any deployment that runs `process_mapset`**. The default in `config.ts` is unset (no parallelism cap on tileset rendering), but `analysis_full` exports OOM an 8 GB box if more than one tileset renders concurrently. New deployments should pin this to 1 until someone addresses the OOM root cause — don't bump it without that.
-- `MAX_CONCURRENT` defaults to 3 (process-wide cap across job types). Tileset jobs honour `MAX_TILESET_WORKERS` *inside* this cap, so a healthy mix of mixed jobs can saturate without OOMing the tileset path.
-- The worker does **not** auto-apply migrations at boot. `bun run migrate` is a deliberate step (CI runs it on the bootstrapped schema; prod from the ops VM as doadmin with `--allow-prod`). Worker boot will happily run against a schema that's a migration behind; the failure mode is a job that hits a missing column at runtime, not a startup error.
+- Nothing applies migrations automatically. `bun run migrate` is a deliberate step (CI runs it on the bootstrapped schema; prod from the ops VM as doadmin with `--allow-prod`). Code can run against a schema that is a migration behind; the failure mode is a query that hits a missing column at runtime.
+- Windmill's server and worker versions move together: rebuild the `windmill-worker/` image for the new version when the server is upgraded.

@@ -22,8 +22,8 @@
  *     The per-building summary table is dumped; history is for UI testing.
  *   - report.recovery / recovery_sample / incident — recovery is a parked
  *     feature (memory: project_recovery_feature_parked).
- *   - All auth_* token tables, sessions, verification, worker_jobs — start
- *     empty; the running stack populates them.
+ *   - All auth_* token tables, sessions, verification — start empty; the
+ *     running stack populates them.
  *
  * Usage:
  *   DATABASE_URL=postgres://user:pass@host:port/fundermaps \
