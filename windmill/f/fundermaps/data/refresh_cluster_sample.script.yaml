@@ -1,5 +1,7 @@
 summary: Refresh Cluster Sample
-description: Refreshes the `data.cluster_sample` materialized view.
+description: Refreshes the `data.cluster_sample` materialized view, and after it
+  `data.cluster_sample_2026_3` (what model-2026.3 reads from the reports beside the
+  leading record).
 lock: ''
 kind: script
 schema:

@@ -835,3 +835,44 @@ Does **not** read `model_risk_static`. It queries `report.inquiry_sample` direct
 | Statistics matview fixes        | `sql/model/fix_statistics.sql`                     |
 | Authoritative dump              | `schema.sql` (regenerate after any change)         |
 | Operational memory (decisions)  | `~/.claude/projects/-home-eve-Projects-FunderMapsWorker/memory/{risk-model-review,model-performance,gfm-migration}.md` |
+
+---
+
+## 15. model-2026.3 — the rules that differ
+
+Everything above describes **model-2024.1**, whose logic is frozen. model-2026.3 is the same
+calculation with the rules below, as its own function: `data.model_risk_2026_3_rows(...)`, one
+boolean switch per rule, materialized as `data.model_risk_static_2026_3` with every switch on
+(migration `20261013_001`; how versions live side by side: `docs/model-versioning.md`).
+With every switch off the function returns model-2024.1, column for column.
+
+| Switch | Rule | Issue |
+|---|---|---|
+| `quickscan_rules` | A QuickScan (Verkennend Funderingsonderzoek) overrides the four risks for 3 years after its date. A funderingsonderzoek from the last 5 years leads; a valid QuickScan then only fills what the onderzoek leaves empty. Only a QuickScan addendum (inquiry type `facade_scan`) counts. An executed herstel beats a QuickScan. | #222 |
+| `type_per_field` | A foundation type the leading report does not name is taken from the best-ranked report that does name one, for the pand, its block and its wider block. A leading report with a different type still wins. | #243 |
+| `term_and_quality` | Enforcement term, overall quality and a herstel advice give a risk without a damage cause too, for the risks of the foundation family: wood → drystand and bio infection, shallow → dewatering depth. | #278 |
+| `term_and_quality_cluster` | The same when the report is that of another pand in the same block. | #278 |
+| `term_countdown` | The enforcement term counts down from the date of the report: up to 5 years left = e, up to 10 = d, up to 20 = c, more = b. | #278 |
+| `decay_floor` | Decay found in the wood (`wood_encroachment`) makes that risk at least d: fungus → drystand, bacterial → bio infection, both → both. | #278 |
+| `measured_settlement` | A settlement measured at the pand in a report is used instead of the InSAR velocity. | #278 |
+| `block_velocity` | The indicative rules use the median InSAR velocity of the pand's block (`data.building_cluster`) for a pand that has a measurement, and the velocity thresholds move 0.3 mm/year further down. A pand without a measurement stays without one. | #236 (V5) |
+| `fallback_in_family` | The build-year estimate (before 1970 = d, from 1970 = b; only when no rule says anything) goes to the foundation's own risk, labelled indicative: shallow → dewatering depth, wood → drystand and bio infection. Other families keep it in `unclassified_risk`. | #242 |
+| `label_by_source` | `*_risk_reliability` says which rule produced the value: QuickScan, the pand's own report or a herstel = `established`; a report in the block = `cluster`; the indicative rule or the build-year estimate = `indicative`. | #235 |
+
+What model-2026.3 reads beside §7's three sample matviews: `data.building_sample_2026_3`
+(best foundation type, QuickScan and onderzoek dates, decay, measured settlement, per pand) and
+`data.cluster_sample_2026_3` / `data.supercluster_sample_2026_3` (best foundation type).
+
+Its own helper copies: `data.compute_damage_risk_2026_3`, `data.term_class_2026_3`,
+`data.compute_indicative_drystand_risk_2026_3`, `..._bio_risk_2026_3`, `..._dewatering_risk_2026_3`
+(the last three take a `margin`). §6's originals are not edited. Not changed by any rule and
+therefore still shared with model-2024.1: the family predicates (§6.1), `enforcement_term_years`,
+`compute_restoration_costs`, `indicative_foundation_type`, `compute_unclassified_risk`.
+
+Not in model-2026.3: skew measurements, the other quality fields of a report, a three-level
+QuickScan outcome (#213), and a rule for the build-year estimate of the steel, combined and
+other families.
+
+To check it: `sql/validate/model_2026_3_control.sql` (every switch off against model-2024.1,
+must be 0) and `sql/validate/model_2026_3_rule_effect.sql` (what one rule changes). Both are
+national runs of the model: minutes, not seconds.

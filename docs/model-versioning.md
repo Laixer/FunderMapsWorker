@@ -124,22 +124,33 @@ script**. Switching the default is a `CREATE OR REPLACE VIEW`. Retiring a model
 is a `DROP`. No new machinery, and the rollback for each step is the inverse of
 the step.
 
-**The second matview exists since 2026-10-12: `data.model_risk_static_2026_3`**
-(migration `20261012_002`). model-2026.3 is model-2024.1 with three rules on the
-QuickScan term, and those can only change a pand that has a QuickScan class
-(about 11,600 of 11.3M). So its matview is not a second copy of the model SQL
-but the 2024.1 row of every pand, with the four risks and three risk labels
-taken from `data.model_risk_2026_3_compute(true)` on those panden. Three
-consequences:
+**The second matview exists since 2026-10-12: `data.model_risk_static_2026_3`.**
+It was first built (migration `20261012_002`) as the 2024.1 row of every pand
+with the QuickScan panden recomputed, which was enough for the QuickScan rules
+and nothing else. Since migration `20261013_001` model-2026.3 is a model of its
+own:
 
-- **Refresh order**: 2024.1 first, then 2026.3. `refresh_risk_model` does both
-  in that order; the second one is a scan plus a join (its SELECT: 32 s on
-  prod), not another ~18 minutes.
-- **2026.3 cannot outlive the 2024.1 matview**, and it is equal to 2024.1
-  outside the QuickScan panden by construction.
-- **`data.model_risk_2026_3_compute(boolean)` is served logic now.** Do not
-  `CREATE OR REPLACE` it again. A version that changes rules for every pand
-  brings its own SQL and its own slug.
+- **`data.model_risk_2026_3_rows(...)` is the model**, a SQL function with one
+  boolean switch per decided rule. With every switch off it is model-2024.1,
+  column for column; that is the control, and it is how a rule's effect is
+  measured on its own (`sql/validate/model_2026_3_control.sql`,
+  `model_2026_3_rule_effect.sql`). The matview calls it with every switch on.
+  A SQL function with constant arguments is inlined by the planner, so the
+  switches cost nothing at run time. After its 30 served columns the function
+  returns where each risk came from (QuickScan, research, herstel, cluster,
+  model, build year); those columns explain, they are not served.
+- **Own copies of the helpers whose rules change** (`compute_damage_risk_2026_3`,
+  `term_class_2026_3`, the three `compute_indicative_*_2026_3`). The frozen
+  model keeps calling the originals, which are not edited. The helpers no rule
+  changes are still shared by both models: editing one of those changes both.
+- **Three small sample matviews** (`building_sample_2026_3`,
+  `cluster_sample_2026_3`, `supercluster_sample_2026_3`) hold what 2026.3 reads
+  from the reports beside the leading record of the three frozen sample
+  matviews, which it keeps reading. They are refreshed in the same flow step.
+- **A full national run of its own.** The refresh of model-2026.3 takes about
+  as long as that of model-2024.1; `refresh_risk_model` does both.
+- **New logic is a new slug.** Once model-2026.3 is the default, its function
+  and helpers are served logic: no `CREATE OR REPLACE` on them.
 
 Partitioning would win if we had many full versions and wanted partition
 pruning. We will not: §6 keeps candidates off the national dataset, so the
@@ -280,7 +291,7 @@ Worth doing at the same time as §8, since both touch the same code path.
 | 1 | Registry table + lifecycle enum; register the current model as `frozen` with its input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
 | 2 | ✅ **Done 2026-08-09.** Rename the matview, add the pointer view, update the two `REFRESH` call sites | one migration + Windmill script + build_seed | The migration everything else needs. No consumer changes. Reversible by renaming back. Dependents deferred to step 4. |
 | 3 | Evaluation sample + wire `sql/validate/` to score a named version | one view + arguments on existing scripts | Makes Model 4 development safe before Model 4 exists. |
-| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`) + one line in `refresh_risk_model`. The default switch is its own migration. | one migration + Windmill script | Only now does the nightly window grow (by minutes, see §5). Do not do this before there is a model to put in it. |
+| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`); a model of its own with every decided rule since `20261013_001` (§5). The default switch is its own migration. | migrations + Windmill scripts | Only now does the nightly window grow: a second national model run, about as long as the first. Do not do this before there is a model to put in it. |
 | 5 | Version in the Webservice response; `product_tracker` records it | small | Reversible, no contract change yet. |
 | 6 | Customer pinning + support policy | the real work is the policy | Last, because it is a promise rather than a feature. |
 
