@@ -1,9 +1,10 @@
 summary: Process Map Tilesets
 description: 'Fetches all enabled bundles from maplayer.bundle, then exports each
   tileset sequentially with export_tileset (ogr2ogr → GPKG →
-  fundermaps-archive/mapset/YYYY/mon/DD/). Runs after the daily risk model
-  refresh. The queue worker (fundermaps-worker-0) is no longer involved since
-  the 2026-10-12 cut-over (Worker #147).'
+  fundermaps-archive/mapset/YYYY/mon/DD/, plus a GeoParquet copy of the same
+  file next to it). Runs after the daily risk model refresh. The queue worker
+  (fundermaps-worker-0) is no longer involved since the 2026-10-12 cut-over
+  (Worker #147).'
 value:
   modules:
     - id: a
@@ -65,6 +66,9 @@ value:
                 key:
                   type: javascript
                   expr: results.c.key ?? null
+                parquet_bytes:
+                  type: javascript
+                  expr: results.c.parquet_bytes ?? null
                 seconds:
                   type: javascript
                   expr: results.c.seconds ?? null

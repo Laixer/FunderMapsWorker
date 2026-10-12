@@ -1,11 +1,17 @@
-# Windmill worker image (Windmill + GDAL)
+# Windmill worker image (Windmill + GDAL + DuckDB)
 
-The stock `ghcr.io/windmill-labs/windmill` image plus `gdal-bin`, so Windmill
-scripts can run `ogr2ogr`. It exists for the GPKG archive export
-(`f/fundermaps/mapset/export_tileset` →
-`fundermaps-archive/mapset/<date>/<tileset>.gpkg`), which runs on this worker
-since the 2026-10-12 cut-over. The queue worker droplet (`fundermaps-worker-0`)
-that used to do it was deleted the same day (#147).
+The stock `ghcr.io/windmill-labs/windmill` image plus `gdal-bin` and the DuckDB
+CLI, so Windmill scripts can run `ogr2ogr` and `duckdb`. It exists for the
+archive export (`f/fundermaps/mapset/export_tileset` →
+`fundermaps-archive/mapset/<date>/<tileset>.gpkg` and a GeoParquet copy,
+`<tileset>.parquet`, next to it), which runs on this worker since the
+2026-10-12 cut-over. The queue worker droplet (`fundermaps-worker-0`) that used
+to do it was deleted the same day (#147).
+
+DuckDB is pinned in the `Containerfile` (`DUCKDB_VERSION` + the zip's
+`DUCKDB_SHA256`), with its spatial extension installed at build time into
+`/usr/local/share/duckdb/extensions`. Windmill's own DuckDB (the `duckdb`
+script language) is a different, embedded copy and is not what the export uses.
 
 ## Where it runs
 

@@ -7,7 +7,12 @@
 // cold-storage bucket `fundermaps-archive`. archive_mapset_monthly reads that
 // layout, and that bucket is the only model history: never prune `mapset/`.
 //
-// Needs `ogr2ogr` on the worker: the GDAL worker image in `windmill-worker/`.
+// It then writes a GeoParquet copy of that same file next to it
+// (`<tileset>.parquet`): ~4x smaller, and DuckDB can query it in place, so
+// comparing two days no longer means downloading two 3.35 GB files. The GPKG
+// stays the archive of record — see archiveParquet.
+//
+// Needs `ogr2ogr` and `duckdb` on the worker: the image in `windmill-worker/`.
 //
 // Upload constraints (same as the queue worker's, see its process-mapset.ts):
 //   * Multipart uploads to the cold bucket fail (BadDigest on
@@ -19,8 +24,9 @@
 //   * A single PUT is capped at 5 GB. analysis_full is ~3.35 GB; past 5 GB the
 //     fix is splitting the export, not multipart.
 //
-// `prefix` exists for the side-by-side run against the queue worker: shadow
-// runs write to `mapset-shadow/` so they never overwrite the real archive.
+// `prefix` exists for test runs: they write to their own folder (the
+// side-by-side run against the queue worker used `mapset-shadow/`) so they
+// never overwrite the real archive.
 
 import { S3Client, SQL } from "bun";
 import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
@@ -50,6 +56,9 @@ const RETRY_DELAY_MS = 5_000;
 const OGR2OGR_TIMEOUT_MS = 2 * 60 * 60 * 1000; // same 2 h cap as the queue worker
 const UPLOAD_TIMEOUT_S = 3600;
 const SINGLE_PUT_LIMIT = 5 * 1024 ** 3;
+const DUCKDB_TIMEOUT_MS = 30 * 60 * 1000; // analysis_full converts in about a minute
+// Where the worker image keeps DuckDB's spatial extension (windmill-worker/Containerfile).
+const DUCKDB_EXTENSIONS = "/usr/local/share/duckdb/extensions";
 // A killed run (OOM, cancel) skips its `finally` and leaves a multi-GB temp dir
 // behind; the next run removes ones older than any run can take.
 const STALE_WORKDIR_MS = 4 * 60 * 60 * 1000;
@@ -93,7 +102,9 @@ export async function main(
     await withRetries(`upload ${key}`, () => upload(s3, bucket, key, gpkg, bytes));
     const seconds = Math.round((performance.now() - started) / 1000);
     console.log(`${tileset}: uploaded to s3://${bucket}/${key} in ${seconds}s total`);
-    return { tileset, bucket, key, bytes, features, seconds };
+
+    const parquet = await archiveParquet(s3, bucket, key, gpkg, workDir, tileset, features);
+    return { tileset, bucket, key, bytes, features, seconds, ...parquet };
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }
@@ -140,6 +151,81 @@ async function featureCount(gpkg: string): Promise<number> {
   const [code, out] = await Promise.all([proc.exited, new Response(proc.stdout).text()]);
   if (code !== 0) throw new Error(`ogrinfo exited ${code}`);
   return [...out.matchAll(/^Feature Count: (\d+)$/gm)].reduce((n, m) => n + Number(m[1]), 0);
+}
+
+// The GeoParquet copy, made from the GPKG on disk rather than from a second
+// read of the database: no extra load, and both files are the same snapshot.
+//
+// The GPKG is already uploaded when this runs and stays the archive of record.
+// Whatever goes wrong here (no duckdb on the worker, a failed conversion or
+// upload) is logged and leaves the export a success; the result then has no
+// parquet_* fields and refresh_log shows a null parquet_bytes.
+async function archiveParquet(
+  s3: S3,
+  bucket: string,
+  key: string,
+  gpkg: string,
+  workDir: string,
+  tileset: string,
+  features: number,
+) {
+  const started = performance.now();
+  const parquetKey = key.replace(/\.gpkg$/, ".parquet");
+  const parquet = gpkg.replace(/\.gpkg$/, ".parquet");
+  try {
+    const rows = await convertToParquet(gpkg, parquet, workDir);
+    if (rows !== features) throw new Error(`the Parquet file has ${rows} rows, the GPKG ${features}`);
+    const parquetBytes = (await stat(parquet)).size;
+    await withRetries(`upload ${parquetKey}`, () => upload(s3, bucket, parquetKey, parquet, parquetBytes));
+    const parquetSeconds = Math.round((performance.now() - started) / 1000);
+    console.log(
+      `${tileset}: GeoParquet copy at s3://${bucket}/${parquetKey}, ${(parquetBytes / 1e9).toFixed(2)} GB in ${parquetSeconds}s`,
+    );
+    return { parquet_key: parquetKey, parquet_bytes: parquetBytes, parquet_seconds: parquetSeconds };
+  } catch (err) {
+    console.log(`${tileset}: no GeoParquet copy this run — ${String(err).slice(0, 1000)}`);
+    return {};
+  }
+}
+
+// Returns the row count of the Parquet file it wrote.
+async function convertToParquet(gpkg: string, parquet: string, workDir: string): Promise<number> {
+  const q = (s: string) => `'${s.replaceAll("'", "''")}'`;
+  const sql = [
+    // The extension comes from the image; a run never downloads one.
+    `SET extension_directory = ${q(DUCKDB_EXTENSIONS)}`,
+    "SET autoinstall_known_extensions = false",
+    "SET autoload_known_extensions = false",
+    // The worker has 4 GB and 2 vCPUs; analysis_full peaks around 0.3 GB.
+    "SET memory_limit = '1GB'",
+    "SET threads = 2",
+    `SET temp_directory = ${q(workDir)}`,
+    "SET preserve_insertion_order = false",
+    "LOAD spatial",
+    // `fid` is the row number ogr2ogr adds to a GPKG, not a column of the
+    // maplayer table (none of them has one).
+    `COPY (SELECT COLUMNS(lambda c: c <> 'fid') FROM ST_Read(${q(gpkg)})) TO ${q(parquet)} (FORMAT parquet, COMPRESSION zstd)`,
+    `SELECT (SELECT count(*) FROM read_parquet(${q(parquet)})),
+            (SELECT count(*) FROM parquet_kv_metadata(${q(parquet)}) WHERE decode(key) = 'geo')`,
+  ].join(";\n");
+
+  const proc = Bun.spawn(["duckdb", "-bail", "-csv", "-noheader", "-c", sql], {
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: DUCKDB_TIMEOUT_MS,
+  });
+  const [code, out, err] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  if (code !== 0) throw new Error(`duckdb exited ${code}: ${(err + out).trim().slice(0, 2000)}`);
+
+  const [rows, geo] = (out.trim().split("\n").at(-1) ?? "").split(",").map(Number);
+  if (!Number.isInteger(rows)) throw new Error(`duckdb printed no row count: ${out.trim().slice(0, 500)}`);
+  // Without the `geo` key it is plain Parquet with a blob column, not GeoParquet.
+  if (geo !== 1) throw new Error("the Parquet file has no `geo` metadata");
+  return rows as number;
 }
 
 async function upload(s3: S3, bucket: string, key: string, file: string, bytes: number) {

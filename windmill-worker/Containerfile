@@ -1,8 +1,9 @@
-# Windmill worker + GDAL.
+# Windmill worker + GDAL + DuckDB.
 #
-# The stock Windmill image has no ogr2ogr. The nightly GPKG export
-# (process_mapset → fundermaps-archive) moves off the queue worker droplet
-# into a Windmill script, and that script needs ogr2ogr. See README.md.
+# The stock Windmill image has no ogr2ogr. The archive export
+# (process_mapset → export_tileset → fundermaps-archive) runs as a Windmill
+# script, and that script needs ogr2ogr for the GPKG and the DuckDB CLI for
+# the GeoParquet copy. See README.md.
 #
 # WINDMILL_VERSION must match the Windmill server (App Platform app
 # fundermaps-windmill-prod, image tag) — worker and server move together.
@@ -13,3 +14,17 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends gdal-bin \
     && rm -rf /var/lib/apt/lists/* \
     && ogr2ogr --version
+
+# DuckDB CLI + its spatial extension, for GPKG → GeoParquet (this GDAL build
+# has no Parquet driver, and Windmill's own DuckDB is not a command a script
+# can call). The extension is installed here, into a fixed directory, so a run
+# never downloads anything; export_tileset points DuckDB at that directory.
+# Bumping DUCKDB_VERSION needs the new zip's sha256 as well.
+ARG DUCKDB_VERSION=1.5.6
+ARG DUCKDB_SHA256=6e89deac1ebbc36eed0291caf8b567b030c7b86ac35998f71854e22b3c5d5e2f
+RUN curl -fsSL -o /tmp/duckdb.zip \
+      https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/duckdb_cli-linux-amd64.zip \
+    && echo "${DUCKDB_SHA256}  /tmp/duckdb.zip" | sha256sum -c - \
+    && unzip -q /tmp/duckdb.zip duckdb -d /usr/local/bin \
+    && rm /tmp/duckdb.zip \
+    && duckdb -c "SET extension_directory='/usr/local/share/duckdb/extensions'; INSTALL spatial; LOAD spatial; SELECT version(), ST_AsText(ST_Point(4.9, 52.37));"
