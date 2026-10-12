@@ -1,9 +1,9 @@
 summary: Refresh Risk Model
-description: Refreshes the default model version's matview. The generic name
-  `data.model_risk_static` is now a VIEW pointing at the default (see
+description: Refreshes every fully built model version, one matview each. The
+  generic name `data.model_risk_static` is a VIEW pointing at the default (see
   docs/model-versioning.md), and a view cannot be refreshed — this must always
-  name a concrete versioned matview. When the default changes, update this line
-  too.
+  name the concrete versioned matviews. Order matters. model-2026.3 is built on
+  top of the model-2024.1 matview, so 2024.1 goes first.
 lock: ''
 kind: script
 schema:
