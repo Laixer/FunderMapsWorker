@@ -568,10 +568,13 @@ dataops/validate_and_gate   pure SQL + rules, no LLM
 Everything that runs in the background runs in Windmill (Yorick, 2026-08-28).
 The Worker CLI stays as the manual escape hatch and as the code Windmill calls:
 `ingest_pending` is a Bun script on the Windmill worker that installs
-poppler/ImageMagick/`file` if the container lacks them, clones this repo at
-`main`, and runs `ingest-dossier --dossier` per pending dossier as
+poppler/ImageMagick/`file` if the container lacks them, fetches this repo at
+one pinned commit (`WORKER_REF` in the script, since 2026-10-10; it followed
+`main` before), and runs `ingest-dossier --dossier` per pending dossier as
 `fundermaps_windmill` (grants: sql/migrate/grant_dataops_to_windmill.sql).
 Batch rather than webhook (Yorick 2026-09-01): idempotent and self-healing.
+A change to the reader ships by moving `WORKER_REF`, in Windmill and in the
+mirror together; merging to `main` alone changes nothing that runs.
 
 The Batches API is the right primitive twice over: 50% cheaper, and it turns
 1,537 concurrent calls into submit-poll-ingest, which one worker handles fine.

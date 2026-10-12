@@ -61,8 +61,8 @@ The matview is consumed by:
                               │
                               ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 2 — Daily (Windmill flow f/fundermaps/data/refresh_data_model,       │
-│             scheduled 18:00 UTC)                                             │
+│  STAGE 2 — Twice a day (Windmill flow f/fundermaps/data/refresh_data_model, │
+│             12:30 and 21:00 Europe/Amsterdam)                                │
 │                                                                              │
 │   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.building_sample     ┐       │
 │   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.cluster_sample      ├ par.  │
@@ -676,15 +676,21 @@ GRANT SELECT ON data.model_risk_static TO fundermaps_webservice;
 
 ## 10. The daily refresh — Windmill flow `f/fundermaps/data/refresh_data_model`
 
-Scheduled in Windmill at 18:00 UTC daily. The flow runs one small SQL script
-per matview (each a single `REFRESH MATERIALIZED VIEW CONCURRENTLY`), in this
-order:
+Scheduled in Windmill twice a day, at 12:30 and 21:00 Europe/Amsterdam
+(schedules `refresh_data_model_midday` and `full_risk_model_v3_schedule`); a
+run takes 40 to 50 minutes. The flow runs one small SQL script per step, in
+this order:
 
 1. **Sample matviews** (parallel branch): `refresh_building_sample`,
    `refresh_cluster_sample`, `refresh_supercluster_sample`.
-2. **Model**: `refresh_risk_model` → `data.model_risk_static`.
-3. **Statistics** (parallel branch): the 12 `refresh_statistics_*` scripts.
-4. **Archive export**: sub-flow `f/fundermaps/mapset/process_mapset` runs
+2. **Model**: `refresh_risk_model` refreshes the default model's matview, the
+   one `data.model_risk_static` points at.
+3. **Statistics** (three parallel lanes): the nine
+   `refresh_statistics_product_*` scripts and `refresh_product_tracker_daily`.
+4. **Map tables**: `refresh_building_tiles`, `refresh_building_cluster_tiles`
+   and `refresh_layer_tiles` rebuild the `maplayer.*_tiles` tables the Martin
+   tileserver draws from. No tile files are generated.
+5. **Archive export**: sub-flow `f/fundermaps/mapset/process_mapset` runs
    `f/fundermaps/mapset/export_tileset` for every enabled row of
    `maplayer.bundle` (`ogr2ogr` → GeoPackage → one PUT to
    `fundermaps-archive/mapset/YYYY/mon/DD/<tileset>.gpkg`, then a GeoParquet
@@ -693,6 +699,11 @@ order:
    and `parquet_bytes` in `detail`). Until 2026-10-12 this step enqueued a `process_mapset`
    job for the queue worker; that worker and its queue are gone (#147). The
    vector tiles themselves come from the Martin tileserver, not from here.
+6. **Log**: `log_refresh_data_model` writes the `refresh_data_model` row in
+   `data.refresh_log`, the dead-man switch on the Grafana board.
+7. **Risk follow-up**: `f/fundermaps/dataops/risk_followup` calls the API
+   (`POST /api/intake/risk-followup`), which mails each melder whose
+   registered risk moved. The step may fail without failing the run.
 
 Each script is its own transaction, so locks release between steps, and
 `CONCURRENTLY` keeps API/webservice SELECTs unblocked throughout.
