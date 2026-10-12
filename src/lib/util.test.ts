@@ -1,7 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import {
   FILE_ALLOWED_EXTENSIONS,
-  datePath,
   validateFileExtension,
   withRetry,
 } from "./util.ts";
@@ -30,33 +29,6 @@ describe("validateFileExtension", () => {
 
   test("rejects against an empty allow-list", () => {
     expect(() => validateFileExtension("/tmp/foo.geojson", [])).toThrow();
-  });
-});
-
-describe("datePath", () => {
-  // Don't pin to a fixed date — just assert structure. The internal Date()
-  // call is timezone-sensitive, so testing the format shape is the contract.
-  test("year/month/day default", () => {
-    expect(datePath()).toMatch(/^\d{4}\/[a-z]{3}\/\d{2}$/);
-  });
-
-  test("year/month only", () => {
-    expect(datePath(true, false)).toMatch(/^\d{4}\/[a-z]{3}$/);
-  });
-
-  test("year only", () => {
-    expect(datePath(false, false)).toMatch(/^\d{4}$/);
-  });
-
-  test("month-name is lowercased English short form", () => {
-    const path = datePath();
-    const month = path.split("/")[1];
-    expect(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]).toContain(month);
-  });
-
-  test("day component is zero-padded to 2 digits", () => {
-    const day = datePath().split("/")[2];
-    expect(day.length).toBe(2);
   });
 });
 

@@ -1,11 +1,11 @@
 import { describe, test, expect } from "bun:test";
 import { spawn } from "./subprocess.ts";
 
-// `spawn` wraps every GDAL/tippecanoe invocation made by the worker.
+// `spawn` wraps every GDAL and PDF-tool invocation the commands make.
 // The two guarantees that matter operationally:
 //   1. A misbehaving subprocess can be timed out and killed.
 //   2. Captured output is bounded (1 MB ring buffer) so a chatty tool
-//      doesn't OOM the worker before its own MAX_TILESET_WORKERS cap.
+//      cannot exhaust memory.
 //
 // Tests use system binaries available on Linux CI runners and the dev
 // VM (per CLAUDE.md the VM is the test env; runner is ubuntu-latest).

@@ -17,11 +17,11 @@ const envSchema = z.object({
   // into one bucket while the API looked for them in another -- 891 artifact
   // rows pointing at objects that were never created.
   //
-  // Making it required would be stricter, but the worker runs on a droplet this
-  // machine cannot reach, so an unverifiable strict config would risk taking
-  // the queue worker down on its next restart. Writes are fenced to the
-  // dataops/ prefix instead (see commands/ingest-dossier.ts), which is the
-  // protection that actually matters.
+  // It stayed a default rather than a required variable because the queue
+  // worker ran on a droplet whose config could not be checked from here; that
+  // worker is gone since 2026-10-12 (#147), so this could become required.
+  // Writes are fenced to the dataops/ prefix (see commands/ingest-dossier.ts),
+  // which is the protection that actually matters.
   FUNDERMAPS_S3_BUCKET: z.string().default("fundermaps"),
   FUNDERMAPS_S3_ACCESS_KEY: z.string(),
   FUNDERMAPS_S3_SECRET_KEY: z.string(),
@@ -35,12 +35,6 @@ const envSchema = z.object({
   DATAOPS_CLASSIFY_MODEL: z.string().default("google/gemini-3.7-flash"),
   DATAOPS_VISION_MODEL: z.string().default("google/gemini-3.7-flash"),
   DATAOPS_TEXT_MODEL: z.string().default("google/gemini-3.7-flash"),
-
-  // Worker
-  POLL_INTERVAL: z.coerce.number().default(30),
-  MAX_CONCURRENT: z.coerce.number().default(3),
-  MAX_TILESET_WORKERS: z.coerce.number().optional(),
-  JOB_TIMEOUT: z.coerce.number().default(14400),
 });
 
 export const env = envSchema.parse(process.env);

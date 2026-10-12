@@ -4,7 +4,6 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-import { relative } from "node:path";
 import { env } from "../config.ts";
 import { withRetry } from "../lib/util.ts";
 
@@ -81,40 +80,4 @@ export async function deleteFile(
       })
     );
   });
-}
-
-export async function uploadDirectory(
-  directoryPath: string,
-  keyPrefix: string,
-  bucket?: string,
-  extraArgs?: Record<string, string>
-): Promise<number> {
-  const glob = new Bun.Glob("**/*");
-  const files: string[] = [];
-  for await (const path of glob.scan({ cwd: directoryPath, absolute: true, onlyFiles: true })) {
-    files.push(path);
-  }
-
-  const concurrency = 10;
-  let uploaded = 0;
-
-  for (let i = 0; i < files.length; i += concurrency) {
-    const batch = files.slice(i, i + concurrency);
-    await Promise.all(
-      batch.map(async (filePath) => {
-        const rel = relative(directoryPath, filePath);
-        const s3Key = keyPrefix ? `${keyPrefix}/${rel}` : rel;
-        await uploadFile(filePath, s3Key, bucket, extraArgs);
-        uploaded++;
-      })
-    );
-  }
-
-  if (uploaded !== files.length) {
-    throw new Error(
-      `Failed to upload all files: ${uploaded}/${files.length}`
-    );
-  }
-
-  return uploaded;
 }
