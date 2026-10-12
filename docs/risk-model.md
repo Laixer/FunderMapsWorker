@@ -71,7 +71,7 @@ The matview is consumed by:
 │   │      ← reads data.model_risk_dynamic_all (large view)                    │
 │   ├─ REFRESH MATERIALIZED VIEW CONCURRENTLY data.statistics_* (12, parallel) │
 │   └─ sub-flow f/fundermaps/mapset/process_mapset                             │
-│         → export_tileset: GPKG archive export, logged in data.refresh_log    │
+│         → export_tileset: GPKG + GeoParquet archive, logged in refresh_log   │
 └──────────────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -687,9 +687,10 @@ order:
 4. **Archive export**: sub-flow `f/fundermaps/mapset/process_mapset` runs
    `f/fundermaps/mapset/export_tileset` for every enabled row of
    `maplayer.bundle` (`ogr2ogr` → GeoPackage → one PUT to
-   `fundermaps-archive/mapset/YYYY/mon/DD/<tileset>.gpkg`) and writes one
-   `data.refresh_log` row per export (job `export_tileset`, size and row
-   count in `detail`). Until 2026-10-12 this step enqueued a `process_mapset`
+   `fundermaps-archive/mapset/YYYY/mon/DD/<tileset>.gpkg`, then a GeoParquet
+   copy of that file, `<tileset>.parquet`, next to it) and writes one
+   `data.refresh_log` row per export (job `export_tileset`; size, row count
+   and `parquet_bytes` in `detail`). Until 2026-10-12 this step enqueued a `process_mapset`
    job for the queue worker; that worker and its queue are gone (#147). The
    vector tiles themselves come from the Martin tileserver, not from here.
 
