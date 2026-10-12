@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Ir4kNfqbC4wiFAWw1FCPgesgkCKzSQr8Lm2RO5jONc0azMT9WRWbBQnHPB4yTJE
+\restrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -147,19 +147,6 @@ CREATE DOMAIN application.email AS text
 --
 
 COMMENT ON DOMAIN application.email IS 'Domain for an email address.';
-
-
---
--- Name: job_status; Type: TYPE; Schema: application; Owner: -
---
-
-CREATE TYPE application.job_status AS ENUM (
-    'pending',
-    'processing',
-    'completed',
-    'failed',
-    'retry'
-);
 
 
 --
@@ -1012,29 +999,30 @@ CREATE FUNCTION data.compute_indicative_dewatering_risk(ft report.foundation_typ
         WHEN has_recovery THEN 'a'::data.foundation_risk_indication
         WHEN data.is_safe_foundation(ft) THEN 'a'::data.foundation_risk_indication
 
-        -- No-pile family (excl bearing_floor for risk calc, matching current behavior)
+        -- No-pile family, bearing_floor included (Don, 2026-10-08: "gewoon een type in de familie
+        -- no_pile"; leaving it out sent 1,396 panden to the construction-year fallback)
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity IS NULL AND gwl < 0.6
             THEN 'c'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity IS NULL AND gwl >= 0.6
             THEN 'b'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity < -1.0 AND gwl < 0.6
             THEN 'e'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity < -1.0 AND gwl >= 0.6
             THEN 'd'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity >= -1.0 AND gwl < 0.6
             THEN 'd'::data.foundation_risk_indication
         WHEN ft IN ('no_pile', 'no_pile_masonry', 'no_pile_strips',
-                    'no_pile_concrete_floor', 'no_pile_slit')
+                    'no_pile_concrete_floor', 'no_pile_slit', 'no_pile_bearing_floor')
              AND velocity >= -1.0 AND gwl >= 0.6
             THEN 'c'::data.foundation_risk_indication
 
@@ -2307,6 +2295,10 @@ CREATE PROCEDURE maplayer.refresh_building_cluster_tiles()
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
+    -- Exact argument types and pg_catalog operators on purpose: this runs as
+    -- its owner (SECURITY DEFINER) while PUBLIC may CREATE in schema public,
+    -- so any call that needs an implicit cast (numeric 5.0 -> float8, enum or
+    -- domain '=') could be won by an exact-type overload planted there.
     -- Build the next generation NEXT TO the live table. Martin keeps serving
     -- maplayer.building_cluster_tiles untouched while this runs (~6.5 min);
     -- the old TRUNCATE + INSERT held an ACCESS EXCLUSIVE
@@ -2326,7 +2318,7 @@ BEGIN
         ST_Multi(ST_Transform(u.geom, 3857)),
         -- 5.0 Mercator units ≈ 3 m at NL latitude, matching building_tiles:
         -- invisible at z12–13, collapses dense outlines to a few points.
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(u.geom, 3857), 5.0))
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(u.geom, 3857), 5.0::double precision))
     FROM (
         SELECT
             bc.cluster_id,
@@ -2373,6 +2365,10 @@ CREATE PROCEDURE maplayer.refresh_building_tiles()
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
+    -- Exact argument types and pg_catalog operators on purpose: this runs as
+    -- its owner (SECURITY DEFINER) while PUBLIC may CREATE in schema public,
+    -- so any call that needs an implicit cast (numeric 5.0 -> float8, enum or
+    -- domain '=') could be won by an exact-type overload planted there.
     -- Build the next generation NEXT TO the live table. Martin keeps serving
     -- maplayer.building_tiles untouched while this runs (~8 min for
     -- building_tiles); the old TRUNCATE + INSERT held an ACCESS EXCLUSIVE
@@ -2426,14 +2422,14 @@ BEGIN
         EXISTS (
             SELECT FROM report.inquiry_sample s
             JOIN report.inquiry mi ON mi.id = s.inquiry_id
-            WHERE s.building_id = bgh.building_id
-              AND mi.type = 'monitoring'
+            WHERE s.building_id OPERATOR(pg_catalog.=) bgh.building_id
+              AND mi.type OPERATOR(pg_catalog.=) 'monitoring'
         ),
         bgh.surface_area::double precision,
         ST_Transform(bgh.geom, 3857),
         -- 5.0 Mercator units ≈ 3 m at NL latitude: invisible at z12–13,
         -- collapses a 40-vertex floor plan to a handful of points.
-        ST_SimplifyPreserveTopology(ST_Transform(bgh.geom, 3857), 5.0)
+        ST_SimplifyPreserveTopology(ST_Transform(bgh.geom, 3857), 5.0::double precision)
     FROM data.building_geo_hierarchy bgh
     -- bgh.inquiry_id is the inquiry the model picked; its attribution
     -- names the contractor that performed the research.
@@ -2560,7 +2556,7 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         mu.external_id,
         count(*),
         ST_Multi(ST_Transform(n.geom, 3857)),
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(n.geom, 3857), 20.0))
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(n.geom, 3857), 20.0::double precision))
     FROM ( SELECT DISTINCT d.building_id
              FROM dataops.dossier d
             WHERE d.payload ->> 'topic' IS NOT NULL
@@ -2581,7 +2577,7 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         mu.external_id,
         count(*),
         ST_Multi(ST_Transform(d2.geom, 3857)),
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(d2.geom, 3857), 20.0))
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(d2.geom, 3857), 20.0::double precision))
     FROM ( SELECT DISTINCT d.building_id
              FROM dataops.dossier d
             WHERE d.payload ->> 'topic' IS NOT NULL
@@ -2601,7 +2597,7 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         mu.external_id,
         count(*),
         ST_Multi(ST_Transform(mu.geom, 3857)),
-        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(mu.geom, 3857), 20.0))
+        ST_Multi(ST_SimplifyPreserveTopology(ST_Transform(mu.geom, 3857), 20.0::double precision))
     FROM ( SELECT DISTINCT d.building_id
              FROM dataops.dossier d
             WHERE d.payload ->> 'topic' IS NOT NULL
@@ -3293,44 +3289,6 @@ CREATE TABLE application.verification (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: worker_jobs; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.worker_jobs (
-    id bigint NOT NULL,
-    job_type text NOT NULL,
-    payload jsonb,
-    status application.job_status DEFAULT 'pending'::application.job_status NOT NULL,
-    priority integer DEFAULT 0 NOT NULL,
-    retry_count integer DEFAULT 0 NOT NULL,
-    max_retries integer DEFAULT 3 NOT NULL,
-    last_error text,
-    process_after timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: worker_jobs_id_seq; Type: SEQUENCE; Schema: application; Owner: -
---
-
-CREATE SEQUENCE application.worker_jobs_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: worker_jobs_id_seq; Type: SEQUENCE OWNED BY; Schema: application; Owner: -
---
-
-ALTER SEQUENCE application.worker_jobs_id_seq OWNED BY application.worker_jobs.id;
 
 
 --
@@ -5254,6 +5212,90 @@ ALTER TABLE dataops.dossier_mail ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDE
 
 
 --
+-- Name: dossier_rapportage; Type: TABLE; Schema: dataops; Owner: -
+--
+
+CREATE TABLE dataops.dossier_rapportage (
+    id bigint NOT NULL,
+    dossier_id bigint NOT NULL,
+    n integer NOT NULL,
+    artifact_ids bigint[] NOT NULL,
+    address_ids text[],
+    verdict text NOT NULL,
+    answer text,
+    inquiry_id integer,
+    decided_by uuid,
+    decided_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT dossier_rapportage_n_check CHECK ((n > 0)),
+    CONSTRAINT dossier_rapportage_rejected_has_no_inquiry CHECK (((verdict = 'accepted'::text) OR (inquiry_id IS NULL))),
+    CONSTRAINT dossier_rapportage_verdict_check CHECK ((verdict = ANY (ARRAY['accepted'::text, 'rejected'::text])))
+);
+
+
+--
+-- Name: TABLE dossier_rapportage; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.dossier_rapportage IS 'The verdict per rapportage of a dossier (Don, 2026-10-09). One row per group of documents the reviewer formed at commit; the closing mail combines the answers into one message to the melder.';
+
+
+--
+-- Name: COLUMN dossier_rapportage.n; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_rapportage.n IS 'The group''s number in the dossier, as the Studio shows it (Inquiry 1, Inquiry 2, ...).';
+
+
+--
+-- Name: COLUMN dossier_rapportage.artifact_ids; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_rapportage.artifact_ids IS 'The dataops.artifact ids of the documents in this group.';
+
+
+--
+-- Name: COLUMN dossier_rapportage.address_ids; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_rapportage.address_ids IS 'The BAG nummeraanduidingen this rapportage is about; NULL when the reviewer chose none and the melder''s pand was used.';
+
+
+--
+-- Name: COLUMN dossier_rapportage.verdict; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_rapportage.verdict IS 'accepted: the group became report.inquiry inquiry_id. rejected: nothing was taken over from it.';
+
+
+--
+-- Name: COLUMN dossier_rapportage.answer; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_rapportage.answer IS 'The standard answer (or the reviewer''s own text) for this rapportage, as it went into the closing mail.';
+
+
+--
+-- Name: COLUMN dossier_rapportage.inquiry_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_rapportage.inquiry_id IS 'The rapportage this group became; NULL when rejected.';
+
+
+--
+-- Name: dossier_rapportage_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
+--
+
+ALTER TABLE dataops.dossier_rapportage ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME dataops.dossier_rapportage_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: dossier_reference_seq; Type: SEQUENCE; Schema: dataops; Owner: -
 --
 
@@ -5397,6 +5439,54 @@ ALTER TABLE dataops.verdict ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     NO MAXVALUE
     CACHE 1
 );
+
+
+--
+-- Name: work_package_assignment; Type: TABLE; Schema: dataops; Owner: -
+--
+
+CREATE TABLE dataops.work_package_assignment (
+    user_id uuid NOT NULL,
+    package_id text NOT NULL,
+    assigned_by uuid,
+    assigned_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT work_package_assignment_package_id_check CHECK ((package_id ~ '^[a-z0-9-]{1,64}$'::text))
+);
+
+
+--
+-- Name: TABLE work_package_assignment; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.work_package_assignment IS 'Work packages (Studio Vandaag filters) the admin assigned to a colleague. One row per user and package; the set is replaced as a whole by PUT /api/management/work-packages/:userId. No rows = the user picks their own packages in the browser.';
+
+
+--
+-- Name: COLUMN work_package_assignment.user_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.work_package_assignment.user_id IS 'The colleague who works this package. Rows go with the user.';
+
+
+--
+-- Name: COLUMN work_package_assignment.package_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.work_package_assignment.package_id IS 'Work package id as defined by the Studio (WORK_PACKAGES in src/services/workPackages.ts), e.g. meldingen-funderingstype. The database does not know the list; unknown ids are ignored by the Studio.';
+
+
+--
+-- Name: COLUMN work_package_assignment.assigned_by; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.work_package_assignment.assigned_by IS 'The admin who composed this set; NULL once that account is gone.';
+
+
+--
+-- Name: COLUMN work_package_assignment.assigned_at; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.work_package_assignment.assigned_at IS 'When the set containing this row was saved.';
 
 
 --
@@ -6013,13 +6103,6 @@ ALTER TABLE ONLY application.contractor ALTER COLUMN id SET DEFAULT nextval('app
 
 
 --
--- Name: worker_jobs id; Type: DEFAULT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.worker_jobs ALTER COLUMN id SET DEFAULT nextval('application.worker_jobs_id_seq'::regclass);
-
-
---
 -- Name: inquiry id; Type: DEFAULT; Schema: report; Owner: -
 --
 
@@ -6253,14 +6336,6 @@ ALTER TABLE ONLY application."user"
 
 ALTER TABLE ONLY application.verification
     ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
-
-
---
--- Name: worker_jobs worker_jobs_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.worker_jobs
-    ADD CONSTRAINT worker_jobs_pkey PRIMARY KEY (id);
 
 
 --
@@ -6512,6 +6587,22 @@ ALTER TABLE ONLY dataops.dossier
 
 
 --
+-- Name: dossier_rapportage dossier_rapportage_once; Type: CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_rapportage
+    ADD CONSTRAINT dossier_rapportage_once UNIQUE (dossier_id, n);
+
+
+--
+-- Name: dossier_rapportage dossier_rapportage_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_rapportage
+    ADD CONSTRAINT dossier_rapportage_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: extraction_field extraction_field_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -6533,6 +6624,14 @@ ALTER TABLE ONLY dataops.extraction
 
 ALTER TABLE ONLY dataops.verdict
     ADD CONSTRAINT verdict_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_package_assignment work_package_assignment_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.work_package_assignment
+    ADD CONSTRAINT work_package_assignment_pkey PRIMARY KEY (user_id, package_id);
 
 
 --
@@ -6921,34 +7020,6 @@ CREATE UNIQUE INDEX user_email_unique_idx ON application."user" USING btree (low
 
 
 --
--- Name: worker_jobs_created_at_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX worker_jobs_created_at_idx ON application.worker_jobs USING btree (created_at);
-
-
---
--- Name: worker_jobs_job_type_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX worker_jobs_job_type_idx ON application.worker_jobs USING btree (job_type);
-
-
---
--- Name: worker_jobs_priority_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX worker_jobs_priority_idx ON application.worker_jobs USING btree (priority DESC);
-
-
---
--- Name: worker_jobs_status_process_after_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX worker_jobs_status_process_after_idx ON application.worker_jobs USING btree (status, process_after) WHERE (status = ANY (ARRAY['pending'::application.job_status, 'retry'::application.job_status]));
-
-
---
 -- Name: building_cluster_idx; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -7191,6 +7262,13 @@ CREATE UNIQUE INDEX dossier_entry_mail_idx ON dataops.dossier_entry USING btree 
 --
 
 CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossier_id, kind) WHERE (kind = ANY (ARRAY['received'::text, 'closed'::text, 'risk_changed'::text]));
+
+
+--
+-- Name: dossier_rapportage_inquiry_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_rapportage_inquiry_idx ON dataops.dossier_rapportage USING btree (inquiry_id) WHERE (inquiry_id IS NOT NULL);
 
 
 --
@@ -8104,6 +8182,30 @@ ALTER TABLE ONLY dataops.dossier_mail
 
 
 --
+-- Name: dossier_rapportage dossier_rapportage_decided_by_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_rapportage
+    ADD CONSTRAINT dossier_rapportage_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_rapportage dossier_rapportage_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_rapportage
+    ADD CONSTRAINT dossier_rapportage_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier_rapportage dossier_rapportage_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_rapportage
+    ADD CONSTRAINT dossier_rapportage_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES report.inquiry(id) ON DELETE SET NULL;
+
+
+--
 -- Name: dossier dossier_recovery_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -8141,6 +8243,22 @@ ALTER TABLE ONLY dataops.extraction_field
 
 ALTER TABLE ONLY dataops.verdict
     ADD CONSTRAINT verdict_extraction_field_id_fkey FOREIGN KEY (extraction_field_id) REFERENCES dataops.extraction_field(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_package_assignment work_package_assignment_assigned_by_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.work_package_assignment
+    ADD CONSTRAINT work_package_assignment_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: work_package_assignment work_package_assignment_user_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.work_package_assignment
+    ADD CONSTRAINT work_package_assignment_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -8307,5 +8425,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Ir4kNfqbC4wiFAWw1FCPgesgkCKzSQr8Lm2RO5jONc0azMT9WRWbBQnHPB4yTJE
+\unrestrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
 
