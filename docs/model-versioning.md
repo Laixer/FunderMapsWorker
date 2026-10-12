@@ -135,7 +135,8 @@ taken from `data.model_risk_2026_3_compute(true)` on those panden. Three
 consequences:
 
 - **Refresh order**: 2024.1 first, then 2026.3. `refresh_risk_model` does both
-  in that order; the second one takes about a minute, not another ~18.
+  in that order; the second one is a scan plus a join (its SELECT: 32 s on
+  prod), not another ~18 minutes.
 - **2026.3 cannot outlive the 2024.1 matview**, and it is equal to 2024.1
   outside the QuickScan panden by construction.
 - **`data.model_risk_2026_3_compute(boolean)` is served logic now.** Do not
@@ -308,7 +309,7 @@ Worth doing at the same time as §8, since both touch the same code path.
 | 1 | Registry table + lifecycle enum; register the current model as `frozen` with its input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
 | 2 | ✅ **Done 2026-08-09.** Rename the matview, add the pointer view, update the two `REFRESH` call sites | one migration + Windmill script + build_seed | The migration everything else needs. No consumer changes. Reversible by renaming back. Dependents deferred to step 4. |
 | 3 | Evaluation sample + wire `sql/validate/` to score a named version | one view + arguments on existing scripts | Makes Model 4 development safe before Model 4 exists. |
-| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`) + one line in `refresh_risk_model`. **Default switched to model-2026.3** by migration `20261012_003`; the dependents read the pointer since then (§5). | one migration + Windmill script | Only now does the nightly window grow (about a minute, see §5). Do not do this before there is a model to put in it. |
+| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`) + one line in `refresh_risk_model`. **Default switched to model-2026.3** by migration `20261012_003`; the dependents read the pointer since then (§5). | one migration + Windmill script | Only now does the nightly window grow (by minutes, see §5). Do not do this before there is a model to put in it. |
 | 5 | Version in the Webservice response; `product_tracker` records it | small | Reversible, no contract change yet. |
 | 6 | Customer pinning + support policy | the real work is the policy | Last, because it is a promise rather than a feature. |
 

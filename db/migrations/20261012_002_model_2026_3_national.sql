@@ -21,8 +21,9 @@
 --
 -- Why on top of the 2024.1 matview, and not a second copy of the whole model SQL:
 --   * model-2024.1 keeps refreshing anyway (frozen = the logic is frozen, the data keeps flowing);
---   * the rebuild costs about a minute, not a second national run of ~18 minutes (the SELECT
---     below ran in 32 s on prod, 2026-10-12);
+--   * the rebuild is a scan plus a join, not a second national run of ~18 minutes (the SELECT
+--     below ran in 32 s on prod, 2026-10-12; the concurrent refresh adds its own compare, not
+--     timed yet);
 --   * "equal to 2024.1 outside the QuickScan panden" holds by construction instead of by test.
 -- The price: the refresh order matters (2024.1 first, then this one; refresh_risk_model does
 -- both in that order), and this matview cannot outlive data.model_risk_static_2024_1. A version
