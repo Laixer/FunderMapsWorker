@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FunderMaps Worker is a polling-based background job processor built with **Bun** and **TypeScript**. It reads jobs from a PostgreSQL queue (`application.worker_jobs`) and executes them concurrently.
 
+**Since the 2026-10-12 cut-over nothing submits jobs to that queue any more** (#147): the last one, the GPKG archive export (`process_mapset`), runs as the Windmill script `f/fundermaps/mapset/export_tileset` on the Windmill worker (image in `windmill-worker/`). The queue worker (`fundermaps-worker-0`) idles until it is retired; the job code below is kept until then.
+
 ## Commands
 
 ```bash
