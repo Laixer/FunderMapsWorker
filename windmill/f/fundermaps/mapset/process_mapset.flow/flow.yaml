@@ -47,6 +47,33 @@ value:
               constant:
                 attempts: 1
                 seconds: 60
+          - id: d
+            summary: Log export to refresh_log
+            value:
+              type: rawscript
+              content: '!inline log_export.inline_script.pg.sql'
+              input_transforms:
+                bytes:
+                  type: javascript
+                  expr: results.c.bytes ?? null
+                database:
+                  type: static
+                  value: $res:f/fundermaps/managed_pg
+                features:
+                  type: javascript
+                  expr: results.c.features ?? null
+                key:
+                  type: javascript
+                  expr: results.c.key ?? null
+                seconds:
+                  type: javascript
+                  expr: results.c.seconds ?? null
+                tileset:
+                  type: javascript
+                  expr: results.c.tileset
+              lock: ''
+              language: postgresql
+            continue_on_error: true
         iterator:
           type: javascript
           expr: results.a.map(r => r.tileset)
