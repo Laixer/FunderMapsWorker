@@ -491,25 +491,27 @@ FROM (
 
         -- Each risk: QuickScan, the pand's own report, a QuickScan under a leading onderzoek, the
         -- report of a pand in the same block, the indicative rule. First one that says something.
-        COALESCE(qs.term, dry.own, qs.fallback, dry.block, dry.model) AS dry,
+        COALESCE(qs.term, CASE WHEN lift.dry THEN 'd'::data.foundation_risk_indication ELSE chain.dry END) AS dry,
         CASE
             WHEN qs.term IS NOT NULL THEN 'quickscan'
+            WHEN lift.dry THEN 'research'
             WHEN dry.own IS NOT NULL THEN CASE WHEN recovery.type IS NOT NULL THEN 'herstel' ELSE 'research' END
             WHEN qs.fallback IS NOT NULL THEN 'quickscan'
             WHEN dry.block IS NOT NULL THEN 'cluster'
             WHEN dry.model IS NOT NULL THEN 'model'
         END AS dry_source,
 
-        COALESCE(qs.term, bio.own, qs.fallback, bio.block, bio.model) AS bio,
+        COALESCE(qs.term, CASE WHEN lift.bio THEN 'd'::data.foundation_risk_indication ELSE chain.bio END) AS bio,
         CASE
             WHEN qs.term IS NOT NULL THEN 'quickscan'
+            WHEN lift.bio THEN 'research'
             WHEN bio.own IS NOT NULL THEN CASE WHEN recovery.type IS NOT NULL THEN 'herstel' ELSE 'research' END
             WHEN qs.fallback IS NOT NULL THEN 'quickscan'
             WHEN bio.block IS NOT NULL THEN 'cluster'
             WHEN bio.model IS NOT NULL THEN 'model'
         END AS bio_source,
 
-        COALESCE(qs.term, dew.own, qs.fallback, dew.block, dew.model) AS dew,
+        COALESCE(qs.term, chain.dew) AS dew,
         CASE
             WHEN qs.term IS NOT NULL THEN 'quickscan'
             WHEN dew.own IS NOT NULL THEN CASE WHEN recovery.type IS NOT NULL THEN 'herstel' ELSE 'research' END
@@ -655,15 +657,11 @@ FROM (
         ) AS family,
 
         LATERAL (SELECT
-            GREATEST(
-                data.compute_damage_risk_2026_3(
-                    recovery.type IS NOT NULL,
-                    established.damage_cause = ANY (ARRAY['drystand', 'fungus_infection', 'bio_fungus_infection']::report.foundation_damage_cause[]) OR family.own_wood,
-                    established.enforcement_term, established.document_date, term_countdown,
-                    established.overall_quality, established.recovery_advised),
-                CASE WHEN decay_floor AND own_extra.fungus_decay AND recovery.type IS NULL
-                     THEN 'd'::data.foundation_risk_indication END
-            ) AS own,
+            data.compute_damage_risk_2026_3(
+                recovery.type IS NOT NULL,
+                established.damage_cause = ANY (ARRAY['drystand', 'fungus_infection', 'bio_fungus_infection']::report.foundation_damage_cause[]) OR family.own_wood,
+                established.enforcement_term, established.document_date, term_countdown,
+                established.overall_quality, established.recovery_advised) AS own,
             data.compute_damage_risk_2026_3(
                 false,
                 cluster.damage_cause = ANY (ARRAY['drystand', 'fungus_infection', 'bio_fungus_infection']::report.foundation_damage_cause[]) OR family.block_wood,
@@ -674,15 +672,11 @@ FROM (
         ) AS dry,
 
         LATERAL (SELECT
-            GREATEST(
-                data.compute_damage_risk_2026_3(
-                    recovery.type IS NOT NULL,
-                    established.damage_cause = ANY (ARRAY['bio_infection']::report.foundation_damage_cause[]) OR family.own_wood,
-                    established.enforcement_term, established.document_date, term_countdown,
-                    established.overall_quality, established.recovery_advised),
-                CASE WHEN decay_floor AND own_extra.bio_decay AND recovery.type IS NULL
-                     THEN 'd'::data.foundation_risk_indication END
-            ) AS own,
+            data.compute_damage_risk_2026_3(
+                recovery.type IS NOT NULL,
+                established.damage_cause = ANY (ARRAY['bio_infection']::report.foundation_damage_cause[]) OR family.own_wood,
+                established.enforcement_term, established.document_date, term_countdown,
+                established.overall_quality, established.recovery_advised) AS own,
             data.compute_damage_risk_2026_3(
                 false,
                 cluster.damage_cause = ANY (ARRAY['bio_infection']::report.foundation_damage_cause[]) OR family.block_wood,
@@ -706,6 +700,24 @@ FROM (
             data.compute_indicative_dewatering_risk_2026_3(
                 foundation_type.ft, subsidence.velocity, gwl.level, recovery.type IS NOT NULL, subsidence.margin) AS model
         ) AS dew,
+
+        -- What the rules below the QuickScan say, in order: the pand's own report, a QuickScan
+        -- under a leading onderzoek, the report of a pand in the same block, the indicative rule.
+        LATERAL (SELECT
+            COALESCE(dry.own, qs.fallback, dry.block, dry.model) AS dry,
+            COALESCE(bio.own, qs.fallback, bio.block, bio.model) AS bio,
+            COALESCE(dew.own, qs.fallback, dew.block, dew.model) AS dew
+        ) AS chain,
+
+        -- Worker #278 (addition): decay found in the wood makes that risk at least d. It lifts
+        -- whatever the rules above arrive at, it never lowers it; a herstel and a valid QuickScan
+        -- still go first.
+        LATERAL (SELECT
+            decay_floor AND own_extra.fungus_decay AND recovery.type IS NULL
+                AND (chain.dry IS NULL OR chain.dry < 'd'::data.foundation_risk_indication) AS dry,
+            decay_floor AND own_extra.bio_decay AND recovery.type IS NULL
+                AND (chain.bio IS NULL OR chain.bio < 'd'::data.foundation_risk_indication) AS bio
+        ) AS lift,
 
         -- The overall class from the report: unchanged from model-2024.1.
         LATERAL (SELECT
@@ -782,7 +794,16 @@ SELECT
     damage_cause,
     enforcement_term,
     overall_quality,
-    recovery_type
+    recovery_type,
+    -- Not part of the contract: where each risk came from (quickscan, research, herstel, cluster,
+    -- model, build_year) and the QuickScan gate. The pointer view selects the 30 columns above by
+    -- name, so these are not served; they are here to answer "why is this pand a d" without a
+    -- second run of the model.
+    quickscan_gate,
+    drystand_source,
+    bio_infection_source,
+    dewatering_depth_source,
+    unclassified_source
 FROM data.model_risk_2026_3_rows(
     quickscan_rules => true,
     type_per_field => true,
@@ -798,15 +819,15 @@ FROM data.model_risk_2026_3_rows(
 WITH NO DATA;
 
 COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS
-'model-2026.3 for every pand: data.model_risk_2026_3_rows() with every rule on. Refreshed by Windmill f/fundermaps/data/refresh_risk_model, after the sample matviews. See docs/model-versioning.md.';
+'model-2026.3 for every pand: data.model_risk_2026_3_rows() with every rule on. The first 30 columns are the model contract (the pointer view selects them by name); the columns after them say where each risk came from and are not served. Refreshed by Windmill f/fundermaps/data/refresh_risk_model, after the sample matviews. See docs/model-versioning.md.';
 
 CREATE UNIQUE INDEX model_risk_static_2026_3_pkey
     ON data.model_risk_static_2026_3 (building_id);
 CREATE INDEX model_risk_static_2026_3_neighborhood_id_idx
     ON data.model_risk_static_2026_3 (neighborhood_id);
 
--- The pointer view is switched with CREATE OR REPLACE VIEW, which only works when this matview has
--- exactly the columns of the 2024.1 one: same names, same types, same order.
+-- The pointer view is switched with CREATE OR REPLACE VIEW, which only works when the 30 columns it
+-- selects have exactly the names, types and order of the 2024.1 matview's columns.
 DO $$
 DECLARE
     differing integer;
@@ -815,11 +836,11 @@ BEGIN
       FROM (SELECT attnum, attname, atttypid, atttypmod FROM pg_attribute
              WHERE attrelid = 'data.model_risk_static_2024_1'::regclass AND attnum > 0 AND NOT attisdropped) o
       FULL JOIN (SELECT attnum, attname, atttypid, atttypmod FROM pg_attribute
-                  WHERE attrelid = 'data.model_risk_static_2026_3'::regclass AND attnum > 0 AND NOT attisdropped) n
+                  WHERE attrelid = 'data.model_risk_static_2026_3'::regclass AND attnum BETWEEN 1 AND 30 AND NOT attisdropped) n
         USING (attnum, attname, atttypid, atttypmod)
      WHERE o.attnum IS NULL OR n.attnum IS NULL;
     IF differing > 0 THEN
-        RAISE EXCEPTION 'data.model_risk_static_2026_3 does not have the columns of data.model_risk_static_2024_1 (% differ)', differing;
+        RAISE EXCEPTION 'the first 30 columns of data.model_risk_static_2026_3 are not the columns of data.model_risk_static_2024_1 (% differ)', differing;
     END IF;
 END $$;
 

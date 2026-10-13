@@ -4,14 +4,20 @@
 -- with all of them off, every one of the 30 served columns must equal data.model_risk_static_2024_1
 -- for every pand. `rows_that_differ` must be 0.
 --
--- Read-only, but a full national run of the model: about as long as one model refresh. Run it
--- between two refreshes: during a run the sample matviews are newer than the 2024.1 matview and
--- the difference shows up here. A few rows right after a herstel was entered are the same effect
--- (the model reads report.recovery_sample live, the matview is a snapshot).
+-- Read-only, but a full national run of the model: about as long as one model refresh.
+--
+-- When to run it, or the answer is not 0 for reasons that are not the model:
+--   * on the same calendar day (database time) as the last refresh of the 2024.1 matview. The
+--     model reads today's date: the years left on an enforcement term, the 3-year QuickScan and
+--     5-year onderzoek windows. The day after, every report with its anniversary that day differs
+--     in `enforcement_term` (68 panden on 2026-10-13) and every QuickScan that left its window too;
+--   * between two refreshes: during a run the sample matviews are newer than the 2024.1 matview;
+--   * a few rows right after a herstel was entered are the same effect (the model reads
+--     report.recovery_sample live, the matview is a snapshot).
 --
 --   psql "$DB_URL" -f sql/validate/model_2026_3_control.sql
 --
--- Checked on a full copy of the model's inputs, 2026-10-12: 11,321,489 rows, 0 differ.
+-- Checked on a full copy of the model's inputs, 2026-10-13: 11,321,489 rows, 0 differ.
 
 SELECT count(*) AS rows_function,
        (SELECT count(*) FROM data.model_risk_static_2024_1) AS rows_2024_1,

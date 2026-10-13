@@ -138,7 +138,9 @@ own:
   A SQL function with constant arguments is inlined by the planner, so the
   switches cost nothing at run time. After its 30 served columns the function
   returns where each risk came from (QuickScan, research, herstel, cluster,
-  model, build year); those columns explain, they are not served.
+  model, build year). The matview keeps those columns after the 30 of the
+  contract; the pointer view selects the 30 by name, so they are not served.
+  They answer "why is this pand a d" without a second run of the model.
 - **Own copies of the helpers whose rules change** (`compute_damage_risk_2026_3`,
   `term_class_2026_3`, the three `compute_indicative_*_2026_3`). The frozen
   model keeps calling the originals, which are not edited. The helpers no rule

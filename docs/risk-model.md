@@ -853,7 +853,7 @@ With every switch off the function returns model-2024.1, column for column.
 | `term_and_quality` | Enforcement term, overall quality and a herstel advice give a risk without a damage cause too, for the risks of the foundation family: wood → drystand and bio infection, shallow → dewatering depth. | #278 |
 | `term_and_quality_cluster` | The same when the report is that of another pand in the same block. | #278 |
 | `term_countdown` | The enforcement term counts down from the date of the report: up to 5 years left = e, up to 10 = d, up to 20 = c, more = b. | #278 |
-| `decay_floor` | Decay found in the wood (`wood_encroachment`) makes that risk at least d: fungus → drystand, bacterial → bio infection, both → both. | #278 |
+| `decay_floor` | Decay found in the wood (`wood_encroachment`) makes that risk at least d: fungus → drystand, bacterial → bio infection, both → both. It lifts whatever the other rules arrive at and never lowers it; a herstel and a valid QuickScan still go first. | #278 |
 | `measured_settlement` | A settlement measured at the pand in a report is used instead of the InSAR velocity. | #278 |
 | `block_velocity` | The indicative rules use the median InSAR velocity of the pand's block (`data.building_cluster`) for a pand that has a measurement, and the velocity thresholds move 0.3 mm/year further down. A pand without a measurement stays without one. | #236 (V5) |
 | `fallback_in_family` | The build-year estimate (before 1970 = d, from 1970 = b; only when no rule says anything) goes to the foundation's own risk, labelled indicative: shallow → dewatering depth, wood → drystand and bio infection. Other families keep it in `unclassified_risk`. | #242 |
@@ -862,6 +862,11 @@ With every switch off the function returns model-2024.1, column for column.
 What model-2026.3 reads beside §7's three sample matviews: `data.building_sample_2026_3`
 (best foundation type, QuickScan and onderzoek dates, decay, measured settlement, per pand) and
 `data.cluster_sample_2026_3` / `data.supercluster_sample_2026_3` (best foundation type).
+
+`data.model_risk_static_2026_3` has five columns after the 30 of the contract:
+`quickscan_gate` (`qs_valid`, `qs_expired`, `fo_leading`) and, per risk, `*_source`: `quickscan`,
+`research`, `herstel`, `cluster`, `model` or `build_year`. They are not served (the pointer view
+selects the 30 by name); they say which rule produced a value.
 
 Its own helper copies: `data.compute_damage_risk_2026_3`, `data.term_class_2026_3`,
 `data.compute_indicative_drystand_risk_2026_3`, `..._bio_risk_2026_3`, `..._dewatering_risk_2026_3`

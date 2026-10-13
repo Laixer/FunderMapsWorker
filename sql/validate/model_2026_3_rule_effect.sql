@@ -5,7 +5,8 @@
 -- /v4/product/light overallRisk and the map colour follow.
 --
 -- Read-only, but a full national run of the model: about as long as one model refresh. Run it
--- between two refreshes.
+-- between two refreshes and on the same calendar day as the last one: the model reads today's date
+-- (see model_2026_3_control.sql).
 --
 --   psql "$DB_URL" -v rule=block_velocity -f sql/validate/model_2026_3_rule_effect.sql
 --
