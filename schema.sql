@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
+\restrict iaDb5LEX9zubnHj66ML4cVKV7cHi10t9LiLpiV8LJHt4fKpaorbvFhr4fcFxdUw
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2523,7 +2523,7 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         foundation_damage_cause, topic, height, geom
     )
     SELECT
-        m.dossier_id::text,
+        m.building_id,
         n.external_id,
         d2.external_id,
         mu.external_id,
@@ -2532,7 +2532,6 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         round(GREATEST(bh.height, 0::real)::numeric, 2)::double precision,
         ST_Multi(ST_Transform(ba.geom, 3857))
     FROM ( SELECT DISTINCT ON (d.building_id) d.building_id,
-                  d.id AS dossier_id,
                   d.payload ->> 'topic' AS topic
              FROM dataops.dossier d
             WHERE d.payload ->> 'topic' IS NOT NULL
@@ -4513,6 +4512,74 @@ COMMENT ON VIEW data.model_risk_static IS 'Pointer at the default model version.
 
 
 --
+-- Name: model_risk_static_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.model_risk_static_2026_3 AS
+ SELECT d.building_id,
+    d.address_count,
+    d.neighborhood_id,
+    d.construction_year,
+    d.construction_year_reliability,
+    d.foundation_type,
+    d.foundation_type_reliability,
+    d.restoration_costs,
+    d.drystand,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.drystand_risk
+            ELSE q.drystand_risk
+        END AS drystand_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.drystand_risk_reliability
+            ELSE q.drystand_risk_reliability
+        END AS drystand_risk_reliability,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.bio_infection_risk
+            ELSE q.bio_infection_risk
+        END AS bio_infection_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.bio_infection_risk_reliability
+            ELSE q.bio_infection_risk_reliability
+        END AS bio_infection_risk_reliability,
+    d.dewatering_depth,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.dewatering_depth_risk
+            ELSE q.dewatering_depth_risk
+        END AS dewatering_depth_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.dewatering_depth_risk_reliability
+            ELSE q.dewatering_depth_risk_reliability
+        END AS dewatering_depth_risk_reliability,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.unclassified_risk
+            ELSE q.unclassified_risk
+        END AS unclassified_risk,
+    d.height,
+    d.velocity,
+    d.ground_water_level,
+    d.ground_level,
+    d.soil,
+    d.surface_area,
+    d.owner,
+    d.inquiry_id,
+    d.inquiry_type,
+    d.damage_cause,
+    d.enforcement_term,
+    d.overall_quality,
+    d.recovery_type
+   FROM (data.model_risk_static_2024_1 d
+     LEFT JOIN data.model_risk_2026_3_compute(true) q(building_id, neighborhood_id, gate, qs_risk, qs_date, fo_date, drystand_risk, drystand_risk_reliability, bio_infection_risk, bio_infection_risk_reliability, dewatering_depth_risk, dewatering_depth_risk_reliability, unclassified_risk) ON ((q.building_id = d.building_id)))
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW model_risk_static_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS 'model-2026.3 for every pand: the model-2024.1 row, with the four risks and three risk labels from data.model_risk_2026_3_compute(true) where the pand has a QuickScan class. Refresh after data.model_risk_static_2024_1 (Windmill f/fundermaps/data/refresh_risk_model). See docs/model-versioning.md.';
+
+
+--
 -- Name: model_version; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -5792,13 +5859,12 @@ CREATE TABLE maplayer.facade_scan_tiles (
 --
 
 CREATE VIEW maplayer.incident AS
- SELECT (m.dossier_id)::text AS id,
+ SELECT m.building_id AS id,
     NULL::report.foundation_damage_cause AS foundation_damage_cause,
     round((GREATEST(bh.height, (0)::real))::numeric, 2) AS height,
     ba.geom,
     m.topic
    FROM ((( SELECT DISTINCT ON (d.building_id) d.building_id,
-            d.id AS dossier_id,
             (d.payload ->> 'topic'::text) AS topic
            FROM dataops.dossier d
           WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))
@@ -7101,6 +7167,20 @@ CREATE INDEX model_risk_static_2024_1_neighborhood_id_idx ON data.model_risk_sta
 --
 
 CREATE UNIQUE INDEX model_risk_static_2024_1_pkey ON data.model_risk_static_2024_1 USING btree (building_id);
+
+
+--
+-- Name: model_risk_static_2026_3_neighborhood_id_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE INDEX model_risk_static_2026_3_neighborhood_id_idx ON data.model_risk_static_2026_3 USING btree (neighborhood_id);
+
+
+--
+-- Name: model_risk_static_2026_3_pkey; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX model_risk_static_2026_3_pkey ON data.model_risk_static_2026_3 USING btree (building_id);
 
 
 --
@@ -8425,5 +8505,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
+\unrestrict iaDb5LEX9zubnHj66ML4cVKV7cHi10t9LiLpiV8LJHt4fKpaorbvFhr4fcFxdUw
 
