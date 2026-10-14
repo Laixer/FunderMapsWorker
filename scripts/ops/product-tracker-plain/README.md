@@ -34,7 +34,8 @@ customer latency.
 
 ## What customers notice
 
-Nothing that lasts longer than half a second. Measured in the rehearsal, under 10× production's busiest minute
+In the rehearsal nothing lasted longer than half a second; on prod the swap held its locks 1.4 s, at an hour with
+almost no traffic (see "On prod" below). Measured in the rehearsal, under 10× production's busiest minute
 (20 inserts and 10 rate-limit reads a second, through PgBouncer in transaction mode with prepared statements):
 
 | step | inserts held / slowest request | duration on 12M rows → prod's 31M |
@@ -81,6 +82,21 @@ batches for 3 minutes, latency as in the table, until the rehearsal machine's di
 Afterwards, in this order: the migration that records the end state (it refuses while the table is a hypertable,
 so it is merged after the swap); `cleanup`; `DROP EXTENSION timescaledb` (its owner on DO is `postgres`, so this may
 need DigitalOcean); then a `schema.sql` regen.
+
+## On prod, 2026-10-15
+
+| step | result |
+|---|---|
+| arm | inserts held 20 ms; copy of 31,045,532 rows in 151 s, equal to the snapshot |
+| index | 4 indexes + 2 validated foreign keys in 375 s |
+| verify | 60 months equal (31,045,537 rows, count and hash) |
+| swap (01:24 Amsterdam) | locks held 1.4 s (0.35 s in the rehearsal); ~1 insert per 2.5 min at that hour, so likely no request waited |
+| after | plain table, 4 indexes, 2 validated foreign keys, grants and summary as before; the Webservice's INSERT as its own role lands in it (tested in a rolled-back transaction) |
+
+Lesson: run `verify` after autovacuum has visited the new table. The first `verify` ran while the copy had no
+visibility map yet, so the counting queries could not use index-only scans and four shapes looked up to 1.4× slower;
+after autovacuum (minutes later) every shape was equal or faster (rate limit 107 → 58 ms, dedup 3.5 → 0.1 ms,
+usage 1.5–2× faster). A `VACUUM (ANALYZE)` at the end of `index` would make that explicit.
 
 ## Rehearsing again
 
