@@ -1,8 +1,12 @@
 # model-2026.2 candidate — foundation type with a reliability grade (Worker #152)
 
 Gives every pand a foundation type (wood / wood with concrete top / shallow / concrete), the probabilities
-behind it, and a reliability grade, **beside** the frozen model-2024.1. Not served to customers: visible only in
-the mapset `model-2026-2-candidate`, linked to FunderMaps B.V.
+behind it, and a reliability grade, **beside** the frozen model-2024.1. Not served to customers.
+
+**Not on the map since 2026-10-14** (migration `20261014_001`): the tile server is public, so the tile function moved
+to `data.foundation_candidate` (Martin publishes only schema `maplayer`), the tile role lost its rights, and the
+mapset `model-2026-2-candidate` is no longer linked to FunderMaps B.V. Steps 3–5 below describe the setup as it was
+until then; showing the candidate to staff again needs a tile route behind the login, not the public tile server.
 
 **rc2 (2026-09-27), the model Don approved on 2026-09-26/27** (explainer chapters 10–11,
 https://fundermaps-development.ams3.digitaloceanspaces.com/artifacts/model-uitleg-2026-09-23.html):
@@ -33,7 +37,7 @@ municipalities (always "wood pile" would score 53% / 19%).
 | `model_foundation_2026_2.meta.json` | feature order, params and best iteration of the last run |
 | `requirements.txt` | Python deps (not Bun: this step is Python/LightGBM) |
 | `mapset.sql` | the FunderMaps B.V.-only mapset, run after the table is loaded |
-| `../../db/migrations/20260928_002_candidate_2026_2_foundation.sql` | table `data.model_foundation_2026_2` + Martin function `maplayer.foundation_candidate` |
+| `../../db/migrations/20260928_002_candidate_2026_2_foundation.sql` | table `data.model_foundation_2026_2` + Martin function `maplayer.foundation_candidate` (moved to `data` by `20261014_001`) |
 
 ## Apply (Yorick)
 1. `bun run migrate` (prod: `~/bin/fm-migrate-prod.sh`) applies `20260928_002`.
