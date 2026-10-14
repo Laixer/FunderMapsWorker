@@ -1,4 +1,8 @@
 -- model-2026.2 candidate: the map layer, visible ONLY to FunderMaps B.V.
+--
+-- RETIRED 2026-10-14 (migration 20261014_001): the tile function left the public
+-- tile server and the organization_mapset row below was deleted. Do not run this
+-- file again; the rows are kept for a staff-only tile route later.
 -- Apply AFTER the migration 20260928_002 and AFTER the table is loaded
 -- (see README.md). Plain configuration rows; remove with the three DELETEs
 -- at the bottom (commented out).
