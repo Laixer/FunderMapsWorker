@@ -27,6 +27,16 @@ import urllib.request
 POSITRON_URL = "https://tiles.openfreemap.org/styles/positron"
 TILESERVER = "https://tiles.fundermaps.com"
 
+# The credit line of the OpenFreeMap tiles, in Dutch like the rest of the map:
+# their TileJSON ends in "Data from OpenStreetMap". Same credits and links;
+# MapLibre takes a source's own attribution over its TileJSON's.
+OPENMAPTILES_ATTRIBUTION = (
+    '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> '
+    '<a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> '
+    'Gegevens van '
+    '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
+)
+
 # Palette extracted from mapbox://styles/laixer/clcz2iorf003414p22imzzhnk
 TAN = {
     "land":          "hsl(40, 48%, 92%)",
@@ -291,6 +301,8 @@ def main() -> None:
     style["sprite"] = f"{TILESERVER}/sprite/basemap"
 
     style["sky"] = SKY
+
+    style["sources"]["openmaptiles"]["attribution"] = OPENMAPTILES_ATTRIBUTION
 
     # Admin boundaries from our own tileserver, drawn under the labels.
     style["sources"]["fundermaps_boundaries"] = {

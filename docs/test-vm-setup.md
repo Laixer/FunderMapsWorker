@@ -6,8 +6,8 @@ schema + a Rotterdam data subset, in two steps.
 ## Prerequisites
 
 - Postgres 18 with PostGIS available (`apt-get install postgresql-18-postgis-3`, or the
-  `postgis/postgis:18-3.6` container). TimescaleDB is **not** needed: the script drops
-  prod's `CREATE EXTENSION timescaledb` line and `product_tracker` becomes a plain table.
+  `postgis/postgis:18-3.6` container). TimescaleDB is **not** needed: prod dropped it in
+  2026-10, and the script strips the extension lines an older `schema.sql` may still carry.
 - `bun` available locally if you need to (re)generate the seed file.
 - An empty target database. Create it as a Postgres superuser first:
 
@@ -48,8 +48,8 @@ once per VM, but rerun to refresh credentials.
 What it does NOT do:
 
 - Create the database.
-- Install timescaledb. Prod's `application.product_tracker` hypertable is
-  irrelevant for testing; vanilla tables work.
+- Install timescaledb. Prod no longer uses it (`application.product_tracker`
+  is a plain table since 2026-10-15).
 - Set up pg_cron jobs. Trigger refreshes manually (Step 3).
 - Load any data — that's `seed.sql.gz`.
 
