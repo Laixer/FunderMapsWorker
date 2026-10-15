@@ -92,11 +92,17 @@ need DigitalOcean); then a `schema.sql` regen.
 | verify | 60 months equal (31,045,537 rows, count and hash) |
 | swap (01:24 Amsterdam) | locks held 1.4 s (0.35 s in the rehearsal); ~1 insert per 2.5 min at that hour, so likely no request waited |
 | after | plain table, 4 indexes, 2 validated foreign keys, grants and summary as before; the Webservice's INSERT as its own role lands in it (tested in a rolled-back transaction) |
+| cleanup (08:37) | 0 rows had reached the old table; old hypertable, old summary, functions and state table dropped in 0.6 s (8.7 GB freed) |
+| extension (09:24) | `DROP EXTENSION timescaledb` (migration 20261015_002) in 62 ms: owner `postgres`, but DigitalOcean's extension whitelist lets doadmin drop it |
 
 Lesson: run `verify` after autovacuum has visited the new table. The first `verify` ran while the copy had no
 visibility map yet, so the counting queries could not use index-only scans and four shapes looked up to 1.4× slower;
 after autovacuum (minutes later) every shape was equal or faster (rate limit 107 → 58 ms, dedup 3.5 → 0.1 ms,
 usage 1.5–2× faster). A `VACUUM (ANALYZE)` at the end of `index` would make that explicit.
+
+Lesson: a comment belongs to the object, so the summary's description did not follow the rename swap; the
+`schema.sql` regeneration afterwards showed it missing. Migration 20261015_003 put it back, and `matview` now
+copies it.
 
 ## Rehearsing again
 

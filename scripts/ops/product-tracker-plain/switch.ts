@@ -280,8 +280,10 @@ const steps: Record<string, () => Promise<void>> = {
     await sql.unsafe(`CREATE UNIQUE INDEX product_tracker_daily_next_pkey ON ${MV_NEXT} USING btree (day, organization_id, product)`);
     await sql.unsafe(`ALTER MATERIALIZED VIEW ${MV_NEXT} OWNER TO fundermaps`);
     const g = await grantsLike(MV, MV_NEXT);
+    // the comment belongs to the object, so it would not follow the rename swap (missed on prod 2026-10-15, see 20261015_003)
+    await sql.unsafe(`DO $$ BEGIN EXECUTE format('COMMENT ON MATERIALIZED VIEW ${MV_NEXT} IS %L', obj_description('${MV}'::regclass, 'pg_class')); END $$`);
     const c = await one<{ a: string; b: string }>(`select (select count(*) from ${MV})::text as a, (select count(*) from ${MV_NEXT})::text as b`);
-    say(`${MV_NEXT} built (${c.b} rows; current ${MV} has ${c.a}), grants copied (${g})`);
+    say(`${MV_NEXT} built (${c.b} rows; current ${MV} has ${c.a}), grants and comment copied (${g})`);
   },
 
   async verify() {
