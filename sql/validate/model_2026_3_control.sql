@@ -17,7 +17,7 @@
 --
 --   psql "$DB_URL" -f sql/validate/model_2026_3_control.sql
 --
--- Checked on a full copy of the model's inputs, 2026-10-13: 11,321,489 rows, 0 differ.
+-- Checked on a full copy of the model's inputs, 2026-10-15 (spec #283 version): 11,321,489 rows, 0 differ.
 
 SELECT count(*) AS rows_function,
        (SELECT count(*) FROM data.model_risk_static_2024_1) AS rows_2024_1,
