@@ -16,8 +16,8 @@
 #   - Create the database itself. Run `createdb fundermaps` first, or pass
 #     a DATABASE_URL pointing at an existing empty database.
 #   - Load seed data. Run `psql -f sql/seed.sql` (Part B) afterwards.
-#   - Install timescaledb. Prod's product_tracker hypertable is irrelevant
-#     for testing; vanilla tables work fine.
+#   - Install timescaledb. Prod dropped it in 2026-10 (product_tracker is a
+#     plain table since 20261015_001, the extension went in 20261015_002).
 #   - Schedule refreshes. The seed ends with a plain REFRESH block; after
 #     that, refresh matviews manually via psql when needed.
 #
@@ -136,10 +136,9 @@ SQL
 # --- Step 3: schema.sql -----------------------------------------------------
 # pg_dump 18 emits a `\restrict <token>` directive at the top that psql ≤ 17
 # does not understand. Strip it before piping in. Harmless on psql 18.
-# The dump also carries prod's `CREATE EXTENSION timescaledb` (product_tracker
-# is a hypertable there). The hypertable chunks are already excluded from the
-# dump, so on a plain PostGIS box the table is a vanilla table and the
-# extension is not needed — drop the two lines that mention it.
+# Dumps made before 2026-10-15 still carry prod's old `CREATE EXTENSION
+# timescaledb` (dropped in 20261015_002); the lines that mention it are
+# stripped so such a dump loads on a plain PostGIS box.
 echo "==> Loading schema.sql"
 sed -e '/^\\restrict /d' -e '/^\\unrestrict /d' -e '/EXTENSION.*timescaledb/d' "${SCHEMA_FILE}" \
     | PGOPTIONS='--client-min-messages=warning' \
