@@ -37,13 +37,9 @@ SELECT count(*) AS rows_function,
                                m.damage_cause, m.enforcement_term, m.overall_quality, m.recovery_type)) AS rows_that_differ
   FROM data.model_risk_2026_3_rows(
            quickscan_rules => false,
-           type_per_field => false,
            term_and_quality => false,
-           term_and_quality_cluster => false,
-           term_countdown => false,
            decay_floor => false,
-           measured_settlement => false,
            block_velocity => false,
-           fallback_in_family => false,
+           fallback_to_dewatering => false,
            label_by_source => false) f
   LEFT JOIN data.model_risk_static_2024_1 m USING (building_id);

@@ -10,9 +10,9 @@
 --
 --   psql "$DB_URL" -v rule=block_velocity -f sql/validate/model_2026_3_rule_effect.sql
 --
--- rule is one switch of data.model_risk_2026_3_rows(): quickscan_rules, type_per_field,
--- term_and_quality, term_and_quality_cluster, term_countdown, decay_floor, measured_settlement,
--- block_velocity, fallback_in_family, label_by_source.
+-- rule is one switch of data.model_risk_2026_3_rows(), one per section of the spec (Worker #283):
+-- quickscan_rules, term_and_quality, decay_floor, block_velocity, fallback_to_dewatering,
+-- label_by_source.
 
 \echo rule switched off: :rule
 

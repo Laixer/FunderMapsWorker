@@ -1,7 +1,5 @@
 summary: Refresh Supercluster Sample
-description: Refreshes the `data.supercluster_sample` materialized view, and after it
-  `data.supercluster_sample_2026_3` (what model-2026.3 reads from the reports beside the
-  leading record).
+description: Refreshes the `data.supercluster_sample` materialized view.
 lock: ''
 kind: script
 schema:

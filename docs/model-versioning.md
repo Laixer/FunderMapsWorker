@@ -127,13 +127,13 @@ the step.
 **The second matview exists since 2026-10-12: `data.model_risk_static_2026_3`.**
 It was first built (migration `20261012_002`) as the 2024.1 row of every pand
 with the QuickScan panden recomputed, which was enough for the QuickScan rules
-and nothing else. Since migration `20261013_001` model-2026.3 is a model of its
-own:
+and nothing else. Since migration `20261015_004` model-2026.3 is a model of its
+own, built to the spec in Worker #283:
 
 - **`data.model_risk_2026_3_rows(...)` is the model**, a SQL function with one
-  boolean switch per decided rule. With every switch off it is model-2024.1,
-  column for column; that is the control, and it is how a rule's effect is
-  measured on its own (`sql/validate/model_2026_3_control.sql`,
+  boolean switch per section of the spec. With every switch off it is
+  model-2024.1, column for column; that is the control, and it is how a rule's
+  effect is measured on its own (`sql/validate/model_2026_3_control.sql`,
   `model_2026_3_rule_effect.sql`). The matview calls it with every switch on.
   A SQL function with constant arguments is inlined by the planner, so the
   switches cost nothing at run time. After its 30 served columns the function
@@ -141,14 +141,15 @@ own:
   model, build year). The matview keeps those columns after the 30 of the
   contract; the pointer view selects the 30 by name, so they are not served.
   They answer "why is this pand a d" without a second run of the model.
-- **Own copies of the helpers whose rules change** (`compute_damage_risk_2026_3`,
-  `term_class_2026_3`, the three `compute_indicative_*_2026_3`). The frozen
-  model keeps calling the originals, which are not edited. The helpers no rule
-  changes are still shared by both models: editing one of those changes both.
-- **Three small sample matviews** (`building_sample_2026_3`,
-  `cluster_sample_2026_3`, `supercluster_sample_2026_3`) hold what 2026.3 reads
-  from the reports beside the leading record of the three frozen sample
-  matviews, which it keeps reading. They are refreshed in the same flow step.
+- **Own copies of the helpers whose rules change** (`document_risk_2026_3`,
+  `compute_indicative_drystand_risk_2026_3`, `compute_indicative_dewatering_risk_2026_3`).
+  The frozen model keeps calling the originals, which are not edited. The
+  helpers no rule changes are still shared by both models: editing one of
+  those changes both.
+- **One small sample matview** (`building_sample_2026_3`: QuickScan and
+  onderzoek dates, decay) holds what 2026.3 reads from the reports beside the
+  leading record of the frozen sample matviews, which it keeps reading. It is
+  refreshed right after `data.building_sample`.
 - **A full national run of its own.** The refresh of model-2026.3 takes about
   as long as that of model-2024.1; `refresh_risk_model` does both.
 - **New logic is a new slug.** Once model-2026.3 is the default, its function
@@ -293,7 +294,7 @@ Worth doing at the same time as §8, since both touch the same code path.
 | 1 | Registry table + lifecycle enum; register the current model as `frozen` with its input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
 | 2 | ✅ **Done 2026-08-09.** Rename the matview, add the pointer view, update the two `REFRESH` call sites | one migration + Windmill script + build_seed | The migration everything else needs. No consumer changes. Reversible by renaming back. Dependents deferred to step 4. |
 | 3 | Evaluation sample + wire `sql/validate/` to score a named version | one view + arguments on existing scripts | Makes Model 4 development safe before Model 4 exists. |
-| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`); a model of its own with every decided rule since `20261013_001` (§5). The default switch is its own migration. | migrations + Windmill scripts | Only now does the nightly window grow: a second national model run, about as long as the first. Do not do this before there is a model to put in it. |
+| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`); a model of its own, built to the spec #283, since `20261015_004` (§5). The default switch is its own migration. | migrations + Windmill scripts | Only now does the nightly window grow: a second national model run, about as long as the first. Do not do this before there is a model to put in it. |
 | 5 | Version in the Webservice response; `product_tracker` records it | small | Reversible, no contract change yet. |
 | 6 | Customer pinning + support policy | the real work is the policy | Last, because it is a promise rather than a feature. |
 
