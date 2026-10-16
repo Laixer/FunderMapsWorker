@@ -835,3 +835,46 @@ Does **not** read `model_risk_static`. It queries `report.inquiry_sample` direct
 | Statistics matview fixes        | `sql/model/fix_statistics.sql`                     |
 | Authoritative dump              | `schema.sql` (regenerate after any change)         |
 | Operational memory (decisions)  | `~/.claude/projects/-home-eve-Projects-FunderMapsWorker/memory/{risk-model-review,model-performance,gfm-migration}.md` |
+
+---
+
+## 15. model-2026.3 — the rules that differ
+
+Everything above describes **model-2024.1**, whose logic is frozen. model-2026.3 is the same
+calculation with the risk rules of its spec, Worker #283, as its own function:
+`data.model_risk_2026_3_rows(...)`, one boolean switch per section of the spec, materialized as
+`data.model_risk_static_2026_3` with every switch on (migration `20261015_004`; how versions live
+side by side: `docs/model-versioning.md`). With every switch off the function returns
+model-2024.1, column for column. The foundation type is the same as in model-2024.1.
+
+| Switch | Spec | Rule | Issue |
+|---|---|---|---|
+| `quickscan_rules` | 0, 1 | A QuickScan (Verkennend Funderingsonderzoek) sets the four risks for 3 years after its date. A funderingsonderzoek from the last 5 years leads; a valid QuickScan then only fills what the onderzoek leaves empty. Only a QuickScan addendum (inquiry type `facade_scan`) counts. An executed herstel beats any QuickScan. | #222 |
+| `term_and_quality` | 2 | A report that names no damage cause still gives a class: the worst of its enforcement term, overall quality and herstel advice. The term counts down in whole years (years left = term − (current year − year of the report); ranges count as their upper bound): up to 5 left = e, up to 10 = d, up to 20 = c, more = b. The class goes to the risks of the foundation family (wood → drystand and bio infection, shallow → dewatering depth), from the pand's own report and from a report in its block. A matching damage cause keeps §6.5's ladder. | #278 |
+| `decay_floor` | 3 | Decay found in the wood by the governing report (`wood_encroachment`) makes that risk at least d: fungus → drystand, bacterial → bio infection, both → both. The report's term or quality can still raise it to e. | #278 |
+| `block_velocity` | 4 | The drystand and dewatering rules use the median InSAR velocity of the pand's block (`data.building_cluster`) for a pand that has a measurement, and the velocity threshold moves 0.3 mm/year further down. A pand without a measurement stays without one. The bacterial-decay rule keeps the pand's own velocity. | #236 (V5) |
+| `fallback_to_dewatering` | 5 | The build-year estimate (before 1970 = d, from 1970 = b; only when no rule says anything) goes to `dewatering_depth_risk`, labelled indicative. `unclassified_risk` is no longer filled by an estimate. | #242 |
+| `label_by_source` | 5 | `*_risk_reliability` says which rule produced the value: QuickScan, the pand's own report or a herstel = `established`; a report in the block = `cluster`; the indicative rule or the build-year estimate = `indicative`. | #235 |
+
+What model-2026.3 reads beside §7's three sample matviews: `data.building_sample_2026_3` (per
+pand: the newest QuickScan addendum and funderingsonderzoek dates, and decay found by the
+governing report).
+
+`data.model_risk_static_2026_3` has five columns after the 30 of the contract:
+`quickscan_gate` (`qs_valid`, `qs_expired`, `fo_leading`) and, per risk, `*_source`: `quickscan`,
+`research`, `herstel`, `cluster`, `model` or `build_year`. They are not served (the pointer view
+selects the 30 by name); they say which rule produced a value.
+
+Its own helper copies: `data.document_risk_2026_3`, `data.compute_indicative_drystand_risk_2026_3`
+and `data.compute_indicative_dewatering_risk_2026_3` (the last two take a `margin`). §6's originals
+are not edited. Still shared with model-2024.1: `compute_damage_risk` (for a matching damage
+cause), `compute_indicative_bio_risk`, the family predicates (§6.1), `enforcement_term_years`,
+`compute_restoration_costs`, `indicative_foundation_type`, `compute_unclassified_risk`.
+
+Not in model-2026.3 (spec, "Not in 2026.3"): settlement measured at the pand, skew, foundation
+type per field (#243), the other quality fields of a report, a relative subsidence signal.
+
+To check it: `sql/validate/model_2026_3_control.sql` (every switch off against model-2024.1,
+must be 0) and `sql/validate/model_2026_3_rule_effect.sql` (what one rule changes). Both are
+national runs of the model, and both must run on the same calendar day as the refresh they are
+compared with: the model reads today's date.

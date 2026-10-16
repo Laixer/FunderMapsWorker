@@ -443,9 +443,12 @@ REFRESH MATERIALIZED VIEW data.supercluster_sample;
 -- Name the concrete versioned matview: data.model_risk_static is a VIEW onto
 -- the default version now (docs/model-versioning.md) and cannot be refreshed.
 REFRESH MATERIALIZED VIEW data.model_risk_static_2024_1;
--- model-2026.3 reads the 2024.1 matview, so it comes second. Guarded: a schema.sql from
--- before migration 20261012_002 does not have it.
+-- model-2026.3: its sample extras first, then its own national run. Guarded: a schema.sql from
+-- before migrations 20261012_002 / 20261015_004 does not have them.
 DO $$ BEGIN
+    IF to_regclass('data.building_sample_2026_3') IS NOT NULL THEN
+        REFRESH MATERIALIZED VIEW data.building_sample_2026_3;
+    END IF;
     IF to_regclass('data.model_risk_static_2026_3') IS NOT NULL THEN
         REFRESH MATERIALIZED VIEW data.model_risk_static_2026_3;
     END IF;
