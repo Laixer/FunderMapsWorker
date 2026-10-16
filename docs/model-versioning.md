@@ -1,6 +1,8 @@
 # Running several risk models side by side
 
-**Status:** design, not built.
+**Status:** steps 1, 2 and 4 built; **the default is model-2026.3 since migration
+`20261015_005`** (model-2024.1 stays, frozen, and keeps refreshing). Steps 3, 5
+(half: the Webservice stamps the version) and 6 are not built.
 **Written:** 2026-08-09.
 **Decisions taken:** the current model's logic is frozen and will not change
 again; we need room for many candidate models; customers will be able to pin a
@@ -173,6 +175,33 @@ a named version (stay put). Repointing the two statistics matviews needs
 `DROP ... CASCADE` through `maplayer.analysis_full`, which is not worth doing
 for zero behavioural change.
 
+**Decided at the first switch (2026-10-12, migration `20261015_005`): all of them
+read the pointer.** `building_geo_hierarchy` was a `CREATE OR REPLACE VIEW` (same
+columns, so `maplayer.analysis_full` behind it never noticed). The two statistics
+matviews were rebuilt beside the live ones and swapped in; nothing depended on
+them after all, so no `CASCADE` was needed. Map tiles, the archive export and
+`/statistics` now follow whatever is default, and the next switch does not touch
+them.
+
+### Switching the default, and going back
+
+A switch is three things in one transaction, because they are three different
+switches: the **data** (`CREATE OR REPLACE VIEW data.model_risk_static ... FROM`
+the new versioned matview, which must have exactly the same columns), the
+**stamp** (`is_default` in `data.model_version`; the Webservice reads the slug
+from there for `modelVersion` and `X-FunderMaps-Version`), and nothing else: the
+derived objects follow the pointer. Then run the refresh flow once, because the
+statistics matviews, the map tiles and the archive export only pick the new
+default up at a refresh, and the logged run is what moves `calculatedAt`.
+
+Take the exclusive locks last and with a `lock_timeout`, and not during a refresh
+run: the tile refresh reads `building_geo_hierarchy` for minutes, and a DDL
+statement queued behind it queues every product read behind itself.
+
+Going back is the same switch the other way. Nothing is lost by it: the previous
+default's matview keeps refreshing for as long as it is listed in
+`refresh_risk_model`.
+
 One thing a rename does not carry: **`REFRESH` cannot target a view.** Anything
 that refreshes the model must name a concrete versioned matview. Two places did,
 and both were updated with the migration — the Windmill script
@@ -294,7 +323,7 @@ Worth doing at the same time as §8, since both touch the same code path.
 | 1 | Registry table + lifecycle enum; register the current model as `frozen` with its input vintages | one migration, ~60 lines | Pure addition, nothing reads it yet. Starts the provenance record immediately. |
 | 2 | ✅ **Done 2026-08-09.** Rename the matview, add the pointer view, update the two `REFRESH` call sites | one migration + Windmill script + build_seed | The migration everything else needs. No consumer changes. Reversible by renaming back. Dependents deferred to step 4. |
 | 3 | Evaluation sample + wire `sql/validate/` to score a named version | one view + arguments on existing scripts | Makes Model 4 development safe before Model 4 exists. |
-| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`); a model of its own, built to the spec #283, since `20261015_004` (§5). The default switch is its own migration. | migrations + Windmill scripts | Only now does the nightly window grow: a second national model run, about as long as the first. Do not do this before there is a model to put in it. |
+| 4 | ✅ **Second matview done 2026-10-12** (`model_risk_static_2026_3`, migration `20261012_002`); a model of its own, built to the spec #283, since `20261015_004` (§5). **Default switched to model-2026.3** by migration `20261015_005`; the dependents read the pointer since then (§5). | migrations + Windmill scripts | Only now does the nightly window grow: a second national model run, about as long as the first. Do not do this before there is a model to put in it. |
 | 5 | Version in the Webservice response; `product_tracker` records it | small | Reversible, no contract change yet. |
 | 6 | Customer pinning + support policy | the real work is the policy | Last, because it is a promise rather than a feature. |
 
