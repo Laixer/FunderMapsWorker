@@ -4,7 +4,7 @@ import postgres from "postgres";
 /**
  * Data Ops — read what arrived.
  *
- * Every 15 minutes: each open dossier that has a document nobody has read yet
+ * Every hour, at :03: each open dossier that has a document nobody has read yet
  * goes through FunderMapsWorker's `ingest-dossier` (classify pages, extract,
  * per-address rows, admissibility). Nothing here decides anything: every value
  * lands 'pending' for a person in Studio → Controle.
