@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
+\restrict v9iGaXEQYw2ULa0OZkAzYDPeaVI1bqV8q8C4WDesUUP3EfzBeY5f1NPZk2cuX3Z
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -18,27 +18,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
-
---
--- Name: timescaledb; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS timescaledb WITH SCHEMA public;
-
-
---
--- Name: EXTENSION timescaledb; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION timescaledb IS 'Enables scalable inserts and complex queries for time-series data (Apache 2 Edition)';
-
 
 --
 -- Name: application; Type: SCHEMA; Schema: -; Owner: -
@@ -73,6 +52,13 @@ CREATE SCHEMA geocoder;
 --
 
 CREATE SCHEMA maplayer;
+
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
+
+-- *not* creating schema, since initdb creates it
 
 
 --
@@ -1143,6 +1129,77 @@ $$;
 
 
 --
+-- Name: foundation_candidate(integer, integer, integer); Type: FUNCTION; Schema: data; Owner: -
+--
+
+CREATE FUNCTION data.foundation_candidate(z integer, x integer, y integer) RETURNS bytea
+    LANGUAGE plpgsql STABLE PARALLEL SAFE
+    AS $$
+DECLARE
+    env geometry;
+    mvt bytea;
+BEGIN
+    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
+        RETURN ''::bytea;
+    END IF;
+
+    env := ST_TileEnvelope(z, x, y);
+
+    IF z >= 14 THEN
+        SELECT ST_AsMVT(tile, 'foundation_candidate', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                t.building_id,
+                c.family,
+                c.foundation_type,
+                c.grade,
+                c.source,
+                c.p_oplanger::double precision AS p_oplanger,
+                c.p_wood::double precision     AS p_wood,
+                c.p_no_pile::double precision  AS p_no_pile,
+                c.p_concrete::double precision AS p_concrete,
+                c.confidence::double precision AS confidence,
+                c.evidence,
+                t.foundation_type              AS current_type,
+                t.height,
+                ST_AsMVTGeom(t.geom, env, 4096, 64, true) AS geom
+            FROM maplayer.building_tiles t
+            JOIN data.model_foundation_2026_2 c ON c.building_id = t.building_id
+            WHERE t.geom && env
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    ELSE
+        SELECT ST_AsMVT(tile, 'foundation_candidate', 4096, 'geom') INTO mvt
+        FROM (
+            SELECT
+                c.family,
+                c.foundation_type,
+                c.grade,
+                c.confidence::double precision AS confidence,
+                c.evidence,
+                t.height,
+                ST_AsMVTGeom(t.geom_simple, env, 4096, 8, true) AS geom
+            FROM maplayer.building_tiles t
+            JOIN data.model_foundation_2026_2 c ON c.building_id = t.building_id
+            WHERE t.geom_simple && env
+              AND t.surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
+        ) tile
+        WHERE tile.geom IS NOT NULL;
+    END IF;
+
+    RETURN coalesce(mvt, ''::bytea);
+END;
+$$;
+
+
+--
+-- Name: FUNCTION foundation_candidate(z integer, x integer, y integer); Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON FUNCTION data.foundation_candidate(z integer, x integer, y integer) IS '{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_oplanger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
+
+
+--
 -- Name: ft_cell_2026_1(integer, double precision, text, numeric, numeric, integer); Type: FUNCTION; Schema: data; Owner: -
 --
 
@@ -2013,77 +2070,6 @@ COMMENT ON FUNCTION maplayer.facade_scan(z integer, x integer, y integer) IS '{"
 
 
 --
--- Name: foundation_candidate(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
---
-
-CREATE FUNCTION maplayer.foundation_candidate(z integer, x integer, y integer) RETURNS bytea
-    LANGUAGE plpgsql STABLE PARALLEL SAFE
-    AS $$
-DECLARE
-    env geometry;
-    mvt bytea;
-BEGIN
-    IF z < 12 OR x < 0 OR y < 0 OR x >= (1 << z) OR y >= (1 << z) THEN
-        RETURN ''::bytea;
-    END IF;
-
-    env := ST_TileEnvelope(z, x, y);
-
-    IF z >= 14 THEN
-        SELECT ST_AsMVT(tile, 'foundation_candidate', 4096, 'geom') INTO mvt
-        FROM (
-            SELECT
-                t.building_id,
-                c.family,
-                c.foundation_type,
-                c.grade,
-                c.source,
-                c.p_oplanger::double precision AS p_oplanger,
-                c.p_wood::double precision     AS p_wood,
-                c.p_no_pile::double precision  AS p_no_pile,
-                c.p_concrete::double precision AS p_concrete,
-                c.confidence::double precision AS confidence,
-                c.evidence,
-                t.foundation_type              AS current_type,
-                t.height,
-                ST_AsMVTGeom(t.geom, env, 4096, 64, true) AS geom
-            FROM maplayer.building_tiles t
-            JOIN data.model_foundation_2026_2 c ON c.building_id = t.building_id
-            WHERE t.geom && env
-        ) tile
-        WHERE tile.geom IS NOT NULL;
-    ELSE
-        SELECT ST_AsMVT(tile, 'foundation_candidate', 4096, 'geom') INTO mvt
-        FROM (
-            SELECT
-                c.family,
-                c.foundation_type,
-                c.grade,
-                c.confidence::double precision AS confidence,
-                c.evidence,
-                t.height,
-                ST_AsMVTGeom(t.geom_simple, env, 4096, 8, true) AS geom
-            FROM maplayer.building_tiles t
-            JOIN data.model_foundation_2026_2 c ON c.building_id = t.building_id
-            WHERE t.geom_simple && env
-              AND t.surface_area >= CASE WHEN z = 12 THEN 150 ELSE 60 END
-        ) tile
-        WHERE tile.geom IS NOT NULL;
-    END IF;
-
-    RETURN coalesce(mvt, ''::bytea);
-END;
-$$;
-
-
---
--- Name: FUNCTION foundation_candidate(z integer, x integer, y integer); Type: COMMENT; Schema: maplayer; Owner: -
---
-
-COMMENT ON FUNCTION maplayer.foundation_candidate(z integer, x integer, y integer) IS '{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_oplanger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
-
-
---
 -- Name: incident(integer, integer, integer); Type: FUNCTION; Schema: maplayer; Owner: -
 --
 
@@ -2523,7 +2509,7 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         foundation_damage_cause, topic, height, geom
     )
     SELECT
-        m.dossier_id::text,
+        m.building_id,
         n.external_id,
         d2.external_id,
         mu.external_id,
@@ -2532,7 +2518,6 @@ CREATE PROCEDURE maplayer.refresh_incident_tiles()
         round(GREATEST(bh.height, 0::real)::numeric, 2)::double precision,
         ST_Multi(ST_Transform(ba.geom, 3857))
     FROM ( SELECT DISTINCT ON (d.building_id) d.building_id,
-                  d.id AS dossier_id,
                   d.payload ->> 'topic' AS topic
              FROM dataops.dossier d
             WHERE d.payload ->> 'topic' IS NOT NULL
@@ -2696,19 +2681,6 @@ COMMENT ON FUNCTION report.last_record_update() IS 'Trigger function that sets t
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: product_tracker; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.product_tracker (
-    organization_id application.organization_id NOT NULL,
-    product text NOT NULL,
-    building_id geocoder.geocoder_id NOT NULL,
-    create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    identifier text NOT NULL
-);
-
 
 --
 -- Name: account; Type: TABLE; Schema: application; Owner: -
@@ -3212,6 +3184,19 @@ CREATE TABLE application.passkey (
 --
 
 COMMENT ON TABLE application.passkey IS 'WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
+
+
+--
+-- Name: product_tracker; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.product_tracker (
+    organization_id application.organization_id NOT NULL,
+    product text NOT NULL,
+    building_id geocoder.geocoder_id NOT NULL,
+    create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    identifier text NOT NULL
+);
 
 
 --
@@ -4513,6 +4498,74 @@ COMMENT ON VIEW data.model_risk_static IS 'Pointer at the default model version.
 
 
 --
+-- Name: model_risk_static_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.model_risk_static_2026_3 AS
+ SELECT d.building_id,
+    d.address_count,
+    d.neighborhood_id,
+    d.construction_year,
+    d.construction_year_reliability,
+    d.foundation_type,
+    d.foundation_type_reliability,
+    d.restoration_costs,
+    d.drystand,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.drystand_risk
+            ELSE q.drystand_risk
+        END AS drystand_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.drystand_risk_reliability
+            ELSE q.drystand_risk_reliability
+        END AS drystand_risk_reliability,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.bio_infection_risk
+            ELSE q.bio_infection_risk
+        END AS bio_infection_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.bio_infection_risk_reliability
+            ELSE q.bio_infection_risk_reliability
+        END AS bio_infection_risk_reliability,
+    d.dewatering_depth,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.dewatering_depth_risk
+            ELSE q.dewatering_depth_risk
+        END AS dewatering_depth_risk,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.dewatering_depth_risk_reliability
+            ELSE q.dewatering_depth_risk_reliability
+        END AS dewatering_depth_risk_reliability,
+        CASE
+            WHEN (q.building_id IS NULL) THEN d.unclassified_risk
+            ELSE q.unclassified_risk
+        END AS unclassified_risk,
+    d.height,
+    d.velocity,
+    d.ground_water_level,
+    d.ground_level,
+    d.soil,
+    d.surface_area,
+    d.owner,
+    d.inquiry_id,
+    d.inquiry_type,
+    d.damage_cause,
+    d.enforcement_term,
+    d.overall_quality,
+    d.recovery_type
+   FROM (data.model_risk_static_2024_1 d
+     LEFT JOIN data.model_risk_2026_3_compute(true) q(building_id, neighborhood_id, gate, qs_risk, qs_date, fo_date, drystand_risk, drystand_risk_reliability, bio_infection_risk, bio_infection_risk_reliability, dewatering_depth_risk, dewatering_depth_risk_reliability, unclassified_risk) ON ((q.building_id = d.building_id)))
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW model_risk_static_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS 'model-2026.3 for every pand: the model-2024.1 row, with the four risks and three risk labels from data.model_risk_2026_3_compute(true) where the pand has a QuickScan class. Refresh after data.model_risk_static_2024_1 (Windmill f/fundermaps/data/refresh_risk_model). See docs/model-versioning.md.';
+
+
+--
 -- Name: model_version; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -5792,13 +5845,12 @@ CREATE TABLE maplayer.facade_scan_tiles (
 --
 
 CREATE VIEW maplayer.incident AS
- SELECT (m.dossier_id)::text AS id,
+ SELECT m.building_id AS id,
     NULL::report.foundation_damage_cause AS foundation_damage_cause,
     round((GREATEST(bh.height, (0)::real))::numeric, 2) AS height,
     ba.geom,
     m.topic
    FROM ((( SELECT DISTINCT ON (d.building_id) d.building_id,
-            d.id AS dossier_id,
             (d.payload ->> 'topic'::text) AS topic
            FROM dataops.dossier d
           WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))
@@ -7006,6 +7058,13 @@ CREATE INDEX product_tracker_create_date_idx ON application.product_tracker USIN
 
 
 --
+-- Name: product_tracker_org_prod_date_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX product_tracker_org_prod_date_idx ON application.product_tracker USING btree (organization_id, product, create_date);
+
+
+--
 -- Name: product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -7101,6 +7160,20 @@ CREATE INDEX model_risk_static_2024_1_neighborhood_id_idx ON data.model_risk_sta
 --
 
 CREATE UNIQUE INDEX model_risk_static_2024_1_pkey ON data.model_risk_static_2024_1 USING btree (building_id);
+
+
+--
+-- Name: model_risk_static_2026_3_neighborhood_id_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE INDEX model_risk_static_2026_3_neighborhood_id_idx ON data.model_risk_static_2026_3 USING btree (neighborhood_id);
+
+
+--
+-- Name: model_risk_static_2026_3_pkey; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX model_risk_static_2026_3_pkey ON data.model_risk_static_2026_3 USING btree (building_id);
 
 
 --
@@ -8425,5 +8498,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QE3S9jDzuOi1PQMhTIYXQYfZLRkhQqShPNVQNLC2w7fuCsc7Kb5pCefcyxuzpq2
+\unrestrict v9iGaXEQYw2ULa0OZkAzYDPeaVI1bqV8q8C4WDesUUP3EfzBeY5f1NPZk2cuX3Z
 
