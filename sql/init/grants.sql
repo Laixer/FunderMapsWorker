@@ -98,6 +98,7 @@ REVOKE SELECT ON application.application_user, application.invitation,
                  data.building_ownership, data.building_sample, data.building_subsidence,
                  data.building_subsidence_history, data.model_risk_static_2024_1,
                  data.model_risk_static_2026_3,
+                 data.building_sample_2026_3,
                  data.product_tracker_daily, geocoder.building_active,
                  geocoder.municipality, geocoder.residence, geocoder.state, report.incident
     FROM fundermaps_webservice;
