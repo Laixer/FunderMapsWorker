@@ -2,8 +2,8 @@ summary: Refresh Risk Model
 description: Refreshes every fully built model version, one matview each. The
   generic name `data.model_risk_static` is a VIEW pointing at the default (see
   docs/model-versioning.md), and a view cannot be refreshed — this must always
-  name the concrete versioned matviews. Order matters. model-2026.3 is built on
-  top of the model-2024.1 matview, so 2024.1 goes first.
+  name the concrete versioned matviews. Each is a full national run of its own
+  model SQL; both read the sample matviews, which the flow refreshes first.
 lock: ''
 kind: script
 schema:
