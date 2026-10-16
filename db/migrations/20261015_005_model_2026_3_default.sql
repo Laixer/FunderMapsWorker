@@ -1,9 +1,12 @@
--- model-2026.3 becomes the default model (Yorick, 2026-10-12; closes Worker #222).
+-- model-2026.3 becomes the default model (Yorick, 2026-10-12: "2026.3 will become the default";
+-- built to the spec #283 by 20261015_004; closes Worker #222, #235, #236, #242, #278 via #283).
 --
 -- Three things move together, because they are three different switches:
 --   1. the DATA: data.model_risk_static, the pointer view every consumer reads (Webservice
 --      /v4/product/*, API product and intake routes), now selects from
---      data.model_risk_static_2026_3 (built by 20261012_002) instead of the 2024.1 matview;
+--      data.model_risk_static_2026_3 (built by 20261015_004) instead of the 2024.1 matview. It
+--      selects that matview's first 30 columns by name; the explaining columns after them stay
+--      unserved;
 --   2. the STAMP: data.model_version.is_default moves to model-2026.3. The Webservice reads the
 --      default slug from there for modelVersion and X-FunderMaps-Version (60 s cache);
 --   3. the DERIVED objects, which were still bound to the concrete 2024.1 matview (left that way
@@ -16,14 +19,14 @@
 --        data.statistics_product_foundation_type   -> same (its numbers do not change: 2026.3
 --                                                     leaves the foundation type alone)
 --
--- What changes for a reader: the four risks of the panden with a QuickScan class, where the
--- QuickScan is older than 3 years, loses to a funderingsonderzoek from the last 5 years, or sits
--- on a pand with an executed herstel. Prod, 2026-10-12 (read-only): 1,110 of 11,321,489 panden
--- change a risk letter; the worst letter of a pand gets better on 103 and worse on 576 (524 of
--- those an expired QuickScan, where the model's own estimate is worse than the QuickScan said);
--- no pand ends without a risk. Every other column and every other pand is identical.
+-- What changes for a reader: the four risks and their three labels, as the spec #283 says. On a
+-- full copy of the model's inputs (2026-10-15): 139,550 of 11,321,489 panden change a risk letter,
+-- the worst letter gets better on 65,988 and worse on 14,143, no pand ends without a risk, and the
+-- labels move on 478,226 panden (a risk is labelled by the rule that produced it). Foundation type
+-- and every other column are unchanged. ship-2026-3.sh prints the numbers of the day before it runs
+-- this file.
 --
--- The model-2024.1 matview stays and keeps refreshing: model-2026.3 is built on top of it.
+-- The model-2024.1 matview stays and keeps refreshing (it is the way back).
 --
 -- Locks. The two statistics matviews cannot be changed in place, so they are built again under
 -- a temporary name first (about a minute, nothing is blocked), and only then swapped in. All
@@ -45,8 +48,10 @@
 -- ---------------------------------------------------------------------------
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM data.model_version WHERE slug = 'model-2026.3') THEN
-        RAISE EXCEPTION 'model-2026.3 is not registered: apply 20261012_002 first';
+    -- Only the build to the spec (20261015_004), never the QuickScan-only build of 20261012_002.
+    IF NOT EXISTS (SELECT 1 FROM data.model_version
+                    WHERE slug = 'model-2026.3' AND title = 'Foundation risk model 2026.3') THEN
+        RAISE EXCEPTION 'model-2026.3 is not the build to the spec: apply 20261015_004 first';
     END IF;
     IF (SELECT relispopulated FROM pg_class WHERE oid = 'data.model_risk_static_2024_1'::regclass)
        AND NOT (SELECT relispopulated FROM pg_class WHERE oid = 'data.model_risk_static_2026_3'::regclass) THEN
