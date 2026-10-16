@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict BZviGli4enJ18KqgULMOXFZsg3yQHBi92TnhDIvscsZbLJvjydhwanKnEblM9Dw
+\restrict PsvxFHfb4J4Oc6677TTOGp9ikfVlBvWsqkalLctO27utDFe9OXNJHeQTAAp2KKZ
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -3772,6 +3772,257 @@ CREATE TABLE data.building_elevation (
 
 
 --
+-- Name: model_risk_static_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.model_risk_static_2026_3 AS
+ SELECT building_id,
+    address_count,
+    neighborhood_id,
+    construction_year,
+    construction_year_reliability,
+    foundation_type,
+    foundation_type_reliability,
+    restoration_costs,
+    drystand,
+    drystand_risk,
+    drystand_risk_reliability,
+    bio_infection_risk,
+    bio_infection_risk_reliability,
+    dewatering_depth,
+    dewatering_depth_risk,
+    dewatering_depth_risk_reliability,
+    unclassified_risk,
+    (height)::numeric(10,2) AS height,
+    velocity,
+    ground_water_level,
+    (ground_level)::numeric(5,2) AS ground_level,
+    soil,
+    (surface_area)::numeric(10,2) AS surface_area,
+    owner,
+    inquiry_id,
+    inquiry_type,
+    damage_cause,
+    enforcement_term,
+    overall_quality,
+    recovery_type,
+    quickscan_gate,
+    drystand_source,
+    bio_infection_source,
+    dewatering_depth_source,
+    unclassified_source
+   FROM data.model_risk_2026_3_rows(quickscan_rules => true, term_and_quality => true, decay_floor => true, block_velocity => true, fallback_to_dewatering => true, label_by_source => true) model_risk_2026_3_rows(building_id, address_count, neighborhood_id, construction_year, construction_year_reliability, foundation_type, foundation_type_reliability, restoration_costs, drystand, drystand_risk, drystand_risk_reliability, bio_infection_risk, bio_infection_risk_reliability, dewatering_depth, dewatering_depth_risk, dewatering_depth_risk_reliability, unclassified_risk, height, velocity, ground_water_level, ground_level, soil, surface_area, owner, inquiry_id, inquiry_type, damage_cause, enforcement_term, overall_quality, recovery_type, quickscan_gate, drystand_source, bio_infection_source, dewatering_depth_source, unclassified_source)
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW model_risk_static_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS 'model-2026.3 for every pand: data.model_risk_2026_3_rows() with every rule on. The first 30 columns are the model contract (the pointer view selects them by name); the columns after them say where each risk came from and are not served. Refreshed by Windmill f/fundermaps/data/refresh_risk_model, after the sample matviews. See docs/model-versioning.md.';
+
+
+--
+-- Name: model_risk_static; Type: VIEW; Schema: data; Owner: -
+--
+
+CREATE VIEW data.model_risk_static AS
+ SELECT building_id,
+    address_count,
+    neighborhood_id,
+    construction_year,
+    construction_year_reliability,
+    foundation_type,
+    foundation_type_reliability,
+    restoration_costs,
+    drystand,
+    drystand_risk,
+    drystand_risk_reliability,
+    bio_infection_risk,
+    bio_infection_risk_reliability,
+    dewatering_depth,
+    dewatering_depth_risk,
+    dewatering_depth_risk_reliability,
+    unclassified_risk,
+    height,
+    velocity,
+    ground_water_level,
+    ground_level,
+    soil,
+    surface_area,
+    owner,
+    inquiry_id,
+    inquiry_type,
+    damage_cause,
+    enforcement_term,
+    overall_quality,
+    recovery_type
+   FROM data.model_risk_static_2026_3;
+
+
+--
+-- Name: VIEW model_risk_static; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON VIEW data.model_risk_static IS 'Pointer at the default model version. Consumers should name this, not a versioned matview. Switch the default with CREATE OR REPLACE VIEW. See docs/model-versioning.md.';
+
+
+--
+-- Name: building; Type: TABLE; Schema: geocoder; Owner: -
+--
+
+CREATE TABLE geocoder.building (
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    built_year geocoder.year,
+    active boolean NOT NULL,
+    geom public.geometry(MultiPolygon,4326) NOT NULL,
+    external_id text NOT NULL,
+    building_type geocoder.building_type,
+    neighborhood_id geocoder.geocoder_id,
+    zone_function geocoder.zone_function[]
+);
+
+
+--
+-- Name: TABLE building; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.building IS 'Contains all buildings in our own format.';
+
+
+--
+-- Name: building_active; Type: VIEW; Schema: geocoder; Owner: -
+--
+
+CREATE VIEW geocoder.building_active AS
+ SELECT id,
+    built_year,
+    geom,
+    external_id,
+    building_type,
+    neighborhood_id
+   FROM geocoder.building
+  WHERE ((active = true) AND (geom IS NOT NULL));
+
+
+--
+-- Name: VIEW building_active; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON VIEW geocoder.building_active IS 'Contains all entries from geocoder.building which have their status set to active.';
+
+
+--
+-- Name: district; Type: TABLE; Schema: geocoder; Owner: -
+--
+
+CREATE TABLE geocoder.district (
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    external_id text NOT NULL,
+    municipality_id geocoder.geocoder_id NOT NULL,
+    name text NOT NULL,
+    water boolean NOT NULL,
+    geom public.geometry(MultiPolygon,4326) NOT NULL
+);
+
+
+--
+-- Name: TABLE district; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.district IS 'Contains all districts in our own format.';
+
+
+--
+-- Name: municipality; Type: TABLE; Schema: geocoder; Owner: -
+--
+
+CREATE TABLE geocoder.municipality (
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    external_id text NOT NULL,
+    name text NOT NULL,
+    water boolean NOT NULL,
+    geom public.geometry(MultiPolygon,4326) NOT NULL,
+    state_id geocoder.geocoder_id NOT NULL
+);
+
+
+--
+-- Name: TABLE municipality; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.municipality IS 'Contains all municipalities in our own format.';
+
+
+--
+-- Name: neighborhood; Type: TABLE; Schema: geocoder; Owner: -
+--
+
+CREATE TABLE geocoder.neighborhood (
+    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    external_id text NOT NULL,
+    district_id geocoder.geocoder_id NOT NULL,
+    name text NOT NULL,
+    water boolean NOT NULL,
+    geom public.geometry(MultiPolygon,4326) NOT NULL
+);
+
+
+--
+-- Name: TABLE neighborhood; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON TABLE geocoder.neighborhood IS 'Contains all neighborhoods in our own format.';
+
+
+--
+-- Name: building_geo_hierarchy; Type: VIEW; Schema: data; Owner: -
+--
+
+CREATE VIEW data.building_geo_hierarchy AS
+ SELECT mrs.building_id,
+    mrs.address_count,
+    mrs.neighborhood_id,
+    mrs.construction_year,
+    mrs.construction_year_reliability,
+    mrs.foundation_type,
+    mrs.foundation_type_reliability,
+    mrs.restoration_costs,
+    mrs.drystand,
+    mrs.drystand_risk,
+    mrs.drystand_risk_reliability,
+    mrs.bio_infection_risk,
+    mrs.bio_infection_risk_reliability,
+    mrs.dewatering_depth,
+    mrs.dewatering_depth_risk,
+    mrs.dewatering_depth_risk_reliability,
+    mrs.unclassified_risk,
+    mrs.height,
+    mrs.velocity,
+    mrs.ground_water_level,
+    mrs.ground_level,
+    mrs.soil,
+    mrs.surface_area,
+    mrs.owner,
+    mrs.inquiry_id,
+    mrs.inquiry_type,
+    mrs.damage_cause,
+    mrs.enforcement_term,
+    mrs.overall_quality,
+    mrs.recovery_type,
+    ba.geom,
+    n.external_id AS ext_neighborhood_id,
+    d.external_id AS ext_district_id,
+    m.external_id AS ext_municipality_id
+   FROM ((((data.model_risk_static mrs
+     JOIN geocoder.building_active ba ON ((ba.external_id = mrs.building_id)))
+     JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
+     JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
+     JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
+  WHERE (mrs.address_count > 0);
+
+
+--
 -- Name: building_geographic_region; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -3790,6 +4041,24 @@ CREATE TABLE data.building_groundwater_level (
     building_id text NOT NULL,
     level double precision NOT NULL
 );
+
+
+--
+-- Name: building_height; Type: VIEW; Schema: data; Owner: -
+--
+
+CREATE VIEW data.building_height AS
+ SELECT building_id,
+    (roof - ground) AS height
+   FROM data.building_elevation be
+  WHERE ((roof IS NOT NULL) AND (ground IS NOT NULL));
+
+
+--
+-- Name: VIEW building_height; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON VIEW data.building_height IS 'Absolute building height';
 
 
 --
@@ -3825,29 +4094,6 @@ CREATE TABLE data.building_precomputed (
     height double precision,
     ground_level numeric(5,2)
 );
-
-
---
--- Name: building; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.building (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    built_year geocoder.year,
-    active boolean NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL,
-    external_id text NOT NULL,
-    building_type geocoder.building_type,
-    neighborhood_id geocoder.geocoder_id,
-    zone_function geocoder.zone_function[]
-);
-
-
---
--- Name: TABLE building; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.building IS 'Contains all buildings in our own format.';
 
 
 --
@@ -4104,12 +4350,124 @@ CREATE MATERIALIZED VIEW data.building_sample AS
 
 
 --
+-- Name: building_sample_2026_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.building_sample_2026_1 AS
+ WITH ranked AS (
+         SELECT DISTINCT ON (b.external_id) b.external_id AS building_id,
+            is2.foundation_type,
+            is2.enforcement_term,
+            is2.damage_cause,
+            is2.overall_quality,
+            is2.recovery_advised,
+            (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
+            is2.groundwater_level_temp AS groundwater_level,
+            is2.wood_level,
+            is2.foundation_depth,
+            i.type AS inquiry_type,
+            i.document_date,
+            i.id
+           FROM ((report.inquiry_sample is2
+             JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
+             JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
+          WHERE ((i.document_date >= ((b.built_year)::date - '5 years'::interval)) AND (is2.delete_date IS NULL) AND (i.document_date <= CURRENT_DATE))
+          ORDER BY b.external_id,
+                CASE i.type
+                    WHEN 'foundation_research'::report.inquiry_type THEN 0
+                    WHEN 'inspectionpit'::report.inquiry_type THEN 1
+                    WHEN 'second_opinion'::report.inquiry_type THEN 2
+                    WHEN 'additional_research'::report.inquiry_type THEN 3
+                    WHEN 'demolition_research'::report.inquiry_type THEN 4
+                    WHEN 'architectural_research'::report.inquiry_type THEN 5
+                    WHEN 'archive_research'::report.inquiry_type THEN 6
+                    WHEN 'quickscan'::report.inquiry_type THEN 7
+                    WHEN 'note'::report.inquiry_type THEN 9
+                    ELSE 100
+                END, (date_part('year'::text, i.document_date)) DESC, ((((((((((is2.foundation_type IS NOT NULL))::integer + ((is2.enforcement_term IS NOT NULL))::integer) + ((is2.damage_cause IS NOT NULL))::integer) + ((is2.overall_quality IS NOT NULL))::integer) + ((is2.recovery_advised IS NOT NULL))::integer) + ((is2.built_year IS NOT NULL))::integer) + ((is2.groundwater_level_temp IS NOT NULL))::integer) + ((is2.wood_level IS NOT NULL))::integer) + ((is2.foundation_depth IS NOT NULL))::integer) DESC, i.document_date DESC, i.id DESC
+        ), facade AS (
+         SELECT DISTINCT ON ((is2.building_id)::text) (is2.building_id)::text AS building_id,
+            is2.facade_scan_risk
+           FROM (report.inquiry_sample is2
+             JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
+          WHERE ((is2.facade_scan_risk IS NOT NULL) AND (is2.delete_date IS NULL) AND (i.document_date <= CURRENT_DATE))
+          ORDER BY (is2.building_id)::text, i.document_date DESC
+        )
+ SELECT r.building_id,
+    r.foundation_type,
+    r.enforcement_term,
+    r.damage_cause,
+    r.overall_quality,
+    r.recovery_advised,
+    r.built_year,
+    r.groundwater_level,
+    r.wood_level,
+    r.foundation_depth,
+    f.facade_scan_risk,
+    r.inquiry_type,
+    r.document_date,
+    r.id
+   FROM (ranked r
+     LEFT JOIN facade f ON ((f.building_id = r.building_id)))
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW building_sample_2026_1; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.building_sample_2026_1 IS 'Candidate model 2026.1 -- observation selection only. Served to nobody. Drop with one DROP MATERIALIZED VIEW.';
+
+
+--
+-- Name: building_sample_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.building_sample_2026_3 AS
+ WITH dated AS (
+         SELECT (s.building_id)::text AS building_id,
+            max(i.document_date) FILTER (WHERE ((s.facade_scan_risk IS NOT NULL) AND (i.type = 'facade_scan'::report.inquiry_type))) AS qs_date,
+            max(i.document_date) FILTER (WHERE (i.type = ANY (ARRAY['foundation_research'::report.inquiry_type, 'inspectionpit'::report.inquiry_type, 'second_opinion'::report.inquiry_type, 'additional_research'::report.inquiry_type]))) AS fo_date
+           FROM (report.inquiry_sample s
+             JOIN report.inquiry i ON ((i.id = s.inquiry_id)))
+          GROUP BY (s.building_id)::text
+        ), decay AS (
+         SELECT (s.building_id)::text AS building_id,
+            bool_or((s.wood_encroachment = ANY (ARRAY['fungus_infection'::report.wood_encroachment, 'bio_fungus_infection'::report.wood_encroachment]))) AS fungus_decay,
+            bool_or((s.wood_encroachment = ANY (ARRAY['bio_infection'::report.wood_encroachment, 'bio_fungus_infection'::report.wood_encroachment]))) AS bio_decay
+           FROM (report.inquiry_sample s
+             JOIN data.building_sample bs ON (((bs.building_id = (s.building_id)::text) AND (bs.id = s.inquiry_id))))
+          WHERE (s.wood_encroachment IS NOT NULL)
+          GROUP BY (s.building_id)::text
+        )
+ SELECT d.building_id,
+    d.qs_date,
+    d.fo_date,
+    COALESCE(x.fungus_decay, false) AS fungus_decay,
+    COALESCE(x.bio_decay, false) AS bio_decay
+   FROM (dated d
+     LEFT JOIN decay x USING (building_id))
+  WITH NO DATA;
+
+
+--
 -- Name: building_subsidence; Type: TABLE; Schema: data; Owner: -
 --
 
 CREATE TABLE data.building_subsidence (
     building_id text NOT NULL,
     velocity double precision NOT NULL
+);
+
+
+--
+-- Name: building_subsidence_history; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.building_subsidence_history (
+    building_id text NOT NULL,
+    velocity double precision NOT NULL,
+    mark_at date NOT NULL
 );
 
 
@@ -4160,6 +4518,268 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
             ELSE 100
         END, i.document_date DESC
   WITH NO DATA;
+
+
+--
+-- Name: foundation_type_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.foundation_type_2026_2 (
+    building_id text NOT NULL,
+    purpose text NOT NULL,
+    split text,
+    scoring_mode boolean NOT NULL,
+    p_wood numeric(6,5) NOT NULL,
+    p_no_pile numeric(6,5) NOT NULL,
+    p_concrete numeric(6,5) NOT NULL,
+    predicted_family text NOT NULL,
+    evidence_level text NOT NULL,
+    evidence_n integer NOT NULL,
+    prior_cell text NOT NULL,
+    prior_p_wood numeric(6,5) NOT NULL
+);
+
+
+--
+-- Name: TABLE foundation_type_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.foundation_type_2026_2 IS 'model-2026.2 candidate output on the evaluation sample: class probabilities from local inspected evidence (cluster > supercluster > neighbourhood) shrunk onto a cell prior. Scored, never served. See sql/model/candidate_2026_2_foundation_type.sql.';
+
+
+--
+-- Name: foundation_type_lookup_2026_1; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.foundation_type_lookup_2026_1 (
+    cell text NOT NULL,
+    n integer NOT NULL,
+    p_wood numeric NOT NULL,
+    p_no_pile numeric NOT NULL,
+    p_concrete numeric NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: TABLE foundation_type_lookup_2026_1; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.foundation_type_lookup_2026_1 IS 'Fitted foundation-type probabilities per feature cell for candidate model-2026.1. Fitted on evaluation-sample TRAIN rows only. Uses ground_level and surface_area, which the deployed decision tree ignores.';
+
+
+--
+-- Name: foundation_type_lookup_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.foundation_type_lookup_2026_2 (
+    cell text NOT NULL,
+    n integer NOT NULL,
+    p_wood numeric NOT NULL,
+    p_no_pile numeric NOT NULL,
+    p_concrete numeric NOT NULL
+);
+
+
+--
+-- Name: TABLE foundation_type_lookup_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.foundation_type_lookup_2026_2 IS 'Refit of the 2026.1 lookup on evidence-backed truth only (sample_version 2, grades physical+documented). Excludes quickscan-sourced answers, which are our own output.';
+
+
+--
+-- Name: foundation_type_prior_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.foundation_type_prior_2026_2 (
+    cell text NOT NULL,
+    n integer NOT NULL,
+    p_wood numeric(6,5) NOT NULL,
+    p_no_pile numeric(6,5) NOT NULL,
+    p_concrete numeric(6,5) NOT NULL
+);
+
+
+--
+-- Name: TABLE foundation_type_prior_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.foundation_type_prior_2026_2 IS 'model-2026.2 candidate: smoothed class rates per cell (era|soil|height|ground level|addresses), fitted on benchmark v2 train rows. Coarse cells (era|soil|height) and the global row (cell = *) are included for back-off.';
+
+
+--
+-- Name: model_compare_2026_1; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_compare_2026_1 (
+    building_id text NOT NULL,
+    neighborhood_id text,
+    tier text,
+    frozen_ft text,
+    cand_ft text,
+    frozen_rot text,
+    cand_rot text,
+    change_kind text
+);
+
+
+--
+-- Name: TABLE model_compare_2026_1; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_compare_2026_1 IS 'One-off frozen-vs-candidate comparison for decision support. Not served, not refreshed. Drop freely.';
+
+
+--
+-- Name: model_compare_2026_3; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_compare_2026_3 (
+    building_id text NOT NULL,
+    field text NOT NULL,
+    neighborhood_id text,
+    gate text NOT NULL,
+    frozen_risk data.foundation_risk_indication,
+    candidate_risk data.foundation_risk_indication,
+    frozen_reliability data.reliability,
+    candidate_reliability data.reliability,
+    direction text NOT NULL
+);
+
+
+--
+-- Name: TABLE model_compare_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_compare_2026_3 IS 'Every (pand, risk field) where candidate model-2026.3-rc1 differs from model-2024.1 (data.model_risk_static_2024_1). Rebuilt with data.model_risk_2026_3.';
+
+
+--
+-- Name: model_evaluation_sample; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_evaluation_sample (
+    purpose text NOT NULL,
+    building_id text NOT NULL,
+    stratum text NOT NULL,
+    observed_family text,
+    split text,
+    sample_version integer DEFAULT 1 NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    truth_source text,
+    evidence_grade text,
+    CONSTRAINT model_evaluation_sample_purpose CHECK ((purpose = ANY (ARRAY['truth'::text, 'population'::text]))),
+    CONSTRAINT model_evaluation_sample_shape CHECK ((((purpose = 'truth'::text) AND (observed_family IS NOT NULL) AND (split IS NOT NULL)) OR ((purpose = 'population'::text) AND (observed_family IS NULL) AND (split IS NULL)))),
+    CONSTRAINT model_evaluation_sample_split CHECK (((split IS NULL) OR (split = ANY (ARRAY['train'::text, 'test'::text]))))
+);
+
+
+--
+-- Name: TABLE model_evaluation_sample; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_evaluation_sample IS 'Frozen benchmark for scoring candidate models. Deliberately a table, not a view: a growing truth set would make two candidates scored on different days incomparable. See docs/model-versioning.md.';
+
+
+--
+-- Name: COLUMN model_evaluation_sample.evidence_grade; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON COLUMN data.model_evaluation_sample.evidence_grade IS 'physical (dug) > documented (drawing) > opinion (assertion). quickscan is never present: its foundation type is our own output.';
+
+
+--
+-- Name: model_evaluation_stratum_weight; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_evaluation_stratum_weight (
+    sample_version integer NOT NULL,
+    stratum text NOT NULL,
+    national_buildings bigint NOT NULL,
+    sampled bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: TABLE model_evaluation_stratum_weight; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_evaluation_stratum_weight IS 'True national size of each evaluation stratum. The population sample is floored at 2,000 per stratum and is therefore NOT proportional -- weight by national_buildings before quoting any national figure.';
+
+
+--
+-- Name: model_foundation_2026_2; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_foundation_2026_2 (
+    building_id text NOT NULL,
+    p_wood real NOT NULL,
+    p_no_pile real NOT NULL,
+    p_concrete real NOT NULL,
+    p_oplanger real NOT NULL,
+    family text NOT NULL,
+    foundation_type text NOT NULL,
+    confidence real NOT NULL,
+    evidence text NOT NULL,
+    grade text NOT NULL,
+    source text NOT NULL,
+    model_version text DEFAULT 'model-2026.2-rc2'::text NOT NULL,
+    computed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT model_foundation_2026_2_evidence_check CHECK ((evidence = ANY (ARRAY['buurt'::text, 'nabij'::text, 'municipal'::text, 'none'::text]))),
+    CONSTRAINT model_foundation_2026_2_family_check CHECK ((family = ANY (ARRAY['wood'::text, 'no_pile'::text, 'concrete'::text]))),
+    CONSTRAINT model_foundation_2026_2_foundation_type_check CHECK ((foundation_type = ANY (ARRAY['wood'::text, 'wood_charger'::text, 'no_pile'::text, 'concrete'::text]))),
+    CONSTRAINT model_foundation_2026_2_grade_check CHECK ((grade = ANY (ARRAY['vastgesteld'::text, 'zeer betrouwbaar'::text, 'betrouwbaar'::text, 'redelijk'::text, 'zwak'::text]))),
+    CONSTRAINT model_foundation_2026_2_source_check CHECK ((source = ANY (ARRAY['report'::text, 'quickscan'::text, 'model'::text])))
+);
+
+
+--
+-- Name: TABLE model_foundation_2026_2; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_foundation_2026_2 IS 'Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
+
+
+--
+-- Name: model_gevelscan; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_gevelscan (
+    skewed_parallel report.rotation_type,
+    facade_type report.crack_type,
+    skewed_perpendicular report.rotation_type,
+    risk data.foundation_risk_indication
+);
+
+
+--
+-- Name: model_risk_2026_3; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.model_risk_2026_3 (
+    building_id text NOT NULL,
+    neighborhood_id text,
+    gate text NOT NULL,
+    qs_risk data.foundation_risk_indication,
+    qs_date date,
+    fo_date date,
+    drystand_risk data.foundation_risk_indication,
+    drystand_risk_reliability data.reliability,
+    bio_infection_risk data.foundation_risk_indication,
+    bio_infection_risk_reliability data.reliability,
+    dewatering_depth_risk data.foundation_risk_indication,
+    dewatering_depth_risk_reliability data.reliability,
+    unclassified_risk data.foundation_risk_indication
+);
+
+
+--
+-- Name: TABLE model_risk_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_risk_2026_3 IS 'Candidate model-2026.3-rc1 (Don''s QuickScan rule as a gate), for the panden whose building_sample carries a facade_scan_risk. Rebuilt by CALL data.refresh_model_risk_2026_3(). Not served.';
 
 
 --
@@ -4433,626 +5053,6 @@ CREATE MATERIALIZED VIEW data.model_risk_static_2024_1 AS
 
 
 --
--- Name: building_active; Type: VIEW; Schema: geocoder; Owner: -
---
-
-CREATE VIEW geocoder.building_active AS
- SELECT id,
-    built_year,
-    geom,
-    external_id,
-    building_type,
-    neighborhood_id
-   FROM geocoder.building
-  WHERE ((active = true) AND (geom IS NOT NULL));
-
-
---
--- Name: VIEW building_active; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON VIEW geocoder.building_active IS 'Contains all entries from geocoder.building which have their status set to active.';
-
-
---
--- Name: district; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.district (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    external_id text NOT NULL,
-    municipality_id geocoder.geocoder_id NOT NULL,
-    name text NOT NULL,
-    water boolean NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL
-);
-
-
---
--- Name: TABLE district; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.district IS 'Contains all districts in our own format.';
-
-
---
--- Name: municipality; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.municipality (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    external_id text NOT NULL,
-    name text NOT NULL,
-    water boolean NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL,
-    state_id geocoder.geocoder_id NOT NULL
-);
-
-
---
--- Name: TABLE municipality; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.municipality IS 'Contains all municipalities in our own format.';
-
-
---
--- Name: neighborhood; Type: TABLE; Schema: geocoder; Owner: -
---
-
-CREATE TABLE geocoder.neighborhood (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
-    external_id text NOT NULL,
-    district_id geocoder.geocoder_id NOT NULL,
-    name text NOT NULL,
-    water boolean NOT NULL,
-    geom public.geometry(MultiPolygon,4326) NOT NULL
-);
-
-
---
--- Name: TABLE neighborhood; Type: COMMENT; Schema: geocoder; Owner: -
---
-
-COMMENT ON TABLE geocoder.neighborhood IS 'Contains all neighborhoods in our own format.';
-
-
---
--- Name: building_geo_hierarchy; Type: VIEW; Schema: data; Owner: -
---
-
-CREATE VIEW data.building_geo_hierarchy AS
- SELECT mrs.building_id,
-    mrs.address_count,
-    mrs.neighborhood_id,
-    mrs.construction_year,
-    mrs.construction_year_reliability,
-    mrs.foundation_type,
-    mrs.foundation_type_reliability,
-    mrs.restoration_costs,
-    mrs.drystand,
-    mrs.drystand_risk,
-    mrs.drystand_risk_reliability,
-    mrs.bio_infection_risk,
-    mrs.bio_infection_risk_reliability,
-    mrs.dewatering_depth,
-    mrs.dewatering_depth_risk,
-    mrs.dewatering_depth_risk_reliability,
-    mrs.unclassified_risk,
-    mrs.height,
-    mrs.velocity,
-    mrs.ground_water_level,
-    mrs.ground_level,
-    mrs.soil,
-    mrs.surface_area,
-    mrs.owner,
-    mrs.inquiry_id,
-    mrs.inquiry_type,
-    mrs.damage_cause,
-    mrs.enforcement_term,
-    mrs.overall_quality,
-    mrs.recovery_type,
-    ba.geom,
-    n.external_id AS ext_neighborhood_id,
-    d.external_id AS ext_district_id,
-    m.external_id AS ext_municipality_id
-   FROM ((((data.model_risk_static_2024_1 mrs
-     JOIN geocoder.building_active ba ON ((ba.external_id = mrs.building_id)))
-     JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
-     JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
-     JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
-  WHERE (mrs.address_count > 0);
-
-
---
--- Name: building_height; Type: VIEW; Schema: data; Owner: -
---
-
-CREATE VIEW data.building_height AS
- SELECT building_id,
-    (roof - ground) AS height
-   FROM data.building_elevation be
-  WHERE ((roof IS NOT NULL) AND (ground IS NOT NULL));
-
-
---
--- Name: VIEW building_height; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON VIEW data.building_height IS 'Absolute building height';
-
-
---
--- Name: building_sample_2026_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.building_sample_2026_1 AS
- WITH ranked AS (
-         SELECT DISTINCT ON (b.external_id) b.external_id AS building_id,
-            is2.foundation_type,
-            is2.enforcement_term,
-            is2.damage_cause,
-            is2.overall_quality,
-            is2.recovery_advised,
-            (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
-            is2.groundwater_level_temp AS groundwater_level,
-            is2.wood_level,
-            is2.foundation_depth,
-            i.type AS inquiry_type,
-            i.document_date,
-            i.id
-           FROM ((report.inquiry_sample is2
-             JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
-             JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
-          WHERE ((i.document_date >= ((b.built_year)::date - '5 years'::interval)) AND (is2.delete_date IS NULL) AND (i.document_date <= CURRENT_DATE))
-          ORDER BY b.external_id,
-                CASE i.type
-                    WHEN 'foundation_research'::report.inquiry_type THEN 0
-                    WHEN 'inspectionpit'::report.inquiry_type THEN 1
-                    WHEN 'second_opinion'::report.inquiry_type THEN 2
-                    WHEN 'additional_research'::report.inquiry_type THEN 3
-                    WHEN 'demolition_research'::report.inquiry_type THEN 4
-                    WHEN 'architectural_research'::report.inquiry_type THEN 5
-                    WHEN 'archive_research'::report.inquiry_type THEN 6
-                    WHEN 'quickscan'::report.inquiry_type THEN 7
-                    WHEN 'note'::report.inquiry_type THEN 9
-                    ELSE 100
-                END, (date_part('year'::text, i.document_date)) DESC, ((((((((((is2.foundation_type IS NOT NULL))::integer + ((is2.enforcement_term IS NOT NULL))::integer) + ((is2.damage_cause IS NOT NULL))::integer) + ((is2.overall_quality IS NOT NULL))::integer) + ((is2.recovery_advised IS NOT NULL))::integer) + ((is2.built_year IS NOT NULL))::integer) + ((is2.groundwater_level_temp IS NOT NULL))::integer) + ((is2.wood_level IS NOT NULL))::integer) + ((is2.foundation_depth IS NOT NULL))::integer) DESC, i.document_date DESC, i.id DESC
-        ), facade AS (
-         SELECT DISTINCT ON ((is2.building_id)::text) (is2.building_id)::text AS building_id,
-            is2.facade_scan_risk
-           FROM (report.inquiry_sample is2
-             JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
-          WHERE ((is2.facade_scan_risk IS NOT NULL) AND (is2.delete_date IS NULL) AND (i.document_date <= CURRENT_DATE))
-          ORDER BY (is2.building_id)::text, i.document_date DESC
-        )
- SELECT r.building_id,
-    r.foundation_type,
-    r.enforcement_term,
-    r.damage_cause,
-    r.overall_quality,
-    r.recovery_advised,
-    r.built_year,
-    r.groundwater_level,
-    r.wood_level,
-    r.foundation_depth,
-    f.facade_scan_risk,
-    r.inquiry_type,
-    r.document_date,
-    r.id
-   FROM (ranked r
-     LEFT JOIN facade f ON ((f.building_id = r.building_id)))
-  WITH NO DATA;
-
-
---
--- Name: MATERIALIZED VIEW building_sample_2026_1; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON MATERIALIZED VIEW data.building_sample_2026_1 IS 'Candidate model 2026.1 -- observation selection only. Served to nobody. Drop with one DROP MATERIALIZED VIEW.';
-
-
---
--- Name: building_sample_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.building_sample_2026_3 AS
- WITH dated AS (
-         SELECT (s.building_id)::text AS building_id,
-            max(i.document_date) FILTER (WHERE ((s.facade_scan_risk IS NOT NULL) AND (i.type = 'facade_scan'::report.inquiry_type))) AS qs_date,
-            max(i.document_date) FILTER (WHERE (i.type = ANY (ARRAY['foundation_research'::report.inquiry_type, 'inspectionpit'::report.inquiry_type, 'second_opinion'::report.inquiry_type, 'additional_research'::report.inquiry_type]))) AS fo_date
-           FROM (report.inquiry_sample s
-             JOIN report.inquiry i ON ((i.id = s.inquiry_id)))
-          GROUP BY (s.building_id)::text
-        ), decay AS (
-         SELECT (s.building_id)::text AS building_id,
-            bool_or((s.wood_encroachment = ANY (ARRAY['fungus_infection'::report.wood_encroachment, 'bio_fungus_infection'::report.wood_encroachment]))) AS fungus_decay,
-            bool_or((s.wood_encroachment = ANY (ARRAY['bio_infection'::report.wood_encroachment, 'bio_fungus_infection'::report.wood_encroachment]))) AS bio_decay
-           FROM (report.inquiry_sample s
-             JOIN data.building_sample bs ON (((bs.building_id = (s.building_id)::text) AND (bs.id = s.inquiry_id))))
-          WHERE (s.wood_encroachment IS NOT NULL)
-          GROUP BY (s.building_id)::text
-        )
- SELECT d.building_id,
-    d.qs_date,
-    d.fo_date,
-    COALESCE(x.fungus_decay, false) AS fungus_decay,
-    COALESCE(x.bio_decay, false) AS bio_decay
-   FROM (dated d
-     LEFT JOIN decay x USING (building_id))
-  WITH NO DATA;
-
-
---
--- Name: building_subsidence_history; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.building_subsidence_history (
-    building_id text NOT NULL,
-    velocity double precision NOT NULL,
-    mark_at date NOT NULL
-);
-
-
---
--- Name: foundation_type_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_2026_2 (
-    building_id text NOT NULL,
-    purpose text NOT NULL,
-    split text,
-    scoring_mode boolean NOT NULL,
-    p_wood numeric(6,5) NOT NULL,
-    p_no_pile numeric(6,5) NOT NULL,
-    p_concrete numeric(6,5) NOT NULL,
-    predicted_family text NOT NULL,
-    evidence_level text NOT NULL,
-    evidence_n integer NOT NULL,
-    prior_cell text NOT NULL,
-    prior_p_wood numeric(6,5) NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_2026_2 IS 'model-2026.2 candidate output on the evaluation sample: class probabilities from local inspected evidence (cluster > supercluster > neighbourhood) shrunk onto a cell prior. Scored, never served. See sql/model/candidate_2026_2_foundation_type.sql.';
-
-
---
--- Name: foundation_type_lookup_2026_1; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_lookup_2026_1 (
-    cell text NOT NULL,
-    n integer NOT NULL,
-    p_wood numeric NOT NULL,
-    p_no_pile numeric NOT NULL,
-    p_concrete numeric NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_lookup_2026_1; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_lookup_2026_1 IS 'Fitted foundation-type probabilities per feature cell for candidate model-2026.1. Fitted on evaluation-sample TRAIN rows only. Uses ground_level and surface_area, which the deployed decision tree ignores.';
-
-
---
--- Name: foundation_type_lookup_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_lookup_2026_2 (
-    cell text NOT NULL,
-    n integer NOT NULL,
-    p_wood numeric NOT NULL,
-    p_no_pile numeric NOT NULL,
-    p_concrete numeric NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_lookup_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_lookup_2026_2 IS 'Refit of the 2026.1 lookup on evidence-backed truth only (sample_version 2, grades physical+documented). Excludes quickscan-sourced answers, which are our own output.';
-
-
---
--- Name: foundation_type_prior_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_prior_2026_2 (
-    cell text NOT NULL,
-    n integer NOT NULL,
-    p_wood numeric(6,5) NOT NULL,
-    p_no_pile numeric(6,5) NOT NULL,
-    p_concrete numeric(6,5) NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_prior_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_prior_2026_2 IS 'model-2026.2 candidate: smoothed class rates per cell (era|soil|height|ground level|addresses), fitted on benchmark v2 train rows. Coarse cells (era|soil|height) and the global row (cell = *) are included for back-off.';
-
-
---
--- Name: model_compare_2026_1; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_compare_2026_1 (
-    building_id text NOT NULL,
-    neighborhood_id text,
-    tier text,
-    frozen_ft text,
-    cand_ft text,
-    frozen_rot text,
-    cand_rot text,
-    change_kind text
-);
-
-
---
--- Name: TABLE model_compare_2026_1; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_compare_2026_1 IS 'One-off frozen-vs-candidate comparison for decision support. Not served, not refreshed. Drop freely.';
-
-
---
--- Name: model_compare_2026_3; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_compare_2026_3 (
-    building_id text NOT NULL,
-    field text NOT NULL,
-    neighborhood_id text,
-    gate text NOT NULL,
-    frozen_risk data.foundation_risk_indication,
-    candidate_risk data.foundation_risk_indication,
-    frozen_reliability data.reliability,
-    candidate_reliability data.reliability,
-    direction text NOT NULL
-);
-
-
---
--- Name: TABLE model_compare_2026_3; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_compare_2026_3 IS 'Every (pand, risk field) where candidate model-2026.3-rc1 differs from model-2024.1 (data.model_risk_static_2024_1). Rebuilt with data.model_risk_2026_3.';
-
-
---
--- Name: model_evaluation_sample; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_evaluation_sample (
-    purpose text NOT NULL,
-    building_id text NOT NULL,
-    stratum text NOT NULL,
-    observed_family text,
-    split text,
-    sample_version integer DEFAULT 1 NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    truth_source text,
-    evidence_grade text,
-    CONSTRAINT model_evaluation_sample_purpose CHECK ((purpose = ANY (ARRAY['truth'::text, 'population'::text]))),
-    CONSTRAINT model_evaluation_sample_shape CHECK ((((purpose = 'truth'::text) AND (observed_family IS NOT NULL) AND (split IS NOT NULL)) OR ((purpose = 'population'::text) AND (observed_family IS NULL) AND (split IS NULL)))),
-    CONSTRAINT model_evaluation_sample_split CHECK (((split IS NULL) OR (split = ANY (ARRAY['train'::text, 'test'::text]))))
-);
-
-
---
--- Name: TABLE model_evaluation_sample; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_evaluation_sample IS 'Frozen benchmark for scoring candidate models. Deliberately a table, not a view: a growing truth set would make two candidates scored on different days incomparable. See docs/model-versioning.md.';
-
-
---
--- Name: COLUMN model_evaluation_sample.evidence_grade; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON COLUMN data.model_evaluation_sample.evidence_grade IS 'physical (dug) > documented (drawing) > opinion (assertion). quickscan is never present: its foundation type is our own output.';
-
-
---
--- Name: model_evaluation_stratum_weight; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_evaluation_stratum_weight (
-    sample_version integer NOT NULL,
-    stratum text NOT NULL,
-    national_buildings bigint NOT NULL,
-    sampled bigint NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
--- Name: TABLE model_evaluation_stratum_weight; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_evaluation_stratum_weight IS 'True national size of each evaluation stratum. The population sample is floored at 2,000 per stratum and is therefore NOT proportional -- weight by national_buildings before quoting any national figure.';
-
-
---
--- Name: model_foundation_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_foundation_2026_2 (
-    building_id text NOT NULL,
-    p_wood real NOT NULL,
-    p_no_pile real NOT NULL,
-    p_concrete real NOT NULL,
-    p_oplanger real NOT NULL,
-    family text NOT NULL,
-    foundation_type text NOT NULL,
-    confidence real NOT NULL,
-    evidence text NOT NULL,
-    grade text NOT NULL,
-    source text NOT NULL,
-    model_version text DEFAULT 'model-2026.2-rc2'::text NOT NULL,
-    computed_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT model_foundation_2026_2_evidence_check CHECK ((evidence = ANY (ARRAY['buurt'::text, 'nabij'::text, 'municipal'::text, 'none'::text]))),
-    CONSTRAINT model_foundation_2026_2_family_check CHECK ((family = ANY (ARRAY['wood'::text, 'no_pile'::text, 'concrete'::text]))),
-    CONSTRAINT model_foundation_2026_2_foundation_type_check CHECK ((foundation_type = ANY (ARRAY['wood'::text, 'wood_charger'::text, 'no_pile'::text, 'concrete'::text]))),
-    CONSTRAINT model_foundation_2026_2_grade_check CHECK ((grade = ANY (ARRAY['vastgesteld'::text, 'zeer betrouwbaar'::text, 'betrouwbaar'::text, 'redelijk'::text, 'zwak'::text]))),
-    CONSTRAINT model_foundation_2026_2_source_check CHECK ((source = ANY (ARRAY['report'::text, 'quickscan'::text, 'model'::text])))
-);
-
-
---
--- Name: TABLE model_foundation_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_foundation_2026_2 IS 'Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
-
-
---
--- Name: model_gevelscan; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_gevelscan (
-    skewed_parallel report.rotation_type,
-    facade_type report.crack_type,
-    skewed_perpendicular report.rotation_type,
-    risk data.foundation_risk_indication
-);
-
-
---
--- Name: model_risk_2026_3; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_risk_2026_3 (
-    building_id text NOT NULL,
-    neighborhood_id text,
-    gate text NOT NULL,
-    qs_risk data.foundation_risk_indication,
-    qs_date date,
-    fo_date date,
-    drystand_risk data.foundation_risk_indication,
-    drystand_risk_reliability data.reliability,
-    bio_infection_risk data.foundation_risk_indication,
-    bio_infection_risk_reliability data.reliability,
-    dewatering_depth_risk data.foundation_risk_indication,
-    dewatering_depth_risk_reliability data.reliability,
-    unclassified_risk data.foundation_risk_indication
-);
-
-
---
--- Name: TABLE model_risk_2026_3; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_risk_2026_3 IS 'Candidate model-2026.3-rc1 (Don''s QuickScan rule as a gate), for the panden whose building_sample carries a facade_scan_risk. Rebuilt by CALL data.refresh_model_risk_2026_3(). Not served.';
-
-
---
--- Name: model_risk_static; Type: VIEW; Schema: data; Owner: -
---
-
-CREATE VIEW data.model_risk_static AS
- SELECT building_id,
-    address_count,
-    neighborhood_id,
-    construction_year,
-    construction_year_reliability,
-    foundation_type,
-    foundation_type_reliability,
-    restoration_costs,
-    drystand,
-    drystand_risk,
-    drystand_risk_reliability,
-    bio_infection_risk,
-    bio_infection_risk_reliability,
-    dewatering_depth,
-    dewatering_depth_risk,
-    dewatering_depth_risk_reliability,
-    unclassified_risk,
-    height,
-    velocity,
-    ground_water_level,
-    ground_level,
-    soil,
-    surface_area,
-    owner,
-    inquiry_id,
-    inquiry_type,
-    damage_cause,
-    enforcement_term,
-    overall_quality,
-    recovery_type
-   FROM data.model_risk_static_2024_1;
-
-
---
--- Name: VIEW model_risk_static; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON VIEW data.model_risk_static IS 'Pointer at the default model version. Consumers should name this, not a versioned matview. Switch the default with CREATE OR REPLACE VIEW. See docs/model-versioning.md.';
-
-
---
--- Name: model_risk_static_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.model_risk_static_2026_3 AS
- SELECT building_id,
-    address_count,
-    neighborhood_id,
-    construction_year,
-    construction_year_reliability,
-    foundation_type,
-    foundation_type_reliability,
-    restoration_costs,
-    drystand,
-    drystand_risk,
-    drystand_risk_reliability,
-    bio_infection_risk,
-    bio_infection_risk_reliability,
-    dewatering_depth,
-    dewatering_depth_risk,
-    dewatering_depth_risk_reliability,
-    unclassified_risk,
-    (height)::numeric(10,2) AS height,
-    velocity,
-    ground_water_level,
-    (ground_level)::numeric(5,2) AS ground_level,
-    soil,
-    (surface_area)::numeric(10,2) AS surface_area,
-    owner,
-    inquiry_id,
-    inquiry_type,
-    damage_cause,
-    enforcement_term,
-    overall_quality,
-    recovery_type,
-    quickscan_gate,
-    drystand_source,
-    bio_infection_source,
-    dewatering_depth_source,
-    unclassified_source
-   FROM data.model_risk_2026_3_rows(quickscan_rules => true, term_and_quality => true, decay_floor => true, block_velocity => true, fallback_to_dewatering => true, label_by_source => true) model_risk_2026_3_rows(building_id, address_count, neighborhood_id, construction_year, construction_year_reliability, foundation_type, foundation_type_reliability, restoration_costs, drystand, drystand_risk, drystand_risk_reliability, bio_infection_risk, bio_infection_risk_reliability, dewatering_depth, dewatering_depth_risk, dewatering_depth_risk_reliability, unclassified_risk, height, velocity, ground_water_level, ground_level, soil, surface_area, owner, inquiry_id, inquiry_type, damage_cause, enforcement_term, overall_quality, recovery_type, quickscan_gate, drystand_source, bio_infection_source, dewatering_depth_source, unclassified_source)
-  WITH NO DATA;
-
-
---
--- Name: MATERIALIZED VIEW model_risk_static_2026_3; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS 'model-2026.3 for every pand: data.model_risk_2026_3_rows() with every rule on. The first 30 columns are the model contract (the pointer view selects them by name); the columns after them say where each risk came from and are not served. Refreshed by Windmill f/fundermaps/data/refresh_risk_model, after the sample matviews. See docs/model-versioning.md.';
-
-
---
 -- Name: model_version; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -5246,7 +5246,7 @@ CREATE MATERIALIZED VIEW data.statistics_product_foundation_risk AS
             ( SELECT unnest(ARRAY[mrs.drystand_risk, mrs.bio_infection_risk, mrs.dewatering_depth_risk, mrs.unclassified_risk]) AS risk
                   ORDER BY (unnest(ARRAY[mrs.drystand_risk, mrs.bio_infection_risk, mrs.dewatering_depth_risk, mrs.unclassified_risk]))
                  LIMIT 1) AS risk
-           FROM data.model_risk_static_2024_1 mrs) acr
+           FROM data.model_risk_static mrs) acr
   WHERE (risk IS NOT NULL)
   GROUP BY neighborhood_id, risk
   WITH NO DATA;
@@ -5260,7 +5260,7 @@ CREATE MATERIALIZED VIEW data.statistics_product_foundation_type AS
  SELECT neighborhood_id,
     foundation_type,
     (((count(foundation_type))::numeric / sum(count(foundation_type)) OVER (PARTITION BY neighborhood_id)) * (100)::numeric) AS percentage
-   FROM data.model_risk_static_2024_1 mrs
+   FROM data.model_risk_static mrs
   GROUP BY neighborhood_id, foundation_type
   WITH NO DATA;
 
@@ -8992,5 +8992,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict BZviGli4enJ18KqgULMOXFZsg3yQHBi92TnhDIvscsZbLJvjydhwanKnEblM9Dw
+\unrestrict PsvxFHfb4J4Oc6677TTOGp9ikfVlBvWsqkalLctO27utDFe9OXNJHeQTAAp2KKZ
 
