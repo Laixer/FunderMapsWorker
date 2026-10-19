@@ -1,7 +1,8 @@
 # Running several risk models side by side
 
 **Status:** steps 1, 2 and 4 built; **the default is model-2026.3 since migration
-`20261015_005`** (model-2024.1 stays, frozen, and keeps refreshing). Steps 3, 5
+`20261015_005`** and approved as such on 2026-10-19; model-2024.1 stays, frozen at its last refresh of
+2026-10-19 (it no longer refreshes, see §5). Steps 3, 5
 (half: the Webservice stamps the version) and 6 are not built.
 **Written:** 2026-08-09.
 **Decisions taken:** the current model's logic is frozen and will not change
@@ -153,7 +154,9 @@ own, built to the spec in Worker #283:
   leading record of the frozen sample matviews, which it keeps reading. It is
   refreshed right after `data.building_sample`.
 - **A full national run of its own.** The refresh of model-2026.3 takes about
-  as long as that of model-2024.1; `refresh_risk_model` does both.
+  as long as that of model-2024.1; `refresh_risk_model` did both until
+  2026-10-19, when 2026.3 was approved as the default and the 2024.1 line came
+  out (about 18 minutes off each run).
 - **New logic is a new slug.** Once model-2026.3 is the default, its function
   and helpers are served logic: no `CREATE OR REPLACE` on them.
 
@@ -200,7 +203,9 @@ statement queued behind it queues every product read behind itself.
 
 Going back is the same switch the other way. Nothing is lost by it: the previous
 default's matview keeps refreshing for as long as it is listed in
-`refresh_risk_model`.
+`refresh_risk_model`. model-2024.1 left that script on 2026-10-19, so going
+back to it now means putting its line back and running one refresh first;
+otherwise the switch would serve its answers of that day.
 
 One thing a rename does not carry: **`REFRESH` cannot target a view.** Anything
 that refreshes the model must name a concrete versioned matview. Two places did,
