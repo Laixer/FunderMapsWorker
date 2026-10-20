@@ -162,7 +162,7 @@ API + SMTP relay `smtp.tem.scaleway.com` (587/2587 STARTTLS, 465/2465 TLS; user 
 9. **TEM ≠ Resend drop-in:** fr-par only, webhooks via Topics & Events, 1 webhook/domain on Essential, API mail 2 MB, MIME allow-list; quotas start low until identity validation. Domain `funderdata.nl` DNS records would move or be re-verified.
 10. **No Valkey; Redis cache-oriented** (persistence not guaranteed) — fine for sessions/API-key cache, fail-open as planned.
 11. **Object Storage bucket names are globally unique platform-wide** and the 90-day Glacier / 30-day One Zone transition minimums shape lifecycle rules; Glacier restores can take up to 24 h to begin. 75 GB free tier unverified. Egress €0.01/GB (tile/PDF traffic — Edge Services cache can offset at €0.0135/GB overage or plan quotas).
-12. **Containers cannot receive private ingress and have no static IPs**; the Report renderer and Gotenberg-style internal calls go over public HTTPS with private (IAM/JWT) auth.
+12. **Containers cannot receive private ingress and have no static IPs**; the Report renderer and Gotenberg-style internal calls go over public HTTPS with private (IAM/JWT) auth. (Moot since 2026-10-20: there is no Report renderer or Gotenberg any more; the API makes the PDF in-process.)
 13. **Region-specific gaps:** TEM only in fr-par; HDS scope excludes Amsterdam (irrelevant unless municipalities ask for HDS specifically).
 14. **Quotas before identity validation** (containers RAM 60 GB, 5 DB instances, TEM 500 emails/mo) — validate the Organization's identity on day one.
 15. **Pricing composition for Managed DB (node + management, ×2 nodes for HA) is inferred**, not documented; confirm in the console cost estimator before sizing.

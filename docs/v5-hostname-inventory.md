@@ -7,6 +7,11 @@ records list` for all 7 zones, `get_bucket_cors` on all 5 Spaces buckets,
 `application.oauth_application` on prod, Windmill settings/resources, and a grep of
 every repo under `~/src` (76 literal hits, list at the end).
 
+**Changed since the snapshot (2026-10-20):** `report.fundermaps.com` (fundermaps-report-prod) and Gotenberg
+(fundermaps-docgen-prod) are deleted, with their CNAMEs. The API makes the PDF itself with Typst and no longer has
+`GOTENBERG_URL`, `REPORT_RENDER_URL` or the `fmrt.` render token (FunderMapsApi #272). The places below that name
+them are marked; the raw grep at the end is left as it was.
+
 **Rule of thumb:** the SPAs are hostname-agnostic (`window.location.origin` everywhere),
 so a frontend move is *only* DNS + App Platform domain + the two server-side allowlists
 (API `TRUSTED_ORIGINS`/ingress CORS, Spaces CORS). The third, the OIDC `redirect_uris`,
@@ -26,16 +31,16 @@ tile server are the two things with their **own** hostname baked into other comp
 | maps.fundermaps.com, funderingskaart.nl (+www), funderingsrisicokaart.nl (+www) | CNAME → fundermaps-maps-prod-oizh4; apex A/AAAA → DO edge | fundermaps-maps-prod | static | FunderMapsWebFront |
 | studio.fundermaps.com (primary), app.fundermaps.com | CNAME → fundermaps-app-prod-3oyrr | fundermaps-app-prod | static | FunderMapsClientApp |
 | admin.fundermaps.com | CNAME → sea-turtle-app-33ode | fundermaps-admin-prod | static, ingress cors allow_credentials | FundermapsManagementFront |
-| report.fundermaps.com | CNAME → whale-app-nm9uv | fundermaps-report-prod | static | FunderMapsReport |
+| ~~report.fundermaps.com~~ (deleted 2026-10-20) | ~~CNAME → whale-app-nm9uv~~ | ~~fundermaps-report-prod~~ | static | FunderMapsReport (archived) |
 | melden.fundermaps.com | CNAME → fundermaps-intake-prod-rkedq | fundermaps-intake-prod | service :8080 (Nuxt/Nitro) | FunderMapsIntake |
 | windmill.fundermaps.com | CNAME → fundermaps-windmill-test-tzi63 | fundermaps-windmill-prod | image windmill :8000 | — |
 | analytics.fundermaps.com | CNAME → grafana-app-prod-vnp86 | fundermaps-analytics-prod | image grafana :3000 | — |
-| *(none)* | — | fundermaps-docgen | image gotenberg :3000, reached as `orca-app-wxi4e.ondigitalocean.app` | — |
+| *(none)* | — | ~~fundermaps-docgen~~ (deleted 2026-10-20) | image gotenberg :3000, reached as `orca-app-wxi4e.ondigitalocean.app` | — |
 | laixer.nl (primary), laixer.com, www.* | www CNAME → laixer-salespage-test-p73c4; apex A/AAAA → DO edge | laixer-pages | static (build broken) | LaixerSalesPage |
 
 Default `*.ondigitalocean.app` hostnames that are **referenced by config** (they die with
 the DO apps): `whale-app-nm9uv` (Report; used as `REPORT_RENDER_URL` by the API and in
-tileset CORS), `orca-app-wxi4e` (Gotenberg; `GOTENBERG_URL`), `fundermaps-intake-prod-rkedq`
+tileset CORS), `orca-app-wxi4e` (Gotenberg; `GOTENBERG_URL`) — both apps deleted 2026-10-20 —, `fundermaps-intake-prod-rkedq`
 (Spaces CORS on bucket `fundermaps`), `fundermaps-api-test-grcaa` (only in `.env.example`
 files and `WebFront/index.html` preconnect).
 
@@ -71,9 +76,9 @@ hostname move.
   API cannot share a cookie; see the open design call in the 5.0 plan).
 - Defaults in `src/config.ts` that are hostnames: `STUDIO_URL=https://studio.fundermaps.com`
   (links in report e-mails), `INTAKE_URL=https://melden.fundermaps.com` (links in melder
-  e-mails), `REPORT_RENDER_URL=https://whale-app-nm9uv.ondigitalocean.app` (what Gotenberg
-  renders), `MAIL_FROM` / `INTAKE_REPLY_TO` on `funderdata.nl`.
-- Prod env values that are hostnames: `GOTENBERG_URL=https://orca-app-wxi4e.ondigitalocean.app`,
+  e-mails), ~~`REPORT_RENDER_URL=https://whale-app-nm9uv.ondigitalocean.app` (what Gotenberg
+  renders)~~ (removed 2026-10-20), `MAIL_FROM` / `INTAKE_REPLY_TO` on `funderdata.nl`.
+- Prod env values that are hostnames: ~~`GOTENBERG_URL=https://orca-app-wxi4e.ondigitalocean.app`~~ (removed 2026-10-20),
   `S3_ENDPOINT=https://ams3.digitaloceanspaces.com`, `S3_BUCKET=fundermaps`,
   `DATABASE_URL` via App Platform bindable `${db-pg-ams3-0.HOSTNAME}:25061/api-pool`.
 
@@ -87,7 +92,8 @@ hostname move.
 | fundermaps-data, fundermaps-archive | none | — |
 
 The tileset CORS is largely legacy (static tiles are purged; Martin serves them), but
-`VITE_FUNDERMAPS_TILES_URL` still points at the bucket in maps-prod and report-prod.
+`VITE_FUNDERMAPS_TILES_URL` still points at the bucket in maps-prod (and did in report-prod). Since 2026-10-20 the
+`report.fundermaps.com` and `whale-app-nm9uv` origins name deleted hosts: harmless, drop them at the next CORS edit.
 
 ## 3. Frontend build-time URLs (`VITE_*`, baked into the bundle at build)
 
@@ -145,7 +151,7 @@ tile host = edit the style JSON + rebuild the image + the three `VITE_*` values 
 2. **Frontend host** (any SPA): DNS + App Platform domain, `TRUSTED_ORIGINS` (env +
    ingress CORS), the auth SPA's `?redirect=` allowlist, Spaces CORS if it
    uploads/reads Spaces directly, `STUDIO_URL`/`INTAKE_URL` if it is studio/melden,
-   `REPORT_RENDER_URL` + tileset CORS if it is report, UserMenu links if maps/admin.
+   ~~`REPORT_RENDER_URL` + tileset CORS if it is report~~ (report site deleted 2026-10-20), UserMenu links if maps/admin.
 3. **Tile host**: style JSON in `tileserver/styles/`, 3 `VITE_*` values, 3 hard-coded
    style URLs, WebFront preconnect.
 4. **Storage endpoint**: `S3_ENDPOINT` (api), Intake `nuxt.config.ts`, Windmill `s3`
