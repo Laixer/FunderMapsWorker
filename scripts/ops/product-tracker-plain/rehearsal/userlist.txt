@@ -1,3 +1,0 @@
-"fundermaps_webservice" "ws"
-"fundermaps_api" "api"
-"postgres" "rehearsal"
