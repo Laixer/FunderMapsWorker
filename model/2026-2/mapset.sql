@@ -22,9 +22,8 @@ VALUES ('foundation-candidate', 'Funderingstype kandidaat 2026.2',
           {"name": "Lichte kleur = betrouwbaarheid zwak", "color": "c9a79f"}]'::jsonb,
         0);
 
-INSERT INTO application.mapset (id, name, style, layers, public, icon, note, "order")
+INSERT INTO application.mapset (id, name, layers, public, icon, note, "order")
 VALUES ('model-2026-2-candidate', 'Kandidaat funderingstype 2026.2',
-        'mapbox://styles/laixer/clcqkb4vp006w14qhzv7rfznm',
         ARRAY['foundation-candidate'], false, 'foundation',
         'Proefmodel (Worker #152), alleen FunderMaps B.V. Niet voor klanten.', 99);
 

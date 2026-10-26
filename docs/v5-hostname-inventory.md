@@ -109,8 +109,8 @@ The tileset CORS is largely legacy (static tiles are purged; Martin serves them)
 | intake (runtime, Nitro) | `NUXT_API_BASE`, `NUXT_PUBLIC_API_BASE` | https://api.fundermaps.com; Spaces endpoint/bucket hard-coded in `nuxt.config.ts` |
 
 Hard-coded in source (not env): `tiles.fundermaps.com/style/fundermaps-basemap` in
-`WebFront/src/components/Mapbox/Map.vue`, `WebFront/src/views/NotFound.vue`,
-`ClientApp/src/components/Mapbox/SampleMap.vue`; `maps.fundermaps.com` +
+`WebFront/src/components/Map/Map.vue`, `WebFront/src/views/NotFound.vue`,
+`ClientApp/src/components/Map/SampleMap.vue`; `maps.fundermaps.com` +
 `admin.fundermaps.com` app-switcher links in `ClientApp/src/components/UserMenu.vue`;
 `api-test-grcaa` / tiles / tileset `<link rel=preconnect>` in `WebFront/index.html`;
 `feedback.fundermaps.com` + `incident.fundermaps.com` in `WebFront/src/config/index.ts`
@@ -187,7 +187,7 @@ FunderMapsAuth/README.md:35:https://api.fundermaps.com
 FunderMapsAuth/README.md:36:https://auth.fundermaps.com
 FunderMapsClientApp/.env.example:1:https://fundermaps-api-test-grcaa.ondigitalocean.app
 FunderMapsClientApp/.env.example:6:https://tiles.fundermaps.com/style/fundermaps-basemap
-FunderMapsClientApp/src/components/Mapbox/SampleMap.vue:46:https://tiles.fundermaps.com/style/fundermaps-basemap
+FunderMapsClientApp/src/components/Map/SampleMap.vue:46:https://tiles.fundermaps.com/style/fundermaps-basemap
 FunderMapsClientApp/src/components/UserMenu.vue:64:https://maps.fundermaps.com
 FunderMapsClientApp/src/components/UserMenu.vue:67:https://admin.fundermaps.com
 FunderMaps/contrib/etc/_appsettings.Development.json:31:https://ams3.digitaloceanspaces.com/
@@ -205,7 +205,7 @@ FunderMapsPages/src/_partials/meta.html:8:https://fundermaps.com/{{
 FunderMapsWebFront/index.html:30:https://fundermaps-api-test-grcaa.ondigitalocean.app
 FunderMapsWebFront/index.html:39:https://tiles.fundermaps.com
 FunderMapsWebFront/index.html:40:https://fundermaps-tileset.ams3.digitaloceanspaces.com
-FunderMapsWebFront/src/components/Mapbox/Map.vue:55:https://tiles.fundermaps.com/style/fundermaps-basemap
+FunderMapsWebFront/src/components/Map/Map.vue:55:https://tiles.fundermaps.com/style/fundermaps-basemap
 FunderMapsWebFront/src/config/index.ts:6:https://feedback.fundermaps.com/building/
 FunderMapsWebFront/src/config/index.ts:7:https://incident.fundermaps.com/
 FunderMapsWebFront/src/views/NotFound.vue:12:https://tiles.fundermaps.com/style/fundermaps-basemap

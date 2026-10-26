@@ -8,7 +8,7 @@ building layers, static pipeline stays as fallback).
 ## How it works
 
 ```
-mapbox-gl (WebFront) ──▶ tiles.fundermaps.com/buildings/{z}/{x}/{y}
+maplibre (WebFront) ──▶ tiles.fundermaps.com/buildings/{z}/{x}/{y}
                               │ Martin (this repo, App Platform)
                               │   in-memory cache, 512 MB
                               ▼ cache miss only
@@ -56,7 +56,7 @@ query params) can point the map at this server; the source-layer is `buildings`.
 ## Basemap style (MapLibre migration)
 
 `styles/fundermaps-basemap.json` is the MapLibre basemap style for the
-Mapbox → MapLibre migration: the legacy Studio style `fundermaps_basemap`
+MapLibre migration: the legacy hosted style `fundermaps_basemap`
 (warm tan monochrome) recreated on OpenFreeMap's Positron skeleton
 (OpenMapTiles schema). It is generated — edit the palette/overrides in
 `styles/build_style.py` and rerun it; don't hand-edit the JSON.

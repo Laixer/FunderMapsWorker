@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate fundermaps-basemap.json — the MapLibre basemap style.
 
-Recreates the look of the legacy Mapbox Studio style ``fundermaps_basemap``
-(laixer/clcz2iorf003414p22imzzhnk, a warm tan monochrome) on top of
+Recreates the look of the legacy hosted basemap style ``fundermaps_basemap``
+(a warm tan monochrome) on top of
 OpenFreeMap's Positron layer skeleton (OpenMapTiles schema, BSD-licensed).
 
 The approach is a palette transplant: fetch Positron, keep its layer ids,
@@ -37,7 +37,7 @@ OPENMAPTILES_ATTRIBUTION = (
     '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
 )
 
-# Palette extracted from mapbox://styles/laixer/clcz2iorf003414p22imzzhnk
+# Palette extracted from the legacy hosted basemap style
 TAN = {
     "land":          "hsl(40, 48%, 92%)",
     "land_struct":   "hsl(40, 46%, 86%)",   # piers, structures, road casings
@@ -72,7 +72,7 @@ TAN = {
 # default hard blue band across the horizon, which fights the tan palette.
 #
 # This is the whole cartography surface MapLibre 6.0.0 actually gives us:
-# there is no ambient occlusion and no cast shadows (Mapbox-v3 only), and
+# there is no ambient occlusion and no cast shadows (not in MapLibre), and
 # fill-extrusion-rounded-corner-distance exists in style-spec 26.x but the
 # 6.0.0 runtime rejects it. Deliberately NOT setting `light`: tinting it warm
 # desaturates hsl(213, 13%, 57%) (concrete/steel pile) into the unclassified
@@ -175,7 +175,7 @@ BOUNDARY_LAYERS = [
     },
 ]
 
-# House numbers — the legacy Mapbox basemap drew them, Positron does not, so
+# House numbers — the legacy basemap drew them, Positron does not, so
 # this layer has no upstream counterpart to re-paint. The OpenMapTiles
 # ``housenumber`` layer is z14-only (overzoomed above), one ``housenumber``
 # field, and in NL it is effectively the BAG via OSM's import.
