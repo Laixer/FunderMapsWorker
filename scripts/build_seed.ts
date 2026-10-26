@@ -334,9 +334,8 @@ INSERT INTO application.auth_key (id, user_id, name, key_hash, created_at) VALUE
    ${q(keyHash)}, now())
   ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO application.mapset (id, name, style, layers, public, "order") VALUES
+INSERT INTO application.mapset (id, name, layers, public, "order") VALUES
   (${q(SYNTH.mapsetId)}, ${q("Rotterdam Test")},
-   ${q("mapbox://styles/mapbox/streets-v12")},
    ARRAY[]::text[], false, 0)
   ON CONFLICT (id) DO NOTHING;
 

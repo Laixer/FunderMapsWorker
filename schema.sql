@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ktcPlHJMLr0vUrJi944U4kAdmMlCUqg21M1Ig5S2cACnpIEOPdkHf7LbzM8HuZF
+\restrict 958yMgG7edoakSmiNZjyQxSXsB61Ia25F7tLsn3lAmgSZEcaNWqnkUrCYideYkC
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -3186,7 +3186,6 @@ COMMENT ON TABLE application.invitation IS 'Better Auth organization-plugin invi
 CREATE TABLE application.mapset (
     id text NOT NULL,
     name text,
-    style text NOT NULL,
     layers text[],
     public boolean DEFAULT false NOT NULL,
     consent text,
@@ -3217,7 +3216,6 @@ CREATE VIEW application.mapset_collection AS
  SELECT id,
     name,
     lower(regexp_replace(name, '\s+'::text, '-'::text, 'g'::text)) AS slug,
-    style,
     metadata,
     public,
     consent,
@@ -8642,5 +8640,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ktcPlHJMLr0vUrJi944U4kAdmMlCUqg21M1Ig5S2cACnpIEOPdkHf7LbzM8HuZF
+\unrestrict 958yMgG7edoakSmiNZjyQxSXsB61Ia25F7tLsn3lAmgSZEcaNWqnkUrCYideYkC
 
