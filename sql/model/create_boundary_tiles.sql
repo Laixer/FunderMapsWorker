@@ -2,7 +2,7 @@
 --
 -- Serves the municipality/district/neighborhood outlines the basemap style
 -- draws as purple lines. Replaces the dead laixer.* boundary tilesets that
--- the legacy Mapbox Studio style read (uploaded to Mapbox years ago, never
+-- the legacy hosted basemap style read (uploaded years ago, never
 -- refreshed) — this reads geocoder.* directly, so boundaries stay as fresh
 -- as the BAG/CBS imports.
 --
