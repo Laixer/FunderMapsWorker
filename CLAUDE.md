@@ -21,7 +21,7 @@ bun test                  # Unit tests (src/**/*.test.ts)
 bun run typecheck         # tsc --noEmit
 bun run migrate           # Apply db/migrations/ (see db/migrations/README.md)
 bun run load-dataset <dataset_input> [layer ...] [--delete-after] [--tmp-dir=PATH]
-bun run ingest-dossier | normalize-artifacts | load-loket-export | resolve-addresses | check-qs-duplicates
+bun run ingest-dossier | normalize-artifacts | check-qs-duplicates
 ```
 
 The commands are run directly (`bun run <script>`, or `bun run src/commands/<file>.ts` for the ones without a script); there is no long-running process to start.

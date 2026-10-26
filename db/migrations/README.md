@@ -63,6 +63,13 @@ So the loop for a schema change is:
    older than the last prod restore you would ever roll back to; the ledger
    keeps reporting them as "no file", which is fine.
 
+## Pruned files
+
+On 2026-10-26 every file up to `20261016_001` was deleted: all were in `schema.sql`
+(`BASELINE` `20261026_002`) and older than the 7-day backup window, so no restore
+can need them. The prod ledger keeps their rows and reports them as "no file". The
+SQL stays in git history: `git log --diff-filter=D -- 'db/migrations/*.sql'`.
+
 ## Where the old migrations went
 
 `sql/migrate/` holds the pre-ledger, hand-applied files (all applied on prod,
