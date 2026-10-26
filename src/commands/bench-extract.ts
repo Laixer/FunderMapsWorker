@@ -3,7 +3,8 @@ import { sql } from "../db.ts";
 import * as pdf from "../providers/pdf.ts";
 import * as s3 from "../providers/s3.ts";
 import { extractFields, EXTRACT_FIELDS, ADDRESS_FIELDS } from "../providers/vision.ts";
-import { extractSingleLane } from "../lib/bench-single-lane.ts";
+// The one-lane experiment graduated: the extractor lives in providers/vision.ts.
+import { extractDocument as extractSingleLane } from "../providers/vision.ts";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
