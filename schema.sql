@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 958yMgG7edoakSmiNZjyQxSXsB61Ia25F7tLsn3lAmgSZEcaNWqnkUrCYideYkC
+\restrict Me1lNm7TFZzKB1a53EiLXhKJtGq9DDyGzAfFHE8HU3GU6NRmqbNe4nUfYhoNqra
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1320,33 +1320,6 @@ COMMENT ON FUNCTION data.foundation_candidate(z integer, x integer, y integer) I
 
 
 --
--- Name: ft_cell_2026_1(integer, double precision, text, numeric, numeric, integer); Type: FUNCTION; Schema: data; Owner: -
---
-
-CREATE FUNCTION data.ft_cell_2026_1(construction_year integer, height double precision, soil_code text, ground_level numeric, surface_area numeric, address_count integer) RETURNS text
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT
-    (CASE WHEN construction_year < 1700 THEN 'a' WHEN construction_year < 1800 THEN 'b'
-          WHEN construction_year < 1880 THEN 'c' WHEN construction_year < 1920 THEN 'd'
-          WHEN construction_year < 1940 THEN 'e' WHEN construction_year < 1965 THEN 'f'
-          WHEN construction_year < 1980 THEN 'g' ELSE 'h' END) || '|' ||
-    (CASE WHEN soil_code IN ('hz','ni-hz','ni-du') THEN 'sand'
-          WHEN soil_code IS NULL THEN 'unk' ELSE 'soft' END) || '|' ||
-    (CASE WHEN height IS NULL THEN 'u' WHEN height < 7 THEN '0' WHEN height < 8.5 THEN '1'
-          WHEN height < 10 THEN '2' WHEN height < 12 THEN '3' WHEN height < 14 THEN '4'
-          WHEN height < 20 THEN '5' ELSE '6' END) || '|' ||
-    (CASE WHEN ground_level IS NULL THEN 'u' WHEN ground_level < -1 THEN '0'
-          WHEN ground_level < 0 THEN '1' WHEN ground_level < 1 THEN '2'
-          WHEN ground_level < 3 THEN '3' WHEN ground_level < 8 THEN '4' ELSE '5' END) || '|' ||
-    (CASE WHEN surface_area IS NULL THEN 'u' WHEN surface_area < 60 THEN '0'
-          WHEN surface_area < 100 THEN '1' WHEN surface_area < 175 THEN '2'
-          WHEN surface_area < 400 THEN '3' ELSE '4' END) || '|' ||
-    (CASE WHEN address_count <= 1 THEN '0' WHEN address_count < 8 THEN '1' ELSE '2' END)
-$$;
-
-
---
 -- Name: ft_cell_2026_2(integer, double precision, text, numeric, integer); Type: FUNCTION; Schema: data; Owner: -
 --
 
@@ -1367,17 +1340,6 @@ CREATE FUNCTION data.ft_cell_2026_2(construction_year integer, height double pre
           WHEN ground_level < 0 THEN '1' WHEN ground_level < 1 THEN '2'
           WHEN ground_level < 3 THEN '3' WHEN ground_level < 8 THEN '4' ELSE '5' END) || '|' ||
     (CASE WHEN address_count <= 1 THEN '0' WHEN address_count < 8 THEN '1' ELSE '2' END)
-$$;
-
-
---
--- Name: ft_cell_coarse_2026_1(text); Type: FUNCTION; Schema: data; Owner: -
---
-
-CREATE FUNCTION data.ft_cell_coarse_2026_1(cell text) RETURNS text
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT split_part(cell,'|',1)||'|'||split_part(cell,'|',2)||'|'||split_part(cell,'|',3)
 $$;
 
 
@@ -4073,76 +4035,6 @@ CREATE MATERIALIZED VIEW data.building_sample AS
 
 
 --
--- Name: building_sample_2026_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
---
-
-CREATE MATERIALIZED VIEW data.building_sample_2026_1 AS
- WITH ranked AS (
-         SELECT DISTINCT ON (b.external_id) b.external_id AS building_id,
-            is2.foundation_type,
-            is2.enforcement_term,
-            is2.damage_cause,
-            is2.overall_quality,
-            is2.recovery_advised,
-            (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
-            is2.groundwater_level_temp AS groundwater_level,
-            is2.wood_level,
-            is2.foundation_depth,
-            i.type AS inquiry_type,
-            i.document_date,
-            i.id
-           FROM ((report.inquiry_sample is2
-             JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
-             JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
-          WHERE ((i.document_date >= ((b.built_year)::date - '5 years'::interval)) AND (is2.delete_date IS NULL) AND (i.document_date <= CURRENT_DATE))
-          ORDER BY b.external_id,
-                CASE i.type
-                    WHEN 'foundation_research'::report.inquiry_type THEN 0
-                    WHEN 'inspectionpit'::report.inquiry_type THEN 1
-                    WHEN 'second_opinion'::report.inquiry_type THEN 2
-                    WHEN 'additional_research'::report.inquiry_type THEN 3
-                    WHEN 'demolition_research'::report.inquiry_type THEN 4
-                    WHEN 'architectural_research'::report.inquiry_type THEN 5
-                    WHEN 'archive_research'::report.inquiry_type THEN 6
-                    WHEN 'quickscan'::report.inquiry_type THEN 7
-                    WHEN 'note'::report.inquiry_type THEN 9
-                    ELSE 100
-                END, (date_part('year'::text, i.document_date)) DESC, ((((((((((is2.foundation_type IS NOT NULL))::integer + ((is2.enforcement_term IS NOT NULL))::integer) + ((is2.damage_cause IS NOT NULL))::integer) + ((is2.overall_quality IS NOT NULL))::integer) + ((is2.recovery_advised IS NOT NULL))::integer) + ((is2.built_year IS NOT NULL))::integer) + ((is2.groundwater_level_temp IS NOT NULL))::integer) + ((is2.wood_level IS NOT NULL))::integer) + ((is2.foundation_depth IS NOT NULL))::integer) DESC, i.document_date DESC, i.id DESC
-        ), facade AS (
-         SELECT DISTINCT ON ((is2.building_id)::text) (is2.building_id)::text AS building_id,
-            is2.facade_scan_risk
-           FROM (report.inquiry_sample is2
-             JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
-          WHERE ((is2.facade_scan_risk IS NOT NULL) AND (is2.delete_date IS NULL) AND (i.document_date <= CURRENT_DATE))
-          ORDER BY (is2.building_id)::text, i.document_date DESC
-        )
- SELECT r.building_id,
-    r.foundation_type,
-    r.enforcement_term,
-    r.damage_cause,
-    r.overall_quality,
-    r.recovery_advised,
-    r.built_year,
-    r.groundwater_level,
-    r.wood_level,
-    r.foundation_depth,
-    f.facade_scan_risk,
-    r.inquiry_type,
-    r.document_date,
-    r.id
-   FROM (ranked r
-     LEFT JOIN facade f ON ((f.building_id = r.building_id)))
-  WITH NO DATA;
-
-
---
--- Name: MATERIALIZED VIEW building_sample_2026_1; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON MATERIALIZED VIEW data.building_sample_2026_1 IS 'Candidate model 2026.1 -- observation selection only. Served to nobody. Drop with one DROP MATERIALIZED VIEW.';
-
-
---
 -- Name: building_sample_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4271,27 +4163,6 @@ COMMENT ON TABLE data.foundation_type_2026_2 IS 'model-2026.2 candidate output o
 
 
 --
--- Name: foundation_type_lookup_2026_1; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_lookup_2026_1 (
-    cell text NOT NULL,
-    n integer NOT NULL,
-    p_wood numeric NOT NULL,
-    p_no_pile numeric NOT NULL,
-    p_concrete numeric NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_lookup_2026_1; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_lookup_2026_1 IS 'Fitted foundation-type probabilities per feature cell for candidate model-2026.1. Fitted on evaluation-sample TRAIN rows only. Uses ground_level and surface_area, which the deployed decision tree ignores.';
-
-
---
 -- Name: foundation_type_lookup_2026_2; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4329,29 +4200,6 @@ CREATE TABLE data.foundation_type_prior_2026_2 (
 --
 
 COMMENT ON TABLE data.foundation_type_prior_2026_2 IS 'model-2026.2 candidate: smoothed class rates per cell (era|soil|height|ground level|addresses), fitted on benchmark v2 train rows. Coarse cells (era|soil|height) and the global row (cell = *) are included for back-off.';
-
-
---
--- Name: model_compare_2026_1; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_compare_2026_1 (
-    building_id text NOT NULL,
-    neighborhood_id text,
-    tier text,
-    frozen_ft text,
-    cand_ft text,
-    frozen_rot text,
-    cand_rot text,
-    change_kind text
-);
-
-
---
--- Name: TABLE model_compare_2026_1; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_compare_2026_1 IS 'One-off frozen-vs-candidate comparison for decision support. Not served, not refreshed. Drop freely.';
 
 
 --
@@ -6637,14 +6485,6 @@ ALTER TABLE ONLY data.foundation_type_2026_2
 
 
 --
--- Name: foundation_type_lookup_2026_1 foundation_type_lookup_2026_1_pkey; Type: CONSTRAINT; Schema: data; Owner: -
---
-
-ALTER TABLE ONLY data.foundation_type_lookup_2026_1
-    ADD CONSTRAINT foundation_type_lookup_2026_1_pkey PRIMARY KEY (cell);
-
-
---
 -- Name: foundation_type_lookup_2026_2 foundation_type_lookup_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
 --
 
@@ -6658,14 +6498,6 @@ ALTER TABLE ONLY data.foundation_type_lookup_2026_2
 
 ALTER TABLE ONLY data.foundation_type_prior_2026_2
     ADD CONSTRAINT foundation_type_prior_2026_2_pkey PRIMARY KEY (cell);
-
-
---
--- Name: model_compare_2026_1 model_compare_2026_1_pkey; Type: CONSTRAINT; Schema: data; Owner: -
---
-
-ALTER TABLE ONLY data.model_compare_2026_1
-    ADD CONSTRAINT model_compare_2026_1_pkey PRIMARY KEY (building_id);
 
 
 --
@@ -7235,13 +7067,6 @@ CREATE INDEX building_precomputed_neighborhood_id_idx ON data.building_precomput
 
 
 --
--- Name: building_sample_2026_1_pkey; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE UNIQUE INDEX building_sample_2026_1_pkey ON data.building_sample_2026_1 USING btree (building_id);
-
-
---
 -- Name: building_sample_2026_3_pkey; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -7267,20 +7092,6 @@ CREATE UNIQUE INDEX cluster_sample_v2_cluster_id_idx ON data.cluster_sample USIN
 --
 
 CREATE INDEX foundation_type_2026_2_purpose_idx ON data.foundation_type_2026_2 USING btree (purpose, split);
-
-
---
--- Name: model_compare_2026_1_change_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE INDEX model_compare_2026_1_change_idx ON data.model_compare_2026_1 USING btree (change_kind) WHERE (change_kind <> 'unchanged'::text);
-
-
---
--- Name: model_compare_2026_1_nb_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE INDEX model_compare_2026_1_nb_idx ON data.model_compare_2026_1 USING btree (neighborhood_id);
 
 
 --
@@ -8640,5 +8451,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 958yMgG7edoakSmiNZjyQxSXsB61Ia25F7tLsn3lAmgSZEcaNWqnkUrCYideYkC
+\unrestrict Me1lNm7TFZzKB1a53EiLXhKJtGq9DDyGzAfFHE8HU3GU6NRmqbNe4nUfYhoNqra
 
