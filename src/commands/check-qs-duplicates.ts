@@ -118,7 +118,8 @@ export async function checkDossiers(opts: { dossier?: number }): Promise<Verdict
   return out;
 }
 
-async function closeDuplicates(verdicts: Verdict[]): Promise<number> {
+/** Exported for the Windmill runner f/fundermaps/dataops/close_qs_duplicates (hourly), which imports it like the CLI. */
+export async function closeDuplicates(verdicts: Verdict[]): Promise<number> {
   const url = process.env["FUNDERMAPS_API_URL"]?.replace(/\/$/, "");
   const key = process.env["FUNDERMAPS_API_KEY"];
   if (!url || !key) throw new Error("--close needs FUNDERMAPS_API_URL and FUNDERMAPS_API_KEY");
