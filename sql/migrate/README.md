@@ -25,7 +25,8 @@ psql "$DB_URL" -f sql/migrate/<file>.sql
   git show <commit>:sql/migrate/<file>.sql               # read its contents
   ```
 
-So this directory holds only migrations **not yet folded into `schema.sql`** —
-usually empty between cleanup rounds. The applied history was last pruned
-2026-05-21 (see git log for the file list); the Better Auth 1.7 pair was pruned
-2026-09-03 together with the first PG 18 regeneration of `schema.sql`.
+Since 2026-09-17 nothing lands here any more (new migrations go to `db/migrations/`),
+so the directory stays empty. Prune rounds: 2026-05-21; the Better Auth 1.7 pair on
+2026-09-03; the last 77 files (applied 2026-05-21 → 2026-09-17, all in `schema.sql`)
+on 2026-10-26. Comments elsewhere that name a `sql/migrate/<file>.sql` point at that
+history: find it with the `git log` line above.
