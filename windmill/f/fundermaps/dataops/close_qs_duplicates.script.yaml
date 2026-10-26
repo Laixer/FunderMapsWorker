@@ -1,0 +1,37 @@
+summary: Data Ops — close QuickScans already in FunderMaps
+description: Runs FunderMapsWorker check-qs-duplicates (imported, not spawned) on every open
+  melden dossier with a QuickScan; a certain duplicate (same registration on the same pand)
+  is closed through the API as the Fundie user, with the melder's "verwerkt" mail (#219).
+  close=false reports only.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - pg
+    - s3
+    - api_key
+    - close
+    - dossier_id
+  properties:
+    pg:
+      type: object
+      format: resource-postgresql
+    s3:
+      type: object
+      format: resource-s3
+    api_key:
+      type: string
+      description: fmsk key of the Fundie user ($var:f/fundermaps/dataops/qs_sweeper_api_key). Needed when close is on.
+      default: ''
+    close:
+      type: boolean
+      description: Close the certain duplicates. Off = report only.
+      default: true
+    dossier_id:
+      type: integer
+      description: Check only this dossier. Empty = every open one.
+  required:
+    - pg
+    - s3
