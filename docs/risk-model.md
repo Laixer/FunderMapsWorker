@@ -773,25 +773,30 @@ Does **not** read `model_risk_static`. It queries `report.inquiry_sample` direct
 
 ### 12.1 Workflow
 
-1. Edit the relevant file in `sql/model/`. All files are idempotent (`CREATE OR REPLACE` everywhere except `CREATE MATERIALIZED VIEW`, which uses a v2 → rename swap pattern; see `recreate_sample_matviews.sql`).
-2. Apply against `defaultdb`/`fundermaps` as `doadmin` (the `fundermaps` role lacks CREATE on the database):
-   ```bash
-   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/model/<file>.sql
-   ```
-3. For matview changes:
-   - For a definition change you typically need `DROP MATERIALIZED VIEW` then `CREATE MATERIALIZED VIEW … WITH DATA` (or use the v2-swap pattern documented in `recreate_sample_matviews.sql` to avoid downtime).
+Every change to the live model is a ledger migration (since 2026-09-17; contract in `db/migrations/README.md`).
+The current model logic is frozen: a new rule goes into a new model version beside it (`docs/model-versioning.md`).
+
+1. Write the change as `db/migrations/<YYYYMMDD>_<NNN>_<name>.sql`: one transaction, forward only, starting
+   with a comment saying why and what was true on prod. A file that creates an object ends with
+   `ALTER … OWNER TO fundermaps`; grants belong in the same file. If the change touches an object whose
+   readable source is in `sql/model/` (helper functions, `building_precomputed`, `model_risk_dynamic_all`, the
+   tile sources), update that file in the same PR so source and database do not drift.
+2. For matview changes:
+   - A definition change needs `DROP MATERIALIZED VIEW` then `CREATE MATERIALIZED VIEW … WITH DATA`.
    - **Always recreate the unique index** required by `REFRESH … CONCURRENTLY`.
-   - **Always re-`GRANT SELECT … TO fundermaps_webapp, fundermaps_webservice`** — Postgres does NOT preserve privileges across DROP/CREATE.
-4. Refresh the matviews you changed (`REFRESH MATERIALIZED VIEW CONCURRENTLY data.<matview>;`) or trigger the Windmill flow `f/fundermaps/data/refresh_data_model` for a full pass.
-5. Spot-check downstream maplayer views (`SELECT count(*) FROM maplayer.analysis_full`).
-6. Regenerate `schema.sql`:
+   - **Always re-`GRANT SELECT`** to the roles that had it — Postgres does NOT preserve privileges across DROP/CREATE.
+3. Open the PR. CI bootstraps `schema.sql` on PostGIS 18 and runs the migration on top.
+4. Merge, then apply on prod as `doadmin` from the ops VM (`bun run migrate --allow-prod`, or the wrapper that
+   shows the plan first and refuses a stamp or mismatch). Not during the model refresh windows.
+5. Refresh what you changed (`REFRESH MATERIALIZED VIEW CONCURRENTLY data.<matview>;`) or run the Windmill flow
+   `f/fundermaps/data/refresh_data_model` for a full pass.
+6. Spot-check downstream maplayer views (`SELECT count(*) FROM maplayer.analysis_full`).
+7. Regenerate `schema.sql` from prod and set `db/migrations/BASELINE` to the version you applied; commit both:
    ```bash
    # pg_dump must be >= the server major (prod is PG 18: postgresql-client-18 from PGDG).
-   # _timescaledb_internal holds only hypertable chunks and is excluded on purpose.
-   pg_dump --schema-only --no-owner --no-acl --exclude-schema=_timescaledb_internal "$DATABASE_URL" > schema.sql
+   pg_dump --schema-only --no-owner --no-acl "$DATABASE_URL" > schema.sql
    ```
-7. Update this doc — column lists, CASE branches, helper-function bodies, anything that changed.
-8. Commit both `sql/model/*.sql` and `schema.sql` together so source and dump never drift.
+8. Update this doc — column lists, CASE branches, helper-function bodies, anything that changed.
 
 ### 12.2 Common modification patterns
 
@@ -805,19 +810,17 @@ Does **not** read `model_risk_static`. It queries `report.inquiry_sample` direct
 - `EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM data.model_risk_dynamic_all WHERE building_id = '<some BAG id>';` — the row plan should still be parameterized index lookups, not seq-scans.
 - Row count parity: `SELECT count(*) FROM data.model_risk_static;` should match the previous count ± expected delta.
 - `SELECT foundation_type, count(*) FROM data.model_risk_static GROUP BY 1 ORDER BY 2 DESC;` should not radically reshape unless you intended to.
-- A worked example for a known address (e.g. `yorick@laixer.com`'s testing flow against `ws.fundermaps.com /api/v3/product/analysis`) before letting the next nightly Windmill run fire.
+- A worked example for a known address against the Webservice's `/v4/product/analysis` before letting the next scheduled Windmill refresh fire.
 
 ---
 
 ## 13. Known landmines (consolidated)
 
 1. **`enforcement_term` semantic** — the column on `model_risk_static` (and `analysis_full`) is **years remaining (double, can be negative)**, not the input enum. Both this and `overall_quality` are excluded from `ws.fundermaps.com /api/v3/product/...` payloads to avoid breaking mapsets that interpret the original enum shape. Don't add them back without a coordinated client migration. See [memory/project_enforcement_term_semantic.md](../.claude/projects/-home-eve-Projects-FunderMapsWorker/memory/project_enforcement_term_semantic.md).
-2. **`archieve_research` typo** — `recreate_sample_matviews.sql` has the misspelling; the deployed enum and matview use `archive_research`. Don't blindly copy from the source file.
-3. **`address_count > 0` in `building_geo_hierarchy`** — quietly hides any building without addresses from every analysis tile. Buildings *do* still appear in `model_risk_static`; they're just absent from the maplayer.
-4. **`recreate_sample_matviews.sql` v2 swap is one-shot** — it creates `*_v2` matviews and documents (in comments) a `BEGIN; ALTER ... RENAME ...; COMMIT;` swap. Don't re-run it as-is on a live system; either edit the live matviews directly or re-introduce the v2 swap dance.
-5. **Stale rows in `model_risk_static`** — by design. If you need the matview to mirror `building_active` exactly, schedule a periodic `REFRESH … WITH NO DATA` then full refresh, or add a `DELETE WHERE building_id NOT IN (SELECT external_id FROM building_active)` step.
-6. **Privileges drop on `DROP MATERIALIZED VIEW`** — always re-`GRANT SELECT TO fundermaps_webapp, fundermaps_webservice`. Phase L of the schema cleanup hit this exact bug and is enshrined in the migration history.
-7. **The archive export reads `maplayer.bundle` and `maplayer.<tileset>`** — the Windmill `process_mapset` flow exports every enabled bundle with `upload_dataset` set. Renaming a bundle or its view changes the archive file name under `fundermaps-archive/mapset/`, and `archive_mapset_monthly` looks for `analysis_full.gpkg` by name.
+2. **`address_count > 0` in `building_geo_hierarchy`** — quietly hides any building without addresses from every analysis tile. Buildings *do* still appear in `model_risk_static`; they're just absent from the maplayer.
+3. **Stale rows in `model_risk_static`** — by design. If you need the matview to mirror `building_active` exactly, schedule a periodic `REFRESH … WITH NO DATA` then full refresh, or add a `DELETE WHERE building_id NOT IN (SELECT external_id FROM building_active)` step.
+4. **Privileges drop on `DROP MATERIALIZED VIEW`** — always re-`GRANT SELECT` to the roles that had it. Phase L of the schema cleanup hit this exact bug and is enshrined in the migration history.
+5. **The archive export reads `maplayer.bundle` and `maplayer.<tileset>`** — the Windmill `process_mapset` flow exports every enabled bundle with `upload_dataset` set. Renaming a bundle or its view changes the archive file name under `fundermaps-archive/mapset/`, and `archive_mapset_monthly` looks for `analysis_full.gpkg` by name.
 
 ---
 
@@ -827,12 +830,12 @@ Does **not** read `model_risk_static`. It queries `report.inquiry_sample` direct
 | ------------------------------- | -------------------------------------------------- |
 | Helper functions                | `sql/model/create_helper_functions.sql`            |
 | `building_precomputed` table + procedure | `sql/model/create_building_precomputed.sql`  |
-| Sample matviews (v2 swap)       | `sql/model/recreate_sample_matviews.sql`           |
+| Sample matviews                 | `schema.sql` (`data.building_sample`, `cluster_sample`, `supercluster_sample`) |
 | `model_risk_dynamic_all` view   | `sql/model/recreate_model_risk_dynamic_all.sql`    |
-| `model_risk_static` matview     | `sql/model/recreate_model_risk_manifest.sql`       |
+| `model_risk_static`             | `schema.sql` (a view on the default model, `data.model_risk_static_2026_3`) |
 | Daily refresh                   | Windmill flow `f/fundermaps/data/refresh_data_model` |
-| Analysis views & extra indexes  | `sql/model/consolidate_analysis_views.sql`         |
-| Statistics matview fixes        | `sql/model/fix_statistics.sql`                     |
+| Analysis views & statistics     | `schema.sql`                                       |
+| Changes                         | `db/migrations/` (ledger; see `db/migrations/README.md`) |
 | Authoritative dump              | `schema.sql` (regenerate after any change)         |
 | Operational memory (decisions)  | `~/.claude/projects/-home-eve-Projects-FunderMapsWorker/memory/{risk-model-review,model-performance,gfm-migration}.md` |
 

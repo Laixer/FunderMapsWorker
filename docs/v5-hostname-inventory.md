@@ -91,9 +91,8 @@ hostname move.
 | fundermaps-tileset | GET, HEAD | https://maps.fundermaps.com, https://app.fundermaps.com, https://report.fundermaps.com, https://funderingskaart.nl, https://funderingsrisicokaart.nl, https://whale-app-nm9uv.ondigitalocean.app, https://fundermaps-development.ams3.digitaloceanspaces.com |
 | fundermaps-data, fundermaps-archive | none | — |
 
-The tileset CORS is largely legacy (static tiles are purged; Martin serves them), but
-`VITE_FUNDERMAPS_TILES_URL` still points at the bucket in maps-prod (and did in report-prod). Since 2026-10-20 the
-`report.fundermaps.com` and `whale-app-nm9uv` origins name deleted hosts: harmless, drop them at the next CORS edit.
+**`fundermaps-tileset` was deleted on 2026-10-26** (its CORS rule with it): Martin serves the tiles, style, glyphs
+and sprites. A `VITE_FUNDERMAPS_TILES_URL` that still names it is not read by any app.
 
 ## 3. Frontend build-time URLs (`VITE_*`, baked into the bundle at build)
 
@@ -136,8 +135,8 @@ tile host = edit the style JSON + rebuild the image + the three `VITE_*` values 
   it through `${db-pg-ams3-0.*}` bindables in api-prod, webservice-prod/-staging,
   windmill-prod, analytics-prod. Tileserver has a literal `DATABASE_URL` secret.
 - **Object storage**: endpoint `ams3.digitaloceanspaces.com`; buckets `fundermaps`,
-  `fundermaps-tileset`, `fundermaps-data`, `fundermaps-development`, `fundermaps-archive`
-  (cold). Virtual-host URLs of `fundermaps-tileset` are baked into two frontends (§3).
+  `fundermaps-data`, `fundermaps-development`, `fundermaps-archive` (cold).
+  `fundermaps-tileset` was deleted on 2026-10-26.
 - **E-mail**: Resend on `funderdata.nl` (DNS §1); `MAIL_FROM` default `noreply@funderdata.nl`.
 - **Grafana**: `GF_SERVER_ROOT_URL=https://analytics.fundermaps.com`; its generic-OAuth
   config is not in the app spec (set in Grafana itself) and is disabled

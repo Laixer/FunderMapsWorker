@@ -7,7 +7,7 @@ args:
   s3: $res:f/fundermaps/s3
 cron_version: v2
 email: yorick@laixer.com
-enabled: false
+enabled: true
 is_flow: false
 no_flow_overlap: false
 on_failure_exact: false
