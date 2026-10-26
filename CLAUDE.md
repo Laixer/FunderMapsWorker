@@ -9,7 +9,7 @@ FunderMaps Worker is the data-side repository of FunderMaps, built with **Bun** 
 - the **database schema** (`schema.sql`, `db/migrations/`, `sql/`) — this repo owns it; no other repo runs migrations;
 - **command-line tools** for data work (`src/commands/`): the BAG / 3DBAG / subsidence loader, the dossier ingest and its helpers, the migration runner;
 - the **Windmill workspace mirror** (`windmill/`) and the **Windmill worker image** (`windmill-worker/`, Windmill + GDAL + DuckDB);
-- the **tileserver** deploy config (`tileserver/`, Martin).
+- the **tileserver** deploy config (`tileserver/`, Martin), deployed by hand: a merge to this repo deploys nothing (tileserver auto-deploy off since 2026-10-26).
 
 **There is no background worker any more.** Until 2026-10-12 this repo also ran a polling job processor on a droplet (`fundermaps-worker-0`) that read `application.worker_jobs`. Its last job, the GPKG archive export (`process_mapset`), now runs as the Windmill script `f/fundermaps/mapset/export_tileset`; the droplet, the queue loop, the container image and the queue table are gone (#147). The name "Worker" is history.
 

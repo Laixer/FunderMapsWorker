@@ -29,8 +29,17 @@ maplibre (WebFront) ──▶ tiles.fundermaps.com/buildings/{z}/{x}/{y}
 ## Layout
 
 This directory is deployment config only — pinned Martin image +
-`config.yaml`. The DO App Platform app `fundermaps-tiles-prod` builds from
-this repo with `source_dir: /tileserver`. All SQL (table, refresh procedure,
+`config.yaml`. The DO App Platform app `fundermaps-tileserver-prod` builds from
+this repo with `source_dir: /tileserver`.
+
+**Deployed by hand.** Auto-deploy on push is off since 2026-10-26: App
+Platform has no path filter, so every merge to this repo used to rebuild and
+restart the public tile server. After a change under `tileserver/` (config,
+Dockerfile, style) or a new Martin function source, deploy the latest main:
+`doctl apps create-deployment <app id>` (the ops VM has
+`fundermaps-340-loket/bin/deploy-tileserver.sh`, which waits for the new
+commit and checks catalog, style and a tile). Avoid the model-refresh
+windows: the tiles are rebuilt then. All SQL (table, refresh procedure,
 function source) lives in `sql/model/create_building_tiles.sql`; the nightly
 rebuild (`CALL maplayer.refresh_building_tiles()`) runs from the Windmill
 flow `f/fundermaps/data/refresh_data_model`.
