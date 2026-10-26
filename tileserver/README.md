@@ -1,9 +1,9 @@
 # FunderMaps tileserver (Martin)
 
 Dynamic vector tileserver for FunderMaps, built on [Martin](https://github.com/maplibre/martin).
-Serves building foundation tiles straight from PostGIS instead of the nightly
-tippecanoe → Spaces batch pipeline (hybrid rollout: dynamic first for the
-building layers, static pipeline stays as fallback).
+Serves the FunderMaps vector tiles straight from PostGIS. It replaced the
+nightly tippecanoe → Spaces batch pipeline, which is gone (its bucket,
+`fundermaps-tileset`, was deleted on 2026-10-26).
 
 ## How it works
 
@@ -77,8 +77,8 @@ at `/font/{fontstack}/{range}` (generated from Noto Sans TTFs, see
 Dockerfile). This is deliberate: Chrome's Local Network Access feature
 blocks fetches from public origins to `*.digitaloceanspaces.com` (both
 the direct and CDN endpoints), so Spaces can never host browser-fetched
-assets. No sprite currently (only road shields used it; Martin SVG
-sprites are the follow-up if we want them back).
+assets. Sprites are served at `/sprite/basemap` (atlases Martin generates
+from the SVGs in `sprites/basemap/`, see `config.yaml`).
 The purple municipality/district/neighborhood lines come from the Martin
 function source `maplayer.boundaries` (`sql/model/create_boundary_tiles.sql`)
 reading `geocoder.*`. Martin discovers function sources at startup, so a

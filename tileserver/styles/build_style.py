@@ -12,9 +12,8 @@ extracted from the legacy style. Regenerate with:
     python3 build_style.py            # writes fundermaps-basemap.json
 
 Tiles come from OpenFreeMap (self-hostable escape hatch: Planetiler NL
-extract -> PMTiles on Spaces). Glyphs (Noto Sans, openmaptiles/fonts v2.0)
-and sprites (mirrored from OFM) are self-hosted on the fundermaps-tileset
-Space. Admin boundaries (the purple lines) come from the Martin function
+extract -> PMTiles on Spaces). Glyphs (Noto Sans) and sprites are served by
+Martin itself, baked into the image (see ../README.md). Admin boundaries (the purple lines) come from the Martin function
 source maplayer.boundaries (sql/model/create_boundary_tiles.sql).
 
 Not part of the worker runtime — the generated JSON is baked into the Martin
