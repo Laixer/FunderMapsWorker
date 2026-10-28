@@ -1,0 +1,20 @@
+summary: Data Ops — dispatch new meldingen — Hourly
+description: 'FunderMapsApi #277. Disabled and dry_run until the go: enable it with dry_run true, read a day of plans, then set dry_run false.'
+args:
+  api_key: $var:f/fundermaps/dataops/qs_sweeper_api_key
+  dry_run: true
+  mode: new
+cron_version: v2
+email: yorick@laixer.com
+enabled: false
+is_flow: false
+no_flow_overlap: false
+on_failure_exact: false
+on_failure_times: 1
+on_recovery_extra_args: {}
+on_recovery_times: 1
+on_success_extra_args: {}
+schedule: 0 25 * * * *
+script_path: f/fundermaps/dataops/dispatch
+timezone: Europe/Amsterdam
+ws_error_handler_muted: false

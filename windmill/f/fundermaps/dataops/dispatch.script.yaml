@@ -1,0 +1,32 @@
+summary: Data Ops — the review-queue dispatcher
+description: Calls FunderMapsApi POST /api/dataops/dispatch as the Fundie user (#277). Hands new
+  meldingen to the people in dataops.staff_capacity, tops research up to a day's worth, and takes
+  back what sat untouched for five working days. dry_run = report only.
+lock: ''
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - api_key
+    - mode
+    - dry_run
+  properties:
+    api_key:
+      type: string
+      description: fmsk key of the Fundie user ($var:f/fundermaps/dataops/qs_sweeper_api_key).
+      default: ''
+    mode:
+      type: string
+      description: new = hand out new meldingen; drip = top up research; all = both. Every mode releases stale work.
+      enum:
+        - new
+        - drip
+        - all
+      default: new
+    dry_run:
+      type: boolean
+      description: Show the plan, change nothing.
+      default: true
+  required:
+    - api_key
