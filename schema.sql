@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Me1lNm7TFZzKB1a53EiLXhKJtGq9DDyGzAfFHE8HU3GU6NRmqbNe4nUfYhoNqra
+\restrict 1oEbIULYepvuf8hncTrk8FQn3qGQNy12LUQSQmyUEkaAo6hyqcODJDQgCduOfhQ
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -5463,6 +5463,73 @@ ALTER TABLE dataops.extraction ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
+-- Name: staff_capacity; Type: TABLE; Schema: dataops; Owner: -
+--
+
+CREATE TABLE dataops.staff_capacity (
+    user_id uuid NOT NULL,
+    hours_per_week numeric(4,1) NOT NULL,
+    working_days smallint[] DEFAULT '{1,2,3,4,5}'::smallint[] NOT NULL,
+    preferred_kinds text[] DEFAULT '{}'::text[] NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    updated_by uuid,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT staff_capacity_hours_per_week_check CHECK (((hours_per_week >= (0)::numeric) AND (hours_per_week <= (60)::numeric))),
+    CONSTRAINT staff_capacity_preferred_kinds_check CHECK ((cardinality(preferred_kinds) <= 20)),
+    CONSTRAINT staff_capacity_working_days_check CHECK ((((cardinality(working_days) >= 1) AND (cardinality(working_days) <= 7)) AND (working_days <@ '{1,2,3,4,5,6,7}'::smallint[])))
+);
+
+
+--
+-- Name: TABLE staff_capacity; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.staff_capacity IS 'How much review-queue work a colleague takes, for the dispatcher (FunderMapsApi #277). No row or active = false: the dispatcher assigns this person nothing.';
+
+
+--
+-- Name: COLUMN staff_capacity.user_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.staff_capacity.user_id IS 'The colleague (a member of the platform organisation). The row goes with the user.';
+
+
+--
+-- Name: COLUMN staff_capacity.hours_per_week; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.staff_capacity.hours_per_week IS 'Hours a week spent on the review queue; the dispatcher derives how many open dossiers the person holds from it.';
+
+
+--
+-- Name: COLUMN staff_capacity.working_days; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.staff_capacity.working_days IS 'ISO weekdays the person works: 1 = Monday … 7 = Sunday. The dispatcher assigns new work on these days only.';
+
+
+--
+-- Name: COLUMN staff_capacity.preferred_kinds; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.staff_capacity.preferred_kinds IS 'Document kinds (report.inquiry_type codes as the reader reads them) this person prefers; empty = no preference. A preference weighs the choice, it never excludes anyone.';
+
+
+--
+-- Name: COLUMN staff_capacity.active; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.staff_capacity.active IS 'false = keep the numbers but assign nothing (holiday, absence).';
+
+
+--
+-- Name: COLUMN staff_capacity.updated_by; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.staff_capacity.updated_by IS 'The admin who last saved the row; NULL once that account is gone.';
+
+
+--
 -- Name: verdict; Type: TABLE; Schema: dataops; Owner: -
 --
 
@@ -6642,6 +6709,14 @@ ALTER TABLE ONLY dataops.extraction_field
 
 ALTER TABLE ONLY dataops.extraction
     ADD CONSTRAINT extraction_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: staff_capacity staff_capacity_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.staff_capacity
+    ADD CONSTRAINT staff_capacity_pkey PRIMARY KEY (user_id);
 
 
 --
@@ -8264,6 +8339,22 @@ ALTER TABLE ONLY dataops.extraction_field
 
 
 --
+-- Name: staff_capacity staff_capacity_updated_by_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.staff_capacity
+    ADD CONSTRAINT staff_capacity_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: staff_capacity staff_capacity_user_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.staff_capacity
+    ADD CONSTRAINT staff_capacity_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: verdict verdict_extraction_field_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -8451,5 +8542,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Me1lNm7TFZzKB1a53EiLXhKJtGq9DDyGzAfFHE8HU3GU6NRmqbNe4nUfYhoNqra
+\unrestrict 1oEbIULYepvuf8hncTrk8FQn3qGQNy12LUQSQmyUEkaAo6hyqcODJDQgCduOfhQ
 
