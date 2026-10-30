@@ -44,7 +44,7 @@ municipalities (always "wood pile" would score 53% / 19%).
 2. Load the scores. The last run is on agent0 at
    `~/ft-research/worker_run/2026-2/out/model_foundation_2026_2.csv.gz`, 11,321,489 rows:
    ```sql
-   \copy data.model_foundation_2026_2 (building_id, p_wood, p_no_pile, p_concrete, p_oplanger, family,
+   \copy data.model_foundation_2026_2 (building_id, p_wood, p_no_pile, p_concrete, p_wood_charger, family,
           foundation_type, confidence, evidence, grade, source)
      FROM PROGRAM 'gzip -dc ~/ft-research/worker_run/2026-2/out/model_foundation_2026_2.csv.gz' WITH (FORMAT csv, HEADER true)
    ANALYZE data.model_foundation_2026_2;

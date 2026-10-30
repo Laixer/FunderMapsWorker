@@ -12,7 +12,7 @@ from house to house (Gouda, Kamperfoelielaan 65-79: p ~ 1/3 each).
 Rules, for panden whose source is 'model' (own evidence is never touched):
   1. the cluster holds own evidence (report or reliable QuickScan): take the evidence's majority foundation type;
      grade becomes at least 'betrouwbaar' (source stays 'model'). 94.8% of such panden already agreed.
-  2. otherwise: average the blend probabilities and p_oplanger over the cluster's model panden and re-take the
+  2. otherwise: average the blend probabilities and p_wood_charger over the cluster's model panden and re-take the
      argmax, so the whole cluster gets one type; confidence = the pooled maximum, grade unchanged.
 Out-of-sample (reliability/24_cluster_pool.py): pooling keeps accuracy (pool R+G 76.6 -> 76.8, held-out
 municipalities 74.1 -> 74.4, Utrecht 79.6 -> 79.5).
@@ -59,11 +59,11 @@ def main():
 
     # 2. the rest: pool probabilities over the cluster's model panden
     rest = model & ~hit
-    cols = ['p_wood', 'p_no_pile', 'p_concrete', 'p_oplanger']
+    cols = ['p_wood', 'p_no_pile', 'p_concrete', 'p_wood_charger']
     pooled = d[rest].groupby('cluster_id')[cols].transform('mean')
     P = pooled[['p_wood', 'p_no_pile', 'p_concrete']].values
     fam = np.array(FAM)[P.argmax(1)]
-    ft2 = np.where(fam == 'wood', np.where(pooled.p_oplanger.values >= 0.5, 'wood_charger', 'wood'), fam)
+    ft2 = np.where(fam == 'wood', np.where(pooled.p_wood_charger.values >= 0.5, 'wood_charger', 'wood'), fam)
     changed = int((ft2 != d.loc[rest, 'foundation_type'].values).sum())
     d.loc[rest, cols] = pooled.round(3).values
     d.loc[rest, 'family'] = fam
