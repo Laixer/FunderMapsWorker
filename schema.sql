@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 1oEbIULYepvuf8hncTrk8FQn3qGQNy12LUQSQmyUEkaAo6hyqcODJDQgCduOfhQ
+\restrict QDcQCTTeKegB56DWdYqyHg79JG0QbIami2Sl5yjgvTy0iQNcCcUCPxCqa5Wg5Du
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -849,29 +849,6 @@ CREATE DOMAIN report.year AS date
 --
 
 COMMENT ON DOMAIN report.year IS 'Domain for a year between 900 and 2100.';
-
-
---
--- Name: cleanup_auth_data(); Type: PROCEDURE; Schema: application; Owner: -
---
-
-CREATE PROCEDURE application.cleanup_auth_data()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    RAISE NOTICE 'Starting authentication data cleanup';
-
-    DELETE FROM application.session
-    WHERE expires_at < NOW();
-    RAISE NOTICE 'Deleted % expired Better Auth sessions.', FOUND::TEXT;
-
-    DELETE FROM application.verification
-    WHERE expires_at < NOW();
-    RAISE NOTICE 'Deleted % expired Better Auth verifications.', FOUND::TEXT;
-
-    RAISE NOTICE 'Authentication data cleanup finished';
-END;
-$$;
 
 
 --
@@ -3096,24 +3073,6 @@ CREATE TABLE application.file_resources (
 --
 
 COMMENT ON TABLE application.file_resources IS 'Stores metadata about file resources stored in an S3-compatible object storage.';
-
-
---
--- Name: file_resources_orphaned; Type: VIEW; Schema: application; Owner: -
---
-
-CREATE VIEW application.file_resources_orphaned AS
- SELECT id,
-    key,
-    original_filename,
-    status,
-    size_bytes,
-    mime_type,
-    metadata,
-    created_at,
-    updated_at
-   FROM application.file_resources
-  WHERE ((status = ANY (ARRAY['uploaded'::text, 'processing'::text])) AND (updated_at < (now() - '1 day'::interval)));
 
 
 --
@@ -8542,5 +8501,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1oEbIULYepvuf8hncTrk8FQn3qGQNy12LUQSQmyUEkaAo6hyqcODJDQgCduOfhQ
+\unrestrict QDcQCTTeKegB56DWdYqyHg79JG0QbIami2Sl5yjgvTy0iQNcCcUCPxCqa5Wg5Du
 
