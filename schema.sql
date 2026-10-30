@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Y5ag58dt1VDh8wG2SV7ZHCHw26fkpKcIOUfF1fh53y1vigdcCDjMbQkrbkVdNSJ
+\restrict YIg7exVekcx2omthPOD3c2lX9Chj49PTiQPEyi9dHm32yhV48kn6cZnyhkeDCX6
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1294,41 +1294,6 @@ $$;
 --
 
 COMMENT ON FUNCTION data.foundation_candidate(z integer, x integer, y integer) IS '{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_oplanger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
-
-
---
--- Name: ft_cell_2026_2(integer, double precision, text, numeric, integer); Type: FUNCTION; Schema: data; Owner: -
---
-
-CREATE FUNCTION data.ft_cell_2026_2(construction_year integer, height double precision, soil_code text, ground_level numeric, address_count integer) RETURNS text
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT
-    (CASE WHEN construction_year < 1700 THEN 'a' WHEN construction_year < 1800 THEN 'b'
-          WHEN construction_year < 1880 THEN 'c' WHEN construction_year < 1920 THEN 'd'
-          WHEN construction_year < 1940 THEN 'e' WHEN construction_year < 1965 THEN 'f'
-          WHEN construction_year < 1980 THEN 'g' ELSE 'h' END) || '|' ||
-    (CASE WHEN soil_code IN ('hz','ni-hz','ni-du') THEN 'sand'
-          WHEN soil_code IS NULL THEN 'unk' ELSE 'soft' END) || '|' ||
-    (CASE WHEN height IS NULL THEN 'u' WHEN height < 7 THEN '0' WHEN height < 8.5 THEN '1'
-          WHEN height < 10 THEN '2' WHEN height < 12 THEN '3' WHEN height < 14 THEN '4'
-          WHEN height < 20 THEN '5' ELSE '6' END) || '|' ||
-    (CASE WHEN ground_level IS NULL THEN 'u' WHEN ground_level < -1 THEN '0'
-          WHEN ground_level < 0 THEN '1' WHEN ground_level < 1 THEN '2'
-          WHEN ground_level < 3 THEN '3' WHEN ground_level < 8 THEN '4' ELSE '5' END) || '|' ||
-    (CASE WHEN address_count <= 1 THEN '0' WHEN address_count < 8 THEN '1' ELSE '2' END)
-$$;
-
-
---
--- Name: ft_cell_coarse_2026_2(text); Type: FUNCTION; Schema: data; Owner: -
---
-
-CREATE FUNCTION data.ft_cell_coarse_2026_2(cell text) RETURNS text
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT split_part(cell,'|',1) || '|' || split_part(cell,'|',2) || '|' || split_part(cell,'|',3)
-$$;
 
 
 --
@@ -8403,5 +8368,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Y5ag58dt1VDh8wG2SV7ZHCHw26fkpKcIOUfF1fh53y1vigdcCDjMbQkrbkVdNSJ
+\unrestrict YIg7exVekcx2omthPOD3c2lX9Chj49PTiQPEyi9dHm32yhV48kn6cZnyhkeDCX6
 
