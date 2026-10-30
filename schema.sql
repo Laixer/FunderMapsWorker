@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict yhSFB4CthbzIFmjMw0LCW55y3YFjZFXMX4IrbpNV4FxdnOhXxWM5zXkdV1RKlfF
+\restrict q7niezCtWdNUp1727upwgH3AKO0lJZQmTDVSGMXiKrr4GbOT0CKdZfr6e1W0pZ6
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -3591,7 +3591,6 @@ COMMENT ON VIEW data.model_risk_static IS '[model output] Pointer at the default
 --
 
 CREATE TABLE geocoder.building (
-    id geocoder.geocoder_id DEFAULT geocoder.generate_id() NOT NULL,
     built_year geocoder.year,
     active boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL,
@@ -3614,7 +3613,7 @@ COMMENT ON TABLE geocoder.building IS '[BAG] BAG buildings in our own format: ge
 --
 
 CREATE VIEW geocoder.building_active AS
- SELECT id,
+ SELECT (external_id)::geocoder.geocoder_id AS id,
     built_year,
     geom,
     external_id,
@@ -6943,7 +6942,7 @@ ALTER TABLE ONLY geocoder.address
 --
 
 ALTER TABLE ONLY geocoder.building
-    ADD CONSTRAINT building_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT building_pkey PRIMARY KEY (external_id);
 
 
 --
@@ -7656,13 +7655,6 @@ CREATE INDEX address_postal_code_idx ON geocoder.address USING btree (postal_cod
 --
 
 CREATE INDEX address_streetname_idx ON geocoder.address USING btree (lower(street));
-
-
---
--- Name: building_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE UNIQUE INDEX building_external_id_idx ON geocoder.building USING btree (external_id);
 
 
 --
@@ -8730,5 +8722,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict yhSFB4CthbzIFmjMw0LCW55y3YFjZFXMX4IrbpNV4FxdnOhXxWM5zXkdV1RKlfF
+\unrestrict q7niezCtWdNUp1727upwgH3AKO0lJZQmTDVSGMXiKrr4GbOT0CKdZfr6e1W0pZ6
 
