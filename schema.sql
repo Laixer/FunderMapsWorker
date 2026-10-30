@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict yRIAXT3YkIUVAy61YPqE4FaOXZn5w7hVf4ZYwwIvNNL8iJ3sGPDvlFGHIDg1Yd2
+\restrict xuanE1mJbP4vwHzEw1mENd9Klfkxu0dFryczdUrQ8kCdOWpCPC6mKBQa4lvrZc1
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1293,7 +1293,7 @@ $$;
 -- Name: FUNCTION foundation_candidate(z integer, x integer, y integer); Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON FUNCTION data.foundation_candidate(z integer, x integer, y integer) IS '{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_oplanger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
+COMMENT ON FUNCTION data.foundation_candidate(z integer, x integer, y integer) IS '{"description": "Candidate model-2026.2 foundation family (FunderMaps B.V. only, not served to customers)", "minzoom": 12, "maxzoom": 16, "bounds": [3.2, 50.7, 7.3, 53.6], "vector_layers": [{"id": "foundation_candidate", "minzoom": 12, "maxzoom": 16, "fields": {"building_id": "String", "family": "String", "foundation_type": "String", "grade": "String", "source": "String", "p_wood_charger": "Number", "p_wood": "Number", "p_no_pile": "Number", "p_concrete": "Number", "confidence": "Number", "evidence": "String", "current_type": "String", "height": "Number"}}]}';
 
 
 --
@@ -4365,7 +4365,7 @@ CREATE TABLE data.model_foundation_2026_2 (
     p_wood real NOT NULL,
     p_no_pile real NOT NULL,
     p_concrete real NOT NULL,
-    p_wood_charger real CONSTRAINT model_foundation_2026_2_p_oplanger_not_null NOT NULL,
+    p_wood_charger real NOT NULL,
     family text NOT NULL,
     foundation_type text NOT NULL,
     confidence real NOT NULL,
@@ -8837,5 +8837,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict yRIAXT3YkIUVAy61YPqE4FaOXZn5w7hVf4ZYwwIvNNL8iJ3sGPDvlFGHIDg1Yd2
+\unrestrict xuanE1mJbP4vwHzEw1mENd9Klfkxu0dFryczdUrQ8kCdOWpCPC6mKBQa4lvrZc1
 
