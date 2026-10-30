@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict FS78EGDNttcwBcnSeRdrGro5Hthx1ulSVWqbeNBjFkKGSP0PGRFY9uTb7frDtSC
+\restrict yRIAXT3YkIUVAy61YPqE4FaOXZn5w7hVf4ZYwwIvNNL8iJ3sGPDvlFGHIDg1Yd2
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1251,7 +1251,7 @@ BEGIN
                 c.foundation_type,
                 c.grade,
                 c.source,
-                c.p_oplanger::double precision AS p_oplanger,
+                c.p_wood_charger::double precision AS p_wood_charger,
                 c.p_wood::double precision     AS p_wood,
                 c.p_no_pile::double precision  AS p_no_pile,
                 c.p_concrete::double precision AS p_concrete,
@@ -1878,19 +1878,19 @@ COMMENT ON FUNCTION dataops.generate_reference() IS 'Melder-facing dossier refer
 
 
 --
--- Name: geocoder_generate_id(); Type: FUNCTION; Schema: geocoder; Owner: -
+-- Name: generate_id(); Type: FUNCTION; Schema: geocoder; Owner: -
 --
 
-CREATE FUNCTION geocoder.geocoder_generate_id() RETURNS text
+CREATE FUNCTION geocoder.generate_id() RETURNS text
     LANGUAGE sql PARALLEL SAFE
     AS $$SELECT 'gfm-' || REPLACE(gen_random_uuid()::text, '-', '')$$;
 
 
 --
--- Name: FUNCTION geocoder_generate_id(); Type: COMMENT; Schema: geocoder; Owner: -
+-- Name: FUNCTION generate_id(); Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON FUNCTION geocoder.geocoder_generate_id() IS 'Generates a new geocoder id.';
+COMMENT ON FUNCTION geocoder.generate_id() IS 'Generates a new geocoder id.';
 
 
 --
@@ -2761,10 +2761,10 @@ $$;
 
 
 --
--- Name: last_record_update(); Type: FUNCTION; Schema: report; Owner: -
+-- Name: set_update_date(); Type: FUNCTION; Schema: report; Owner: -
 --
 
-CREATE FUNCTION report.last_record_update() RETURNS trigger
+CREATE FUNCTION report.set_update_date() RETURNS trigger
     LANGUAGE plpgsql
     AS $$BEGIN
 	NEW.update_date = CURRENT_TIMESTAMP;
@@ -2774,10 +2774,10 @@ $$;
 
 
 --
--- Name: FUNCTION last_record_update(); Type: COMMENT; Schema: report; Owner: -
+-- Name: FUNCTION set_update_date(); Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON FUNCTION report.last_record_update() IS 'Trigger function that sets the update date when a record is updated.';
+COMMENT ON FUNCTION report.set_update_date() IS 'Trigger function that sets the update date when a record is updated.';
 
 
 SET default_tablespace = '';
@@ -3045,10 +3045,10 @@ ALTER SEQUENCE application.contractor_id_seq OWNED BY application.contractor.id;
 
 
 --
--- Name: file_resources; Type: TABLE; Schema: application; Owner: -
+-- Name: file_resource; Type: TABLE; Schema: application; Owner: -
 --
 
-CREATE TABLE application.file_resources (
+CREATE TABLE application.file_resource (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     key text NOT NULL,
     original_filename text NOT NULL,
@@ -3062,10 +3062,34 @@ CREATE TABLE application.file_resources (
 
 
 --
--- Name: TABLE file_resources; Type: COMMENT; Schema: application; Owner: -
+-- Name: TABLE file_resource; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.file_resources IS '[files] Metadata of uploaded files in S3-compatible storage. Status uploaded until a record links the file (then active); replaced or deleted files become archived.';
+COMMENT ON TABLE application.file_resource IS '[files] Metadata of uploaded files in S3-compatible storage. Status uploaded until a record links the file (then active); replaced or deleted files become archived.';
+
+
+--
+-- Name: file_resources; Type: VIEW; Schema: application; Owner: -
+--
+
+CREATE VIEW application.file_resources AS
+ SELECT id,
+    key,
+    original_filename,
+    status,
+    size_bytes,
+    mime_type,
+    metadata,
+    created_at,
+    updated_at
+   FROM application.file_resource;
+
+
+--
+-- Name: VIEW file_resources; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON VIEW application.file_resources IS '[legacy] Old name of application.file_resource, kept so the old API (api-prod) keeps working; reads and writes go to the table. Drop when api-prod is gone and Studio/api names the table.';
 
 
 --
@@ -3579,7 +3603,7 @@ COMMENT ON VIEW data.model_risk_static IS '[model output] Pointer at the default
 --
 
 CREATE TABLE geocoder.building (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.generate_id() NOT NULL,
     built_year geocoder.year,
     active boolean NOT NULL,
     geom public.geometry(MultiPolygon,4326) NOT NULL,
@@ -3624,7 +3648,7 @@ COMMENT ON VIEW geocoder.building_active IS '[BAG] The buildings from geocoder.b
 --
 
 CREATE TABLE geocoder.district (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.generate_id() NOT NULL,
     external_id text NOT NULL,
     municipality_id geocoder.geocoder_id NOT NULL,
     name text NOT NULL,
@@ -3645,7 +3669,7 @@ COMMENT ON TABLE geocoder.district IS '[areas] Districts (CBS), with geometry.';
 --
 
 CREATE TABLE geocoder.municipality (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.generate_id() NOT NULL,
     external_id text NOT NULL,
     name text NOT NULL,
     water boolean NOT NULL,
@@ -3666,7 +3690,7 @@ COMMENT ON TABLE geocoder.municipality IS '[areas] Municipalities (CBS), with ge
 --
 
 CREATE TABLE geocoder.neighborhood (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.generate_id() NOT NULL,
     external_id text NOT NULL,
     district_id geocoder.geocoder_id NOT NULL,
     name text NOT NULL,
@@ -4242,6 +4266,43 @@ COMMENT ON MATERIALIZED VIEW data.cluster_sample IS '[model evidence] Evidence p
 
 
 --
+-- Name: facade_scan_priority_rule; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.facade_scan_priority_rule (
+    risk data.foundation_risk_indication,
+    settlement_speed report.rotation_type,
+    priority character varying(50)
+);
+
+
+--
+-- Name: TABLE facade_scan_priority_rule; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.facade_scan_priority_rule IS '[facade scan] Decision table: risk and settlement speed give a priority label. Read by maplayer.facade_scan.';
+
+
+--
+-- Name: facade_scan_risk_rule; Type: TABLE; Schema: data; Owner: -
+--
+
+CREATE TABLE data.facade_scan_risk_rule (
+    skewed_parallel report.rotation_type,
+    facade_type report.crack_type,
+    skewed_perpendicular report.rotation_type,
+    risk data.foundation_risk_indication
+);
+
+
+--
+-- Name: TABLE facade_scan_risk_rule; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.facade_scan_risk_rule IS '[facade scan] Decision table: facade skew (parallel, perpendicular) and facade type give the facade-scan risk (a to e). Read by maplayer.facade_scan.';
+
+
+--
 -- Name: model_evaluation_sample; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4304,7 +4365,7 @@ CREATE TABLE data.model_foundation_2026_2 (
     p_wood real NOT NULL,
     p_no_pile real NOT NULL,
     p_concrete real NOT NULL,
-    p_oplanger real NOT NULL,
+    p_wood_charger real CONSTRAINT model_foundation_2026_2_p_oplanger_not_null NOT NULL,
     family text NOT NULL,
     foundation_type text NOT NULL,
     confidence real NOT NULL,
@@ -4325,26 +4386,7 @@ CREATE TABLE data.model_foundation_2026_2 (
 -- Name: TABLE model_foundation_2026_2; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.model_foundation_2026_2 IS '[model candidate] Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
-
-
---
--- Name: model_gevelscan; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.model_gevelscan (
-    skewed_parallel report.rotation_type,
-    facade_type report.crack_type,
-    skewed_perpendicular report.rotation_type,
-    risk data.foundation_risk_indication
-);
-
-
---
--- Name: TABLE model_gevelscan; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.model_gevelscan IS '[facade scan] Decision table: facade skew (parallel, perpendicular) and facade type give the facade-scan risk (a to e). Read by maplayer.facade_scan.';
+COMMENT ON TABLE data.model_foundation_2026_2 IS '[model candidate] Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_wood_charger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
 
 
 --
@@ -4747,24 +4789,6 @@ ALTER TABLE data.refresh_log ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: risk_table_priority; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.risk_table_priority (
-    risk data.foundation_risk_indication,
-    settlement_speed report.rotation_type,
-    priority character varying(50)
-);
-
-
---
--- Name: TABLE risk_table_priority; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.risk_table_priority IS '[facade scan] Decision table: risk and settlement speed give a priority label. Read by maplayer.facade_scan.';
 
 
 --
@@ -5360,6 +5384,90 @@ ALTER TABLE dataops.dossier ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
+-- Name: dossier_inquiry; Type: TABLE; Schema: dataops; Owner: -
+--
+
+CREATE TABLE dataops.dossier_inquiry (
+    id bigint NOT NULL,
+    dossier_id bigint NOT NULL,
+    n integer NOT NULL,
+    artifact_ids bigint[] NOT NULL,
+    address_ids text[],
+    verdict text NOT NULL,
+    answer text,
+    inquiry_id integer,
+    decided_by uuid,
+    decided_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT dossier_inquiry_n_check CHECK ((n > 0)),
+    CONSTRAINT dossier_inquiry_rejected_has_no_inquiry CHECK (((verdict = 'accepted'::text) OR (inquiry_id IS NULL))),
+    CONSTRAINT dossier_inquiry_verdict_check CHECK ((verdict = ANY (ARRAY['accepted'::text, 'rejected'::text])))
+);
+
+
+--
+-- Name: TABLE dossier_inquiry; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.dossier_inquiry IS '[intake] The verdict per inquiry of a dossier (Don, 2026-10-09). One row per group of documents the reviewer formed at commit; the closing mail combines the answers into one message to the reporter.';
+
+
+--
+-- Name: COLUMN dossier_inquiry.n; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_inquiry.n IS 'The group''s number in the dossier, as the Studio shows it (Inquiry 1, Inquiry 2, ...).';
+
+
+--
+-- Name: COLUMN dossier_inquiry.artifact_ids; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_inquiry.artifact_ids IS 'The dataops.artifact ids of the documents in this group.';
+
+
+--
+-- Name: COLUMN dossier_inquiry.address_ids; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_inquiry.address_ids IS 'The BAG nummeraanduidingen this rapportage is about; NULL when the reviewer chose none and the melder''s pand was used.';
+
+
+--
+-- Name: COLUMN dossier_inquiry.verdict; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_inquiry.verdict IS 'accepted: the group became report.inquiry inquiry_id. rejected: nothing was taken over from it.';
+
+
+--
+-- Name: COLUMN dossier_inquiry.answer; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_inquiry.answer IS 'The standard answer (or the reviewer''s own text) for this rapportage, as it went into the closing mail.';
+
+
+--
+-- Name: COLUMN dossier_inquiry.inquiry_id; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON COLUMN dataops.dossier_inquiry.inquiry_id IS 'The rapportage this group became; NULL when rejected.';
+
+
+--
+-- Name: dossier_inquiry_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
+--
+
+ALTER TABLE dataops.dossier_inquiry ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME dataops.dossier_inquiry_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: dossier_mail; Type: TABLE; Schema: dataops; Owner: -
 --
 
@@ -5429,87 +5537,28 @@ ALTER TABLE dataops.dossier_mail ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDE
 
 
 --
--- Name: dossier_rapportage; Type: TABLE; Schema: dataops; Owner: -
+-- Name: dossier_rapportage; Type: VIEW; Schema: dataops; Owner: -
 --
 
-CREATE TABLE dataops.dossier_rapportage (
-    id bigint NOT NULL,
-    dossier_id bigint NOT NULL,
-    n integer NOT NULL,
-    artifact_ids bigint[] NOT NULL,
-    address_ids text[],
-    verdict text NOT NULL,
-    answer text,
-    inquiry_id integer,
-    decided_by uuid,
-    decided_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT dossier_rapportage_n_check CHECK ((n > 0)),
-    CONSTRAINT dossier_rapportage_rejected_has_no_inquiry CHECK (((verdict = 'accepted'::text) OR (inquiry_id IS NULL))),
-    CONSTRAINT dossier_rapportage_verdict_check CHECK ((verdict = ANY (ARRAY['accepted'::text, 'rejected'::text])))
-);
+CREATE VIEW dataops.dossier_rapportage AS
+ SELECT id,
+    dossier_id,
+    n,
+    artifact_ids,
+    address_ids,
+    verdict,
+    answer,
+    inquiry_id,
+    decided_by,
+    decided_at
+   FROM dataops.dossier_inquiry;
 
 
 --
--- Name: TABLE dossier_rapportage; Type: COMMENT; Schema: dataops; Owner: -
+-- Name: VIEW dossier_rapportage; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.dossier_rapportage IS '[intake] The verdict per rapportage of a dossier (Don, 2026-10-09). One row per group of documents the reviewer formed at commit; the closing mail combines the answers into one message to the melder.';
-
-
---
--- Name: COLUMN dossier_rapportage.n; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.dossier_rapportage.n IS 'The group''s number in the dossier, as the Studio shows it (Inquiry 1, Inquiry 2, ...).';
-
-
---
--- Name: COLUMN dossier_rapportage.artifact_ids; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.dossier_rapportage.artifact_ids IS 'The dataops.artifact ids of the documents in this group.';
-
-
---
--- Name: COLUMN dossier_rapportage.address_ids; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.dossier_rapportage.address_ids IS 'The BAG nummeraanduidingen this rapportage is about; NULL when the reviewer chose none and the melder''s pand was used.';
-
-
---
--- Name: COLUMN dossier_rapportage.verdict; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.dossier_rapportage.verdict IS 'accepted: the group became report.inquiry inquiry_id. rejected: nothing was taken over from it.';
-
-
---
--- Name: COLUMN dossier_rapportage.answer; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.dossier_rapportage.answer IS 'The standard answer (or the reviewer''s own text) for this rapportage, as it went into the closing mail.';
-
-
---
--- Name: COLUMN dossier_rapportage.inquiry_id; Type: COMMENT; Schema: dataops; Owner: -
---
-
-COMMENT ON COLUMN dataops.dossier_rapportage.inquiry_id IS 'The rapportage this group became; NULL when rejected.';
-
-
---
--- Name: dossier_rapportage_id_seq; Type: SEQUENCE; Schema: dataops; Owner: -
---
-
-ALTER TABLE dataops.dossier_rapportage ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME dataops.dossier_rapportage_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
+COMMENT ON VIEW dataops.dossier_rapportage IS '[legacy] Old name of dataops.dossier_inquiry, kept so the old API (api-prod) and saved scripts keep working; reads and writes go to the table. Drop when api-prod is gone and Studio/api names the table.';
 
 
 --
@@ -5811,7 +5860,7 @@ COMMENT ON TABLE geocoder.residence IS '[BAG] BAG residences (dwelling units): t
 --
 
 CREATE TABLE geocoder.state (
-    id geocoder.geocoder_id DEFAULT geocoder.geocoder_generate_id() NOT NULL,
+    id geocoder.geocoder_id DEFAULT geocoder.generate_id() NOT NULL,
     external_id text NOT NULL,
     country_id geocoder.geocoder_id NOT NULL,
     name text NOT NULL,
@@ -6093,8 +6142,8 @@ CREATE VIEW maplayer.facade_scan AS
              JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
           WHERE ((is2.skewed_parallel IS NOT NULL) AND (is2.skewed_perpendicular IS NOT NULL) AND ((is2.crack_facade_front_type IS NOT NULL) OR (is2.crack_facade_front_size IS NOT NULL) OR (is2.crack_facade_back_type IS NOT NULL) OR (is2.crack_facade_back_size IS NOT NULL) OR (is2.crack_facade_left_type IS NOT NULL) OR (is2.crack_facade_left_size IS NOT NULL) OR (is2.crack_facade_right_type IS NOT NULL) OR (is2.crack_facade_right_size IS NOT NULL)))
           ORDER BY ba.external_id, is2.create_date DESC) inputz
-     JOIN data.model_gevelscan mg ON (((mg.skewed_parallel = inputz.skewed_parallel_facade) AND (mg.skewed_perpendicular = inputz.skewed_perpendicular_facade) AND (mg.facade_type = inputz.facade_type))))
-     LEFT JOIN data.risk_table_priority rtp ON (((rtp.risk = mg.risk) AND (rtp.settlement_speed = inputz.settlement_speed))));
+     JOIN data.facade_scan_risk_rule mg ON (((mg.skewed_parallel = inputz.skewed_parallel_facade) AND (mg.skewed_perpendicular = inputz.skewed_perpendicular_facade) AND (mg.facade_type = inputz.facade_type))))
+     LEFT JOIN data.facade_scan_priority_rule rtp ON (((rtp.risk = mg.risk) AND (rtp.settlement_speed = inputz.settlement_speed))));
 
 
 --
@@ -6157,7 +6206,7 @@ CREATE VIEW maplayer.incident AS
 -- Name: VIEW incident; Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON VIEW maplayer.incident IS '[tiles · source] Incident reports (dossiers with a topic) per building; maplayer.refresh_incident_tiles() copies it into incident_tiles. Not the tile function of the same name.';
+COMMENT ON VIEW maplayer.incident IS '[unused] Incident reports (dossiers with a topic) per building. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_tiles from dataops.dossier itself. Candidate to drop.';
 
 
 --
@@ -6180,7 +6229,7 @@ CREATE VIEW maplayer.incident_district AS
 -- Name: VIEW incident_district; Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON VIEW maplayer.incident_district IS '[tiles · source] Incident count per district; copied into incident_district_tiles by maplayer.refresh_incident_tiles(). Not the tile function of the same name.';
+COMMENT ON VIEW maplayer.incident_district IS '[unused] Incident count per district. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_district_tiles from dataops.dossier itself. Candidate to drop.';
 
 
 --
@@ -6224,7 +6273,7 @@ CREATE VIEW maplayer.incident_municipality AS
 -- Name: VIEW incident_municipality; Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON VIEW maplayer.incident_municipality IS '[tiles · source] Incident count per municipality; copied into incident_municipality_tiles by maplayer.refresh_incident_tiles(). Not the tile function of the same name.';
+COMMENT ON VIEW maplayer.incident_municipality IS '[unused] Incident count per municipality. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_municipality_tiles from dataops.dossier itself. Candidate to drop.';
 
 
 --
@@ -6265,7 +6314,7 @@ CREATE VIEW maplayer.incident_neighborhood AS
 -- Name: VIEW incident_neighborhood; Type: COMMENT; Schema: maplayer; Owner: -
 --
 
-COMMENT ON VIEW maplayer.incident_neighborhood IS '[tiles · source] Incident count per neighbourhood; copied into incident_neighborhood_tiles by maplayer.refresh_incident_tiles(). Not the tile function of the same name.';
+COMMENT ON VIEW maplayer.incident_neighborhood IS '[unused] Incident count per neighbourhood. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_neighborhood_tiles from dataops.dossier itself. Candidate to drop.';
 
 
 --
@@ -6597,11 +6646,11 @@ ALTER TABLE ONLY application.contractor
 
 
 --
--- Name: file_resources file_resources_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+-- Name: file_resource file_resource_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
-ALTER TABLE ONLY application.file_resources
-    ADD CONSTRAINT file_resources_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY application.file_resource
+    ADD CONSTRAINT file_resource_pkey PRIMARY KEY (id);
 
 
 --
@@ -6917,6 +6966,22 @@ ALTER TABLE ONLY dataops.dossier_entry
 
 
 --
+-- Name: dossier_inquiry dossier_inquiry_once; Type: CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_inquiry
+    ADD CONSTRAINT dossier_inquiry_once UNIQUE (dossier_id, n);
+
+
+--
+-- Name: dossier_inquiry dossier_inquiry_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_inquiry
+    ADD CONSTRAINT dossier_inquiry_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: dossier_mail dossier_mail_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
 --
 
@@ -6930,22 +6995,6 @@ ALTER TABLE ONLY dataops.dossier_mail
 
 ALTER TABLE ONLY dataops.dossier
     ADD CONSTRAINT dossier_pkey PRIMARY KEY (id);
-
-
---
--- Name: dossier_rapportage dossier_rapportage_once; Type: CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier_rapportage
-    ADD CONSTRAINT dossier_rapportage_once UNIQUE (dossier_id, n);
-
-
---
--- Name: dossier_rapportage dossier_rapportage_pkey; Type: CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier_rapportage
-    ADD CONSTRAINT dossier_rapportage_pkey PRIMARY KEY (id);
 
 
 --
@@ -7234,24 +7283,24 @@ CREATE INDEX auth_key_user_id_idx ON application.auth_key USING btree (user_id);
 
 
 --
--- Name: file_resources_created_at_idx; Type: INDEX; Schema: application; Owner: -
+-- Name: file_resource_created_at_idx; Type: INDEX; Schema: application; Owner: -
 --
 
-CREATE INDEX file_resources_created_at_idx ON application.file_resources USING btree (created_at);
-
-
---
--- Name: file_resources_key_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX file_resources_key_idx ON application.file_resources USING btree (key);
+CREATE INDEX file_resource_created_at_idx ON application.file_resource USING btree (created_at);
 
 
 --
--- Name: file_resources_status_idx; Type: INDEX; Schema: application; Owner: -
+-- Name: file_resource_key_idx; Type: INDEX; Schema: application; Owner: -
 --
 
-CREATE INDEX file_resources_status_idx ON application.file_resources USING btree (status);
+CREATE INDEX file_resource_key_idx ON application.file_resource USING btree (key);
+
+
+--
+-- Name: file_resource_status_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX file_resource_status_idx ON application.file_resource USING btree (status);
 
 
 --
@@ -7605,17 +7654,17 @@ CREATE UNIQUE INDEX dossier_entry_mail_idx ON dataops.dossier_entry USING btree 
 
 
 --
+-- Name: dossier_inquiry_inquiry_idx; Type: INDEX; Schema: dataops; Owner: -
+--
+
+CREATE INDEX dossier_inquiry_inquiry_idx ON dataops.dossier_inquiry USING btree (inquiry_id) WHERE (inquiry_id IS NOT NULL);
+
+
+--
 -- Name: dossier_mail_once; Type: INDEX; Schema: dataops; Owner: -
 --
 
 CREATE UNIQUE INDEX dossier_mail_once ON dataops.dossier_mail USING btree (dossier_id, kind) WHERE (kind = ANY (ARRAY['received'::text, 'closed'::text, 'risk_changed'::text]));
-
-
---
--- Name: dossier_rapportage_inquiry_idx; Type: INDEX; Schema: dataops; Owner: -
---
-
-CREATE INDEX dossier_rapportage_inquiry_idx ON dataops.dossier_rapportage USING btree (inquiry_id) WHERE (inquiry_id IS NOT NULL);
 
 
 --
@@ -8105,35 +8154,35 @@ CREATE TRIGGER inquiry_sample_damage_lists BEFORE INSERT OR UPDATE OF damage_cau
 -- Name: incident update_date_record; Type: TRIGGER; Schema: report; Owner: -
 --
 
-CREATE TRIGGER update_date_record BEFORE UPDATE ON report.incident FOR EACH ROW EXECUTE FUNCTION report.last_record_update();
+CREATE TRIGGER update_date_record BEFORE UPDATE ON report.incident FOR EACH ROW EXECUTE FUNCTION report.set_update_date();
 
 
 --
 -- Name: inquiry update_date_record; Type: TRIGGER; Schema: report; Owner: -
 --
 
-CREATE TRIGGER update_date_record BEFORE UPDATE ON report.inquiry FOR EACH ROW EXECUTE FUNCTION report.last_record_update();
+CREATE TRIGGER update_date_record BEFORE UPDATE ON report.inquiry FOR EACH ROW EXECUTE FUNCTION report.set_update_date();
 
 
 --
 -- Name: inquiry_sample update_date_record; Type: TRIGGER; Schema: report; Owner: -
 --
 
-CREATE TRIGGER update_date_record BEFORE UPDATE ON report.inquiry_sample FOR EACH ROW EXECUTE FUNCTION report.last_record_update();
+CREATE TRIGGER update_date_record BEFORE UPDATE ON report.inquiry_sample FOR EACH ROW EXECUTE FUNCTION report.set_update_date();
 
 
 --
 -- Name: recovery update_date_record; Type: TRIGGER; Schema: report; Owner: -
 --
 
-CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery FOR EACH ROW EXECUTE FUNCTION report.last_record_update();
+CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery FOR EACH ROW EXECUTE FUNCTION report.set_update_date();
 
 
 --
 -- Name: recovery_sample update_date_record; Type: TRIGGER; Schema: report; Owner: -
 --
 
-CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery_sample FOR EACH ROW EXECUTE FUNCTION report.last_record_update();
+CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery_sample FOR EACH ROW EXECUTE FUNCTION report.set_update_date();
 
 
 --
@@ -8521,35 +8570,35 @@ ALTER TABLE ONLY dataops.dossier_entry
 
 
 --
+-- Name: dossier_inquiry dossier_inquiry_decided_by_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_inquiry
+    ADD CONSTRAINT dossier_inquiry_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dossier_inquiry dossier_inquiry_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_inquiry
+    ADD CONSTRAINT dossier_inquiry_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dossier_inquiry dossier_inquiry_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
+--
+
+ALTER TABLE ONLY dataops.dossier_inquiry
+    ADD CONSTRAINT dossier_inquiry_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES report.inquiry(id) ON DELETE SET NULL;
+
+
+--
 -- Name: dossier_mail dossier_mail_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
 --
 
 ALTER TABLE ONLY dataops.dossier_mail
     ADD CONSTRAINT dossier_mail_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
-
-
---
--- Name: dossier_rapportage dossier_rapportage_decided_by_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier_rapportage
-    ADD CONSTRAINT dossier_rapportage_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES application."user"(id) ON DELETE SET NULL;
-
-
---
--- Name: dossier_rapportage dossier_rapportage_dossier_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier_rapportage
-    ADD CONSTRAINT dossier_rapportage_dossier_id_fkey FOREIGN KEY (dossier_id) REFERENCES dataops.dossier(id) ON DELETE CASCADE;
-
-
---
--- Name: dossier_rapportage dossier_rapportage_inquiry_id_fkey; Type: FK CONSTRAINT; Schema: dataops; Owner: -
---
-
-ALTER TABLE ONLY dataops.dossier_rapportage
-    ADD CONSTRAINT dossier_rapportage_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES report.inquiry(id) ON DELETE SET NULL;
 
 
 --
@@ -8788,5 +8837,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FS78EGDNttcwBcnSeRdrGro5Hthx1ulSVWqbeNBjFkKGSP0PGRFY9uTb7frDtSC
+\unrestrict yRIAXT3YkIUVAy61YPqE4FaOXZn5w7hVf4ZYwwIvNNL8iJ3sGPDvlFGHIDg1Yd2
 

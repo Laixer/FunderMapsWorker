@@ -140,7 +140,7 @@ sed -e '/^\\restrict /d' -e '/^\\unrestrict /d' "${SCHEMA_FILE}" \
         psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -X -q
 
 # --- Step 4: model lookup data ----------------------------------------------
-# data.model_gevelscan and data.risk_table_priority are static lookup tables
+# data.facade_scan_risk_rule and data.facade_scan_priority_rule are static lookup tables
 # that drive maplayer.facade_scan. Their structure is in schema.sql, their
 # data lives here. Relocated from public to data schema 2026-05-11.
 echo "==> Loading model lookup data"
