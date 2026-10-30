@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict xuanE1mJbP4vwHzEw1mENd9Klfkxu0dFryczdUrQ8kCdOWpCPC6mKBQa4lvrZc1
+\restrict uBnXmuFpV2COWJorhDoowrfUbO4WS4pCgn23KxgYLZmEwgOUdIcUAj9fshA6xKt
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -6184,55 +6184,6 @@ COMMENT ON TABLE maplayer.facade_scan_tiles IS '[tiles · cache] Rows behind the
 
 
 --
--- Name: incident; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.incident AS
- SELECT m.building_id AS id,
-    NULL::report.foundation_damage_cause AS foundation_damage_cause,
-    round((GREATEST(bh.height, (0)::real))::numeric, 2) AS height,
-    ba.geom,
-    m.topic
-   FROM ((( SELECT DISTINCT ON (d.building_id) d.building_id,
-            (d.payload ->> 'topic'::text) AS topic
-           FROM dataops.dossier d
-          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))
-          ORDER BY d.building_id, d.created_at DESC) m
-     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
-     JOIN data.building_height bh ON ((bh.building_id = ba.external_id)));
-
-
---
--- Name: VIEW incident; Type: COMMENT; Schema: maplayer; Owner: -
---
-
-COMMENT ON VIEW maplayer.incident IS '[unused] Incident reports (dossiers with a topic) per building. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_tiles from dataops.dossier itself. Candidate to drop.';
-
-
---
--- Name: incident_district; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.incident_district AS
- SELECT d2.geom,
-    count(*) AS incident_count
-   FROM (((( SELECT DISTINCT d.building_id
-           FROM dataops.dossier d
-          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))) m
-     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
-     JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
-     JOIN geocoder.district d2 ON (((d2.id)::text = (n.district_id)::text)))
-  GROUP BY d2.id, d2.geom;
-
-
---
--- Name: VIEW incident_district; Type: COMMENT; Schema: maplayer; Owner: -
---
-
-COMMENT ON VIEW maplayer.incident_district IS '[unused] Incident count per district. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_district_tiles from dataops.dossier itself. Candidate to drop.';
-
-
---
 -- Name: incident_district_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -6253,30 +6204,6 @@ COMMENT ON TABLE maplayer.incident_district_tiles IS '[tiles · cache] Rows behi
 
 
 --
--- Name: incident_municipality; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.incident_municipality AS
- SELECT mu.geom,
-    count(*) AS incident_count
-   FROM ((((( SELECT DISTINCT d.building_id
-           FROM dataops.dossier d
-          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))) m
-     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
-     JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
-     JOIN geocoder.district d2 ON (((d2.id)::text = (n.district_id)::text)))
-     JOIN geocoder.municipality mu ON (((mu.id)::text = (d2.municipality_id)::text)))
-  GROUP BY mu.id, mu.geom;
-
-
---
--- Name: VIEW incident_municipality; Type: COMMENT; Schema: maplayer; Owner: -
---
-
-COMMENT ON VIEW maplayer.incident_municipality IS '[unused] Incident count per municipality. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_municipality_tiles from dataops.dossier itself. Candidate to drop.';
-
-
---
 -- Name: incident_municipality_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -6293,28 +6220,6 @@ CREATE TABLE maplayer.incident_municipality_tiles (
 --
 
 COMMENT ON TABLE maplayer.incident_municipality_tiles IS '[tiles · cache] Rows behind the tile function maplayer.incident_municipality(z,x,y): incident count per municipality. Rebuilt by maplayer.refresh_incident_tiles().';
-
-
---
--- Name: incident_neighborhood; Type: VIEW; Schema: maplayer; Owner: -
---
-
-CREATE VIEW maplayer.incident_neighborhood AS
- SELECT n.geom,
-    count(*) AS incident_count
-   FROM ((( SELECT DISTINCT d.building_id
-           FROM dataops.dossier d
-          WHERE (((d.payload ->> 'topic'::text) IS NOT NULL) AND (d.building_id IS NOT NULL))) m
-     JOIN geocoder.building_active ba ON ((ba.external_id = m.building_id)))
-     JOIN geocoder.neighborhood n ON (((n.id)::text = (ba.neighborhood_id)::text)))
-  GROUP BY n.id, n.geom;
-
-
---
--- Name: VIEW incident_neighborhood; Type: COMMENT; Schema: maplayer; Owner: -
---
-
-COMMENT ON VIEW maplayer.incident_neighborhood IS '[unused] Incident count per neighbourhood. Nothing reads this view: maplayer.refresh_incident_tiles() builds incident_neighborhood_tiles from dataops.dossier itself. Candidate to drop.';
 
 
 --
@@ -8837,5 +8742,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xuanE1mJbP4vwHzEw1mENd9Klfkxu0dFryczdUrQ8kCdOWpCPC6mKBQa4lvrZc1
+\unrestrict uBnXmuFpV2COWJorhDoowrfUbO4WS4pCgn23KxgYLZmEwgOUdIcUAj9fshA6xKt
 
