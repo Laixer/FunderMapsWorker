@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict YIg7exVekcx2omthPOD3c2lX9Chj49PTiQPEyi9dHm32yhV48kn6cZnyhkeDCX6
+\restrict FS78EGDNttcwBcnSeRdrGro5Hthx1ulSVWqbeNBjFkKGSP0PGRFY9uTb7frDtSC
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2807,6 +2807,13 @@ CREATE TABLE application.account (
 
 
 --
+-- Name: TABLE account; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.account IS '[Better Auth · core] Login methods per user: one row per provider; for email login it holds the password hash.';
+
+
+--
 -- Name: api_key_rate_limit; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2828,7 +2835,7 @@ CREATE TABLE application.api_key_rate_limit (
 -- Name: TABLE api_key_rate_limit; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.api_key_rate_limit IS 'Per-(API key, product) billing-event rate limits enforced by FunderMapsWebservice.';
+COMMENT ON TABLE application.api_key_rate_limit IS '[billing] Per-(API key, product) billing-event rate limits enforced by FunderMapsWebservice.';
 
 
 --
@@ -2890,6 +2897,13 @@ CREATE TABLE application.apikey (
 
 
 --
+-- Name: TABLE apikey; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.apikey IS '[Better Auth · api-key] API keys issued by the plugin (prefix fmsk.): hashed key, owner (reference_id), enabled flag and expiry. Per-product billing limits live in application.api_key_rate_limit.';
+
+
+--
 -- Name: application; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2908,7 +2922,7 @@ CREATE TABLE application.application (
 -- Name: TABLE application; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.application IS 'Contains all applications.';
+COMMENT ON TABLE application.application IS '[legacy] Registry of the old FunderMaps apps and portals (21 rows, most unused). application_user hangs off it.';
 
 
 --
@@ -2927,7 +2941,7 @@ CREATE TABLE application.application_user (
 -- Name: TABLE application_user; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.application_user IS 'Linking table between application and user.';
+COMMENT ON TABLE application.application_user IS '[access] Per-user settings for an app (JSON metadata), keyed by user and application_id.';
 
 
 --
@@ -2948,7 +2962,7 @@ CREATE TABLE application.attribution (
 -- Name: TABLE attribution; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.attribution IS 'Intermediate object between an uploaded sample or report and the assigned user reviewer or owner. In case of user deletion a reference still exists, only the reference to said user or owner will be set to NULL.';
+COMMENT ON TABLE application.attribution IS '[records] Intermediate object between an uploaded sample or report and the assigned user reviewer or owner. In case of user deletion a reference still exists, only the reference to said user or owner will be set to NULL.';
 
 
 --
@@ -2987,6 +3001,13 @@ CREATE TABLE application.auth_key (
 
 
 --
+-- Name: TABLE auth_key; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.auth_key IS '[legacy] API keys from before Better Auth (hashed). Still read next to application.apikey until the last customers have moved to fmsk. keys; then drop.';
+
+
+--
 -- Name: contractor; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2994,6 +3015,13 @@ CREATE TABLE application.contractor (
     id integer NOT NULL,
     name text
 );
+
+
+--
+-- Name: TABLE contractor; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.contractor IS '[records] Contractors (research and repair firms) that reports are attributed to.';
 
 
 --
@@ -3037,7 +3065,7 @@ CREATE TABLE application.file_resources (
 -- Name: TABLE file_resources; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.file_resources IS 'Stores metadata about file resources stored in an S3-compatible object storage.';
+COMMENT ON TABLE application.file_resources IS '[files] Metadata of uploaded files in S3-compatible storage. Status uploaded until a record links the file (then active); replaced or deleted files become archived.';
 
 
 --
@@ -3062,7 +3090,7 @@ CREATE TABLE application.invitation (
 -- Name: TABLE invitation; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.invitation IS 'Better Auth organization-plugin invitations (Phase 2).';
+COMMENT ON TABLE application.invitation IS '[Better Auth · organization] Invitations to join an organisation. Not used yet.';
 
 
 --
@@ -3083,6 +3111,13 @@ CREATE TABLE application.mapset (
 
 
 --
+-- Name: TABLE mapset; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.mapset IS '[maps] A map in the map app: a named, ordered list of layer ids (layers), public or shared per organisation via organization_mapset.';
+
+
+--
 -- Name: mapset_layer; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -3092,6 +3127,13 @@ CREATE TABLE application.mapset_layer (
     fields jsonb NOT NULL,
     "order" integer DEFAULT 0 NOT NULL
 );
+
+
+--
+-- Name: TABLE mapset_layer; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.mapset_layer IS '[maps] One map layer: its fields (the legend) and display order. Mapsets list layer ids.';
 
 
 --
@@ -3119,6 +3161,13 @@ CREATE VIEW application.mapset_collection AS
 
 
 --
+-- Name: VIEW mapset_collection; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON VIEW application.mapset_collection IS '[maps] Each mapset with its layers inlined as one JSON array (layerset), the way the map app loads it.';
+
+
+--
 -- Name: organization; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -3136,7 +3185,7 @@ CREATE TABLE application.organization (
 -- Name: TABLE organization; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.organization IS 'Contains all organizations that are using FunderMaps.';
+COMMENT ON TABLE application.organization IS '[Better Auth · organization] Organisations: customers and our own. Our existing table, mapped onto the plugin''s organization model.';
 
 
 --
@@ -3157,7 +3206,7 @@ CREATE TABLE application.organization_custom_role (
 -- Name: TABLE organization_custom_role; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.organization_custom_role IS 'Better Auth dynamic access control: admin-defined per-organization roles with a JSON permission map (resource -> actions). Named *_custom_role because application.organization_role is the role enum type.';
+COMMENT ON TABLE application.organization_custom_role IS '[Better Auth · organization] Better Auth dynamic access control: admin-defined per-organization roles with a JSON permission map (resource -> actions). Named *_custom_role because application.organization_role is the role enum type.';
 
 
 --
@@ -3174,7 +3223,7 @@ CREATE TABLE application.organization_geolock_district (
 -- Name: TABLE organization_geolock_district; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.organization_geolock_district IS 'Linking table between organizations and their geolock objects.';
+COMMENT ON TABLE application.organization_geolock_district IS '[access] Limits an organisation''s data to these districts. Supported, but no organisation uses it.';
 
 
 --
@@ -3191,7 +3240,7 @@ CREATE TABLE application.organization_geolock_municipality (
 -- Name: TABLE organization_geolock_municipality; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.organization_geolock_municipality IS 'Linking table between organizations and their geolock objects.';
+COMMENT ON TABLE application.organization_geolock_municipality IS '[access] Limits an organisation''s data to these municipalities.';
 
 
 --
@@ -3208,7 +3257,7 @@ CREATE TABLE application.organization_geolock_neighborhood (
 -- Name: TABLE organization_geolock_neighborhood; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.organization_geolock_neighborhood IS 'Linking table between organizations and their geolock objects.';
+COMMENT ON TABLE application.organization_geolock_neighborhood IS '[access] Limits an organisation''s data to these neighbourhoods.';
 
 
 --
@@ -3220,6 +3269,13 @@ CREATE TABLE application.organization_mapset (
     mapset_id text NOT NULL,
     metadata jsonb
 );
+
+
+--
+-- Name: TABLE organization_mapset; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_mapset IS '[access] Which organisation sees which mapset (non-public maps).';
 
 
 --
@@ -3239,7 +3295,7 @@ CREATE TABLE application.organization_user (
 -- Name: TABLE organization_user; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.organization_user IS 'Linking table between organizations and their users.';
+COMMENT ON TABLE application.organization_user IS '[Better Auth · organization] Membership of a user in an organisation, with their role (superuser, verifier, writer, reader). The plugin''s member model, renamed in auth.ts.';
 
 
 --
@@ -3265,7 +3321,7 @@ CREATE TABLE application.passkey (
 -- Name: TABLE passkey; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.passkey IS 'WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
+COMMENT ON TABLE application.passkey IS '[Better Auth · passkey] WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
 
 
 --
@@ -3279,6 +3335,13 @@ CREATE TABLE application.product_tracker (
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     identifier text NOT NULL
 );
+
+
+--
+-- Name: TABLE product_tracker; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.product_tracker IS '[billing] The billing record: one row per billable lookup (organisation, product, building, time). Never edit or prune.';
 
 
 --
@@ -3297,6 +3360,13 @@ CREATE TABLE application.schema_migrations (
 
 
 --
+-- Name: TABLE schema_migrations; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.schema_migrations IS '[ops] Ledger of the Worker migrations runner (bun run migrate): version, checksum, who applied it and when.';
+
+
+--
 -- Name: session; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -3312,6 +3382,13 @@ CREATE TABLE application.session (
     impersonated_by uuid,
     active_organization_id application.organization_id
 );
+
+
+--
+-- Name: TABLE session; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.session IS '[Better Auth · core] Login sessions (the cookie token). The admin plugin adds impersonated_by, the organization plugin active_organization_id.';
 
 
 --
@@ -3341,7 +3418,7 @@ CREATE TABLE application."user" (
 -- Name: TABLE "user"; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application."user" IS 'Contains all FunderMaps users.';
+COMMENT ON TABLE application."user" IS '[Better Auth · core] People who can log in. The admin plugin adds role, banned, ban_reason and ban_expires; we add given_name, last_name, job_title and phone_number; Better Auth''s image is our avatar.';
 
 
 --
@@ -3359,6 +3436,13 @@ CREATE TABLE application.verification (
 
 
 --
+-- Name: TABLE verification; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.verification IS '[Better Auth · core] Short-lived tokens for password reset and email checks.';
+
+
+--
 -- Name: building_cluster; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -3366,6 +3450,13 @@ CREATE TABLE data.building_cluster (
     building_id text NOT NULL,
     cluster_id uuid NOT NULL
 );
+
+
+--
+-- Name: TABLE building_cluster; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_cluster IS '[model input] The cluster each building belongs to: nearby buildings that share evidence.';
 
 
 --
@@ -3378,6 +3469,13 @@ CREATE TABLE data.building_elevation (
     roof real,
     height real GENERATED ALWAYS AS ((roof - ground)) STORED
 );
+
+
+--
+-- Name: TABLE building_elevation; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_elevation IS '[model input] Ground level, roof level and height per building.';
 
 
 --
@@ -3428,7 +3526,7 @@ CREATE MATERIALIZED VIEW data.model_risk_static_2026_3 AS
 -- Name: MATERIALIZED VIEW model_risk_static_2026_3; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS 'model-2026.3 for every pand: data.model_risk_2026_3_rows() with every rule on. The first 30 columns are the model contract (the pointer view selects them by name); the columns after them say where each risk came from and are not served. Refreshed by Windmill f/fundermaps/data/refresh_risk_model, after the sample matviews. See docs/model-versioning.md.';
+COMMENT ON MATERIALIZED VIEW data.model_risk_static_2026_3 IS '[model output] model-2026.3 for every pand: data.model_risk_2026_3_rows() with every rule on. The first 30 columns are the model contract (the pointer view selects them by name); the columns after them say where each risk came from and are not served. Refreshed by Windmill f/fundermaps/data/refresh_risk_model, after the sample matviews. See docs/model-versioning.md.';
 
 
 --
@@ -3473,7 +3571,7 @@ CREATE VIEW data.model_risk_static AS
 -- Name: VIEW model_risk_static; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON VIEW data.model_risk_static IS 'Pointer at the default model version. Consumers should name this, not a versioned matview. Switch the default with CREATE OR REPLACE VIEW. See docs/model-versioning.md.';
+COMMENT ON VIEW data.model_risk_static IS '[model output] Pointer at the default model version. Consumers should name this, not a versioned matview. Switch the default with CREATE OR REPLACE VIEW. See docs/model-versioning.md.';
 
 
 --
@@ -3496,7 +3594,7 @@ CREATE TABLE geocoder.building (
 -- Name: TABLE building; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.building IS 'Contains all buildings in our own format.';
+COMMENT ON TABLE geocoder.building IS '[BAG] BAG buildings in our own format: geometry, build year, type, status and neighbourhood.';
 
 
 --
@@ -3518,7 +3616,7 @@ CREATE VIEW geocoder.building_active AS
 -- Name: VIEW building_active; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON VIEW geocoder.building_active IS 'Contains all entries from geocoder.building which have their status set to active.';
+COMMENT ON VIEW geocoder.building_active IS '[BAG] The buildings from geocoder.building whose status is active.';
 
 
 --
@@ -3539,7 +3637,7 @@ CREATE TABLE geocoder.district (
 -- Name: TABLE district; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.district IS 'Contains all districts in our own format.';
+COMMENT ON TABLE geocoder.district IS '[areas] Districts (CBS), with geometry.';
 
 
 --
@@ -3560,7 +3658,7 @@ CREATE TABLE geocoder.municipality (
 -- Name: TABLE municipality; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.municipality IS 'Contains all municipalities in our own format.';
+COMMENT ON TABLE geocoder.municipality IS '[areas] Municipalities (CBS), with geometry.';
 
 
 --
@@ -3581,7 +3679,7 @@ CREATE TABLE geocoder.neighborhood (
 -- Name: TABLE neighborhood; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.neighborhood IS 'Contains all neighborhoods in our own format.';
+COMMENT ON TABLE geocoder.neighborhood IS '[areas] Neighbourhoods (CBS), with geometry.';
 
 
 --
@@ -3632,6 +3730,13 @@ CREATE VIEW data.building_geo_hierarchy AS
 
 
 --
+-- Name: VIEW building_geo_hierarchy; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON VIEW data.building_geo_hierarchy IS '[export] The default model per building with its neighbourhood, district and municipality. Feeds maplayer.analysis_full (the archive export).';
+
+
+--
 -- Name: building_geographic_region; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -3643,6 +3748,13 @@ CREATE TABLE data.building_geographic_region (
 
 
 --
+-- Name: TABLE building_geographic_region; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_geographic_region IS '[model input] Soil region (code) per building.';
+
+
+--
 -- Name: building_groundwater_level; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -3650,6 +3762,13 @@ CREATE TABLE data.building_groundwater_level (
     building_id text NOT NULL,
     level double precision NOT NULL
 );
+
+
+--
+-- Name: TABLE building_groundwater_level; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_groundwater_level IS '[model input] Groundwater level per building.';
 
 
 --
@@ -3667,7 +3786,7 @@ CREATE VIEW data.building_height AS
 -- Name: VIEW building_height; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON VIEW data.building_height IS 'Absolute building height';
+COMMENT ON VIEW data.building_height IS '[model input] Absolute building height, from data.building_elevation.';
 
 
 --
@@ -3681,6 +3800,13 @@ CREATE TABLE data.building_ownership (
 
 
 --
+-- Name: TABLE building_ownership; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_ownership IS '[model input] Owner per building, where known.';
+
+
+--
 -- Name: building_pleistocene; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -3688,6 +3814,13 @@ CREATE TABLE data.building_pleistocene (
     building_id text NOT NULL,
     depth double precision
 );
+
+
+--
+-- Name: TABLE building_pleistocene; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_pleistocene IS '[model input] Depth of the Pleistocene layer per building.';
 
 
 --
@@ -3703,6 +3836,13 @@ CREATE TABLE data.building_precomputed (
     height double precision,
     ground_level numeric(5,2)
 );
+
+
+--
+-- Name: TABLE building_precomputed; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_precomputed IS '[model input] One row per active house with its basic inputs (neighbourhood, surface area, addresses, BAG build year, height, ground level). Rebuilt by data.refresh_building_precomputed() after a BAG load.';
 
 
 --
@@ -3734,7 +3874,7 @@ CREATE TABLE report.inquiry (
 -- Name: TABLE inquiry; Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON TABLE report.inquiry IS 'Contains inquiries.';
+COMMENT ON TABLE report.inquiry IS '[records] Research reports: one row per report (type, document date, audit status). The findings per building are in inquiry_sample.';
 
 
 --
@@ -3857,7 +3997,7 @@ CREATE TABLE report.inquiry_sample (
 -- Name: TABLE inquiry_sample; Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON TABLE report.inquiry_sample IS 'Contains sample data for inquiries.';
+COMMENT ON TABLE report.inquiry_sample IS '[records] One building''s findings in a research report: foundation type, quality, damage, measurements.';
 
 
 --
@@ -3959,6 +4099,13 @@ CREATE MATERIALIZED VIEW data.building_sample AS
 
 
 --
+-- Name: MATERIALIZED VIEW building_sample; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.building_sample IS '[model evidence] Evidence per building from research reports, the way the risk model reads it. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: building_sample_2026_3; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -3990,6 +4137,13 @@ CREATE MATERIALIZED VIEW data.building_sample_2026_3 AS
 
 
 --
+-- Name: MATERIALIZED VIEW building_sample_2026_3; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.building_sample_2026_3 IS '[model evidence] Extra evidence per building for model-2026.3 (QuickScan and research dates, decay findings), built on building_sample. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: building_subsidence; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -3997,6 +4151,13 @@ CREATE TABLE data.building_subsidence (
     building_id text NOT NULL,
     velocity double precision NOT NULL
 );
+
+
+--
+-- Name: TABLE building_subsidence; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_subsidence IS '[model input] Current subsidence velocity per building.';
 
 
 --
@@ -4011,6 +4172,13 @@ CREATE TABLE data.building_subsidence_history (
 
 
 --
+-- Name: TABLE building_subsidence_history; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.building_subsidence_history IS '[model input] Subsidence measurement series per building (one row per building and mark_at). The largest table in the database.';
+
+
+--
 -- Name: cluster_recovery_sample; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4018,6 +4186,13 @@ CREATE TABLE data.cluster_recovery_sample (
     cluster_id uuid NOT NULL,
     type report.recovery_type
 );
+
+
+--
+-- Name: TABLE cluster_recovery_sample; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.cluster_recovery_sample IS '[model evidence] Recovery types per building cluster.';
 
 
 --
@@ -4060,6 +4235,13 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
 
 
 --
+-- Name: MATERIALIZED VIEW cluster_sample; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.cluster_sample IS '[model evidence] Evidence per building cluster, for buildings without a report of their own. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: model_evaluation_sample; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4083,7 +4265,7 @@ CREATE TABLE data.model_evaluation_sample (
 -- Name: TABLE model_evaluation_sample; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.model_evaluation_sample IS 'Frozen benchmark for scoring candidate models. Deliberately a table, not a view: a growing truth set would make two candidates scored on different days incomparable. See docs/model-versioning.md.';
+COMMENT ON TABLE data.model_evaluation_sample IS '[model benchmark] Frozen benchmark for scoring candidate models. Deliberately a table, not a view: a growing truth set would make two candidates scored on different days incomparable. See docs/model-versioning.md.';
 
 
 --
@@ -4110,7 +4292,7 @@ CREATE TABLE data.model_evaluation_stratum_weight (
 -- Name: TABLE model_evaluation_stratum_weight; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.model_evaluation_stratum_weight IS 'True national size of each evaluation stratum. The population sample is floored at 2,000 per stratum and is therefore NOT proportional -- weight by national_buildings before quoting any national figure.';
+COMMENT ON TABLE data.model_evaluation_stratum_weight IS '[model benchmark] True national size of each evaluation stratum. The population sample is floored at 2,000 per stratum and is therefore NOT proportional -- weight by national_buildings before quoting any national figure.';
 
 
 --
@@ -4143,7 +4325,7 @@ CREATE TABLE data.model_foundation_2026_2 (
 -- Name: TABLE model_foundation_2026_2; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.model_foundation_2026_2 IS 'Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
+COMMENT ON TABLE data.model_foundation_2026_2 IS '[model candidate] Candidate model-2026.2 (Worker #152, rc2 2026-09-27): blend of two LightGBM foundation-family models (c where the buurt has report labels, else mean of a and c) plus model d for the wood-pile / wood-pile-with-concrete-top split, trained offline on report labels (quickscan and facade_scan excluded). p_* = blend probabilities, p_oplanger = P(concrete top | wood). family/foundation_type = own evidence when source is report or quickscan (grade vastgesteld), else the model. evidence: buurt = a label in the same buurt x era; nabij = only a label within 250 m; municipal = municipality has >= 30 labels; none = neither. grade from the out-of-sample lookup (zeer betrouwbaar ~96%, betrouwbaar ~83% correct). Served to nobody except the FunderMaps B.V. candidate mapset. Frozen model-2024.1 is untouched.';
 
 
 --
@@ -4159,6 +4341,13 @@ CREATE TABLE data.model_gevelscan (
 
 
 --
+-- Name: TABLE model_gevelscan; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.model_gevelscan IS '[facade scan] Decision table: facade skew (parallel, perpendicular) and facade type give the facade-scan risk (a to e). Read by maplayer.facade_scan.';
+
+
+--
 -- Name: supercluster; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4166,6 +4355,13 @@ CREATE TABLE data.supercluster (
     cluster_id uuid NOT NULL,
     supercluster_id uuid NOT NULL
 );
+
+
+--
+-- Name: TABLE supercluster; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.supercluster IS '[model input] The supercluster each cluster belongs to: the next level up when a cluster has no evidence of its own.';
 
 
 --
@@ -4209,6 +4405,13 @@ CREATE MATERIALIZED VIEW data.supercluster_sample AS
 
 
 --
+-- Name: MATERIALIZED VIEW supercluster_sample; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.supercluster_sample IS '[model evidence] Evidence per supercluster, the fallback after cluster_sample. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: recovery_sample; Type: TABLE; Schema: report; Owner: -
 --
 
@@ -4236,7 +4439,7 @@ CREATE TABLE report.recovery_sample (
 -- Name: TABLE recovery_sample; Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON TABLE report.recovery_sample IS 'Contains sample data for recovery operations.';
+COMMENT ON TABLE report.recovery_sample IS '[records] One building in a recovery: recovery type, status and date.';
 
 
 --
@@ -4390,6 +4593,13 @@ CREATE VIEW data.model_risk_dynamic_all AS
 
 
 --
+-- Name: VIEW model_risk_dynamic_all; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON VIEW data.model_risk_dynamic_all IS '[model output · frozen] The model-2024.1 logic as a live view. Only source of the frozen matview model_risk_static_2024_1; nothing else reads it.';
+
+
+--
 -- Name: model_risk_static_2024_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4429,6 +4639,13 @@ CREATE MATERIALIZED VIEW data.model_risk_static_2024_1 AS
 
 
 --
+-- Name: MATERIALIZED VIEW model_risk_static_2024_1; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.model_risk_static_2024_1 IS '[model output · frozen] model-2024.1 for every building. Frozen: not refreshed since 2026-10-19, when model-2026.3 became the default. Kept as the baseline for sql/validate/model_2026_3_control.sql.';
+
+
+--
 -- Name: model_version; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4453,7 +4670,7 @@ CREATE TABLE data.model_version (
 -- Name: TABLE model_version; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.model_version IS 'Registry of risk model versions: what each was built from, and where it is in its lifecycle. See docs/model-versioning.md.';
+COMMENT ON TABLE data.model_version IS '[model registry] Registry of risk model versions: what each was built from, and where it is in its lifecycle. See docs/model-versioning.md.';
 
 
 --
@@ -4495,7 +4712,7 @@ CREATE MATERIALIZED VIEW data.product_tracker_daily AS
 -- Name: MATERIALIZED VIEW product_tracker_daily; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON MATERIALIZED VIEW data.product_tracker_daily IS 'Webservice/map usage per Amsterdam-local day, organization and product. Source: application.product_tracker. Refreshed by the refresh_data_model flow.';
+COMMENT ON MATERIALIZED VIEW data.product_tracker_daily IS '[usage] Webservice/map usage per Amsterdam-local day, organization and product. Source: application.product_tracker. Refreshed by the refresh_data_model flow.';
 
 
 --
@@ -4515,7 +4732,7 @@ CREATE TABLE data.refresh_log (
 -- Name: TABLE refresh_log; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.refresh_log IS 'One row per completed scheduled job (e.g. refresh_data_model). Read by Grafana and, later, /health/nightly as a dead-man switch.';
+COMMENT ON TABLE data.refresh_log IS '[ops] One row per completed scheduled job (e.g. refresh_data_model). Read by Grafana and, later, /health/nightly as a dead-man switch.';
 
 
 --
@@ -4544,6 +4761,13 @@ CREATE TABLE data.risk_table_priority (
 
 
 --
+-- Name: TABLE risk_table_priority; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON TABLE data.risk_table_priority IS '[facade scan] Decision table: risk and settlement speed give a priority label. Read by maplayer.facade_scan.';
+
+
+--
 -- Name: statistics_product_buildings_restored; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4561,6 +4785,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_buildings_restored AS
 
 
 --
+-- Name: MATERIALIZED VIEW statistics_product_buildings_restored; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_buildings_restored IS '[statistics] Webservice statistics product: number of restored buildings per neighbourhood. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: statistics_product_construction_years; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4573,6 +4804,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_construction_years AS
   WHERE (ba.built_year IS NOT NULL)
   GROUP BY ba.neighborhood_id, decade.decade
   WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW statistics_product_construction_years; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_construction_years IS '[statistics] Webservice statistics product: buildings per construction-year bucket (year_from) per neighbourhood. Refreshed by refresh_data_model.';
 
 
 --
@@ -4593,7 +4831,7 @@ CREATE TABLE geocoder.address (
 -- Name: TABLE address; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.address IS 'Contains all addresses in our own format, including a tsvector column to enable full text search.';
+COMMENT ON TABLE geocoder.address IS '[BAG] BAG addresses in our own format, with a tsvector column for full-text search.';
 
 
 --
@@ -4608,6 +4846,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_data_collected AS
      LEFT JOIN report.inquiry_sample i ON (((i.building_id)::text = (a.building_id)::text)))
   GROUP BY ba.neighborhood_id
   WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW statistics_product_data_collected; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_data_collected IS '[statistics] Webservice statistics product: share of buildings with collected data per neighbourhood. Refreshed by refresh_data_model.';
 
 
 --
@@ -4629,6 +4874,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_foundation_risk AS
 
 
 --
+-- Name: MATERIALIZED VIEW statistics_product_foundation_risk; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_foundation_risk IS '[statistics] Webservice statistics product: share of buildings per foundation risk per neighbourhood. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: statistics_product_foundation_type; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4639,6 +4891,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_foundation_type AS
    FROM data.model_risk_static mrs
   GROUP BY neighborhood_id, foundation_type
   WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW statistics_product_foundation_type; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_foundation_type IS '[statistics] Webservice statistics product: share of buildings per foundation type per neighbourhood. Refreshed by refresh_data_model.';
 
 
 --
@@ -4672,7 +4931,7 @@ CREATE TABLE report.incident (
 -- Name: TABLE incident; Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON TABLE report.incident IS 'Contains reported incidents.';
+COMMENT ON TABLE report.incident IS '[records] Incident reports about a building: what the reporter saw and asked.';
 
 
 --
@@ -4714,6 +4973,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_incident_municipality AS
 
 
 --
+-- Name: MATERIALIZED VIEW statistics_product_incident_municipality; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_incident_municipality IS '[statistics] Webservice statistics product: incidents per year per municipality. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: statistics_product_incidents; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
@@ -4726,6 +4992,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_incidents AS
     LATERAL CAST((date_part('year'::text, i.create_date))::integer AS integer) year(year)
   GROUP BY ba.neighborhood_id, year.year
   WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW statistics_product_incidents; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_incidents IS '[statistics] Webservice statistics product: incidents per year per neighbourhood. Refreshed by refresh_data_model.';
 
 
 --
@@ -4742,6 +5015,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiries AS
     LATERAL CAST((date_part('year'::text, i.document_date))::integer AS integer) year(year)
   GROUP BY ba.neighborhood_id, year.year
   WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW statistics_product_inquiries; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_inquiries IS '[statistics] Webservice statistics product: research reports per year per neighbourhood. Refreshed by refresh_data_model.';
 
 
 --
@@ -4763,6 +5043,13 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
 
 
 --
+-- Name: MATERIALIZED VIEW statistics_product_inquiry_municipality; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.statistics_product_inquiry_municipality IS '[statistics] Webservice statistics product: research reports per year per municipality. Refreshed by refresh_data_model.';
+
+
+--
 -- Name: artifact; Type: TABLE; Schema: dataops; Owner: -
 --
 
@@ -4781,6 +5068,13 @@ CREATE TABLE dataops.artifact (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     declared_category text
 );
+
+
+--
+-- Name: TABLE artifact; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.artifact IS '[intake] One file in a dossier (upload, mail attachment or a part split from one): storage key, type, size, pages and reading lane.';
 
 
 --
@@ -4830,7 +5124,7 @@ CREATE TABLE dataops.artifact_page (
 -- Name: TABLE artifact_page; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.artifact_page IS 'Page-level triage. Routing photographs and blanks to a human before extraction is the cheapest accuracy this pipeline has: 2% vs 73-89% on the same field.';
+COMMENT ON TABLE dataops.artifact_page IS '[intake] Page-level triage. Routing photographs and blanks to a human before extraction is the cheapest accuracy this pipeline has: 2% vs 73-89% on the same field.';
 
 
 --
@@ -4861,6 +5155,13 @@ CREATE TABLE dataops.dossier (
     assigned_to uuid,
     assigned_at timestamp with time zone
 );
+
+
+--
+-- Name: TABLE dossier; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.dossier IS '[intake] An intake case: what came in (channel, submitter, payload), which building it is about, who handles it, and the outcome. Its history is dossier_entry.';
 
 
 --
@@ -4964,7 +5265,7 @@ CREATE TABLE dataops.dossier_address (
 -- Name: TABLE dossier_address; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.dossier_address IS 'The addresses a dossier is about, and what the reviewer decided about each (ClientApp #333 part C). A value''s own address_id says where the value was read; this row says whether that address belongs to the dossier at all.';
+COMMENT ON TABLE dataops.dossier_address IS '[intake] The addresses a dossier is about, and what the reviewer decided about each (ClientApp #333 part C). A value''s own address_id says where the value was read; this row says whether that address belongs to the dossier at all.';
 
 
 --
@@ -5027,7 +5328,7 @@ CREATE TABLE dataops.dossier_entry (
 -- Name: TABLE dossier_entry; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.dossier_entry IS 'Append-only timeline of a dossier. INSERT+SELECT only; an entry is never updated or deleted.';
+COMMENT ON TABLE dataops.dossier_entry IS '[intake] Append-only timeline of a dossier. INSERT+SELECT only; an entry is never updated or deleted.';
 
 
 --
@@ -5082,7 +5383,7 @@ CREATE TABLE dataops.dossier_mail (
 -- Name: TABLE dossier_mail; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.dossier_mail IS 'Send log for melder-facing mail (#1020). One row per (dossier, kind), claimed before the send; the unique key is the idempotency guard.';
+COMMENT ON TABLE dataops.dossier_mail IS '[intake] Send log for melder-facing mail (#1020). One row per (dossier, kind), claimed before the send; the unique key is the idempotency guard.';
 
 
 --
@@ -5152,7 +5453,7 @@ CREATE TABLE dataops.dossier_rapportage (
 -- Name: TABLE dossier_rapportage; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.dossier_rapportage IS 'The verdict per rapportage of a dossier (Don, 2026-10-09). One row per group of documents the reviewer formed at commit; the closing mail combines the answers into one message to the melder.';
+COMMENT ON TABLE dataops.dossier_rapportage IS '[intake] The verdict per rapportage of a dossier (Don, 2026-10-09). One row per group of documents the reviewer formed at commit; the closing mail combines the answers into one message to the melder.';
 
 
 --
@@ -5244,6 +5545,13 @@ CREATE TABLE dataops.extraction (
 
 
 --
+-- Name: TABLE extraction; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.extraction IS '[intake] One AI reading of an artifact: model, prompt version, lane, pages sent, tokens, cost and any error.';
+
+
+--
 -- Name: extraction_field; Type: TABLE; Schema: dataops; Owner: -
 --
 
@@ -5261,6 +5569,13 @@ CREATE TABLE dataops.extraction_field (
     current_value text,
     evidence_offset integer
 );
+
+
+--
+-- Name: TABLE extraction_field; Type: COMMENT; Schema: dataops; Owner: -
+--
+
+COMMENT ON TABLE dataops.extraction_field IS '[intake] One value an extraction read, with confidence, evidence (page and offset), the address it belongs to and its review state.';
 
 
 --
@@ -5341,7 +5656,7 @@ CREATE TABLE dataops.staff_capacity (
 -- Name: TABLE staff_capacity; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.staff_capacity IS 'How much review-queue work a colleague takes, for the dispatcher (FunderMapsApi #277). No row or active = false: the dispatcher assigns this person nothing.';
+COMMENT ON TABLE dataops.staff_capacity IS '[intake · staff] How much review-queue work a colleague takes, for the dispatcher (FunderMapsApi #277). No row or active = false: the dispatcher assigns this person nothing.';
 
 
 --
@@ -5407,7 +5722,7 @@ CREATE TABLE dataops.verdict (
 -- Name: TABLE verdict; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.verdict IS 'Every human confirmation and correction, kept as a labelled example. Today''s labels come from cover sheets an invoerder writes before uploading; once this pipeline reads documents instead, nobody writes those any more and this table becomes the only source of new training data.';
+COMMENT ON TABLE dataops.verdict IS '[intake] Every human confirmation and correction, kept as a labelled example. Today''s labels come from cover sheets an invoerder writes before uploading; once this pipeline reads documents instead, nobody writes those any more and this table becomes the only source of new training data.';
 
 
 --
@@ -5441,7 +5756,7 @@ CREATE TABLE dataops.work_package_assignment (
 -- Name: TABLE work_package_assignment; Type: COMMENT; Schema: dataops; Owner: -
 --
 
-COMMENT ON TABLE dataops.work_package_assignment IS 'Work packages (Studio Vandaag filters) the admin assigned to a colleague. One row per user and package; the set is replaced as a whole by PUT /api/management/work-packages/:userId. No rows = the user picks their own packages in the browser.';
+COMMENT ON TABLE dataops.work_package_assignment IS '[intake · staff] Work packages (Studio Vandaag filters) the admin assigned to a colleague. One row per user and package; the set is replaced as a whole by PUT /api/management/work-packages/:userId. No rows = the user picks their own packages in the browser.';
 
 
 --
@@ -5488,7 +5803,7 @@ CREATE TABLE geocoder.residence (
 -- Name: TABLE residence; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.residence IS 'Link between building and address';
+COMMENT ON TABLE geocoder.residence IS '[BAG] BAG residences (dwelling units): the link between an address and a building.';
 
 
 --
@@ -5509,7 +5824,7 @@ CREATE TABLE geocoder.state (
 -- Name: TABLE state; Type: COMMENT; Schema: geocoder; Owner: -
 --
 
-COMMENT ON TABLE geocoder.state IS 'Contains all states in our own format.';
+COMMENT ON TABLE geocoder.state IS '[areas] The 12 provinces.';
 
 
 --
@@ -5538,6 +5853,13 @@ CREATE VIEW geocoder.building_geocoder AS
      LEFT JOIN geocoder.district d ON (((d.id)::text = (n.district_id)::text)))
      LEFT JOIN geocoder.municipality m ON (((m.id)::text = (d.municipality_id)::text)))
      LEFT JOIN geocoder.state s ON (((s.id)::text = (m.state_id)::text)));
+
+
+--
+-- Name: VIEW building_geocoder; Type: COMMENT; Schema: geocoder; Owner: -
+--
+
+COMMENT ON VIEW geocoder.building_geocoder IS '[BAG] Each building with its residence location and the names and ids of its neighbourhood, district, municipality and province, for geocoder lookups.';
 
 
 --
@@ -5582,6 +5904,13 @@ CREATE VIEW maplayer.analysis_full AS
 
 
 --
+-- Name: VIEW analysis_full; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON VIEW maplayer.analysis_full IS '[export] The default model per building with its area ids, as exported twice a day to the archive (GeoPackage + GeoParquet).';
+
+
+--
 -- Name: building_cluster_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -5592,6 +5921,13 @@ CREATE TABLE maplayer.building_cluster_tiles (
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857)
 );
+
+
+--
+-- Name: TABLE building_cluster_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.building_cluster_tiles IS '[tiles · cache] Rows behind the tile function maplayer.building_cluster(z,x,y): one union geometry per cluster. Rebuilt nightly by maplayer.refresh_building_cluster_tiles().';
 
 
 --
@@ -5635,6 +5971,13 @@ CREATE TABLE maplayer.building_tiles (
 
 
 --
+-- Name: TABLE building_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.building_tiles IS '[tiles · cache] Rows behind the public tile function maplayer.buildings(z,x,y): the default model per building with geometry. Rebuilt nightly by maplayer.refresh_building_tiles().';
+
+
+--
 -- Name: bundle; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -5647,6 +5990,13 @@ CREATE TABLE maplayer.bundle (
     generate_tileset boolean DEFAULT true,
     upload_dataset boolean
 );
+
+
+--
+-- Name: TABLE bundle; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.bundle IS '[export] Which maplayer views the archive export (Windmill f/fundermaps/mapset/export_tileset) writes to GeoPackage. Only enabled and upload_dataset are read; the zoom and generate_tileset columns are left over from the old tilesets.';
 
 
 --
@@ -5748,6 +6098,13 @@ CREATE VIEW maplayer.facade_scan AS
 
 
 --
+-- Name: VIEW facade_scan; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON VIEW maplayer.facade_scan IS '[tiles · source] What maplayer.refresh_facade_scan_tiles() copies into facade_scan_tiles; also an archive export layer (maplayer.bundle). Not the tile function of the same name.';
+
+
+--
 -- Name: facade_scan_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -5771,6 +6128,13 @@ CREATE TABLE maplayer.facade_scan_tiles (
 
 
 --
+-- Name: TABLE facade_scan_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.facade_scan_tiles IS '[tiles · cache] Rows behind the tile function maplayer.facade_scan(z,x,y). Rebuilt by maplayer.refresh_facade_scan_tiles().';
+
+
+--
 -- Name: incident; Type: VIEW; Schema: maplayer; Owner: -
 --
 
@@ -5790,6 +6154,13 @@ CREATE VIEW maplayer.incident AS
 
 
 --
+-- Name: VIEW incident; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON VIEW maplayer.incident IS '[tiles · source] Incident reports (dossiers with a topic) per building; maplayer.refresh_incident_tiles() copies it into incident_tiles. Not the tile function of the same name.';
+
+
+--
 -- Name: incident_district; Type: VIEW; Schema: maplayer; Owner: -
 --
 
@@ -5806,6 +6177,13 @@ CREATE VIEW maplayer.incident_district AS
 
 
 --
+-- Name: VIEW incident_district; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON VIEW maplayer.incident_district IS '[tiles · source] Incident count per district; copied into incident_district_tiles by maplayer.refresh_incident_tiles(). Not the tile function of the same name.';
+
+
+--
 -- Name: incident_district_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -5816,6 +6194,13 @@ CREATE TABLE maplayer.incident_district_tiles (
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857)
 );
+
+
+--
+-- Name: TABLE incident_district_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.incident_district_tiles IS '[tiles · cache] Rows behind the tile function maplayer.incident_district(z,x,y): incident count per district. Rebuilt by maplayer.refresh_incident_tiles().';
 
 
 --
@@ -5836,6 +6221,13 @@ CREATE VIEW maplayer.incident_municipality AS
 
 
 --
+-- Name: VIEW incident_municipality; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON VIEW maplayer.incident_municipality IS '[tiles · source] Incident count per municipality; copied into incident_municipality_tiles by maplayer.refresh_incident_tiles(). Not the tile function of the same name.';
+
+
+--
 -- Name: incident_municipality_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -5845,6 +6237,13 @@ CREATE TABLE maplayer.incident_municipality_tiles (
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857)
 );
+
+
+--
+-- Name: TABLE incident_municipality_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.incident_municipality_tiles IS '[tiles · cache] Rows behind the tile function maplayer.incident_municipality(z,x,y): incident count per municipality. Rebuilt by maplayer.refresh_incident_tiles().';
 
 
 --
@@ -5863,6 +6262,13 @@ CREATE VIEW maplayer.incident_neighborhood AS
 
 
 --
+-- Name: VIEW incident_neighborhood; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON VIEW maplayer.incident_neighborhood IS '[tiles · source] Incident count per neighbourhood; copied into incident_neighborhood_tiles by maplayer.refresh_incident_tiles(). Not the tile function of the same name.';
+
+
+--
 -- Name: incident_neighborhood_tiles; Type: TABLE; Schema: maplayer; Owner: -
 --
 
@@ -5874,6 +6280,13 @@ CREATE TABLE maplayer.incident_neighborhood_tiles (
     geom public.geometry(MultiPolygon,3857),
     geom_simple public.geometry(MultiPolygon,3857)
 );
+
+
+--
+-- Name: TABLE incident_neighborhood_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.incident_neighborhood_tiles IS '[tiles · cache] Rows behind the tile function maplayer.incident_neighborhood(z,x,y): incident count per neighbourhood. Rebuilt by maplayer.refresh_incident_tiles().';
 
 
 --
@@ -5890,6 +6303,13 @@ CREATE TABLE maplayer.incident_tiles (
     geom public.geometry(MultiPolygon,3857),
     topic text
 );
+
+
+--
+-- Name: TABLE incident_tiles; Type: COMMENT; Schema: maplayer; Owner: -
+--
+
+COMMENT ON TABLE maplayer.incident_tiles IS '[tiles · cache] Rows behind the tile function maplayer.incident(z,x,y). Rebuilt by maplayer.refresh_incident_tiles().';
 
 
 --
@@ -5914,7 +6334,7 @@ CREATE TABLE report.dossier_event (
 -- Name: TABLE dossier_event; Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON TABLE report.dossier_event IS 'Append-only trail of dossier lifecycle events. Exactly one of inquiry_id / recovery_id / incident_id is set.';
+COMMENT ON TABLE report.dossier_event IS '[records] Append-only history of an inquiry, recovery or incident (created, submitted, approved, …); not dataops.dossier. Exactly one of inquiry_id / recovery_id / incident_id is set.';
 
 
 --
@@ -5994,7 +6414,7 @@ CREATE TABLE report.recovery (
 -- Name: TABLE recovery; Type: COMMENT; Schema: report; Owner: -
 --
 
-COMMENT ON TABLE report.recovery IS 'Contains recovery operations.';
+COMMENT ON TABLE report.recovery IS '[records] Foundation recoveries (repairs): one row per recovery document.';
 
 
 --
@@ -8368,5 +8788,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YIg7exVekcx2omthPOD3c2lX9Chj49PTiQPEyi9dHm32yhV48kn6cZnyhkeDCX6
+\unrestrict FS78EGDNttcwBcnSeRdrGro5Hthx1ulSVWqbeNBjFkKGSP0PGRFY9uTb7frDtSC
 
