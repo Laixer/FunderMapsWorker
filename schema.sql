@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict uBnXmuFpV2COWJorhDoowrfUbO4WS4pCgn23KxgYLZmEwgOUdIcUAj9fshA6xKt
+\restrict yhSFB4CthbzIFmjMw0LCW55y3YFjZFXMX4IrbpNV4FxdnOhXxWM5zXkdV1RKlfF
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -405,18 +405,6 @@ CREATE TYPE geocoder.zone_function AS ENUM (
     'medical',
     'other',
     'prison'
-);
-
-
---
--- Name: resource_status; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.resource_status AS ENUM (
-    'uploaded',
-    'processing',
-    'active',
-    'archived'
 );
 
 
@@ -3052,7 +3040,7 @@ CREATE TABLE application.file_resource (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     key text NOT NULL,
     original_filename text NOT NULL,
-    status text DEFAULT 'uploaded'::public.resource_status NOT NULL,
+    status text DEFAULT 'uploaded'::text NOT NULL,
     size_bytes bigint,
     mime_type text,
     metadata jsonb,
@@ -8742,5 +8730,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict uBnXmuFpV2COWJorhDoowrfUbO4WS4pCgn23KxgYLZmEwgOUdIcUAj9fshA6xKt
+\unrestrict yhSFB4CthbzIFmjMw0LCW55y3YFjZFXMX4IrbpNV4FxdnOhXxWM5zXkdV1RKlfF
 
