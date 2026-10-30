@@ -477,7 +477,7 @@ def main():
     con.execute(f"""
     COPY (
       SELECT b.building_id, (p.p_wood / 1000.0)::DECIMAL(4,3) AS p_wood, (p.p_no_pile / 1000.0)::DECIMAL(4,3) AS p_no_pile,
-        (p.p_concrete / 1000.0)::DECIMAL(4,3) AS p_concrete, (p.p_opl / 1000.0)::DECIMAL(4,3) AS p_oplanger,
+        (p.p_concrete / 1000.0)::DECIMAL(4,3) AS p_concrete, (p.p_opl / 1000.0)::DECIMAL(4,3) AS p_wood_charger,
         ['wood','no_pile','concrete'][p.fam + 1] AS family,
         ['wood','no_pile','concrete','wood_charger'][p.t4 + 1] AS foundation_type,
         (p.conf / 1000.0)::DECIMAL(4,3) AS confidence,
