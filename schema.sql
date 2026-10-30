@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QDcQCTTeKegB56DWdYqyHg79JG0QbIami2Sl5yjgvTy0iQNcCcUCPxCqa5Wg5Du
+\restrict Y5ag58dt1VDh8wG2SV7ZHCHw26fkpKcIOUfF1fh53y1vigdcCDjMbQkrbkVdNSJ
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4095,73 +4095,6 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
 
 
 --
--- Name: foundation_type_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_2026_2 (
-    building_id text NOT NULL,
-    purpose text NOT NULL,
-    split text,
-    scoring_mode boolean NOT NULL,
-    p_wood numeric(6,5) NOT NULL,
-    p_no_pile numeric(6,5) NOT NULL,
-    p_concrete numeric(6,5) NOT NULL,
-    predicted_family text NOT NULL,
-    evidence_level text NOT NULL,
-    evidence_n integer NOT NULL,
-    prior_cell text NOT NULL,
-    prior_p_wood numeric(6,5) NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_2026_2 IS 'model-2026.2 candidate output on the evaluation sample: class probabilities from local inspected evidence (cluster > supercluster > neighbourhood) shrunk onto a cell prior. Scored, never served. See sql/model/candidate_2026_2_foundation_type.sql.';
-
-
---
--- Name: foundation_type_lookup_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_lookup_2026_2 (
-    cell text NOT NULL,
-    n integer NOT NULL,
-    p_wood numeric NOT NULL,
-    p_no_pile numeric NOT NULL,
-    p_concrete numeric NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_lookup_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_lookup_2026_2 IS 'Refit of the 2026.1 lookup on evidence-backed truth only (sample_version 2, grades physical+documented). Excludes quickscan-sourced answers, which are our own output.';
-
-
---
--- Name: foundation_type_prior_2026_2; Type: TABLE; Schema: data; Owner: -
---
-
-CREATE TABLE data.foundation_type_prior_2026_2 (
-    cell text NOT NULL,
-    n integer NOT NULL,
-    p_wood numeric(6,5) NOT NULL,
-    p_no_pile numeric(6,5) NOT NULL,
-    p_concrete numeric(6,5) NOT NULL
-);
-
-
---
--- Name: TABLE foundation_type_prior_2026_2; Type: COMMENT; Schema: data; Owner: -
---
-
-COMMENT ON TABLE data.foundation_type_prior_2026_2 IS 'model-2026.2 candidate: smoothed class rates per cell (era|soil|height|ground level|addresses), fitted on benchmark v2 train rows. Coarse cells (era|soil|height) and the global row (cell = *) are included for back-off.';
-
-
---
 -- Name: model_evaluation_sample; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -6503,30 +6436,6 @@ ALTER TABLE ONLY data.cluster_recovery_sample
 
 
 --
--- Name: foundation_type_2026_2 foundation_type_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
---
-
-ALTER TABLE ONLY data.foundation_type_2026_2
-    ADD CONSTRAINT foundation_type_2026_2_pkey PRIMARY KEY (building_id);
-
-
---
--- Name: foundation_type_lookup_2026_2 foundation_type_lookup_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
---
-
-ALTER TABLE ONLY data.foundation_type_lookup_2026_2
-    ADD CONSTRAINT foundation_type_lookup_2026_2_pkey PRIMARY KEY (cell);
-
-
---
--- Name: foundation_type_prior_2026_2 foundation_type_prior_2026_2_pkey; Type: CONSTRAINT; Schema: data; Owner: -
---
-
-ALTER TABLE ONLY data.foundation_type_prior_2026_2
-    ADD CONSTRAINT foundation_type_prior_2026_2_pkey PRIMARY KEY (cell);
-
-
---
 -- Name: model_evaluation_sample model_evaluation_sample_pkey; Type: CONSTRAINT; Schema: data; Owner: -
 --
 
@@ -7119,13 +7028,6 @@ CREATE UNIQUE INDEX building_sample_building_id_idx ON data.building_sample USIN
 --
 
 CREATE UNIQUE INDEX cluster_sample_v2_cluster_id_idx ON data.cluster_sample USING btree (cluster_id);
-
-
---
--- Name: foundation_type_2026_2_purpose_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE INDEX foundation_type_2026_2_purpose_idx ON data.foundation_type_2026_2 USING btree (purpose, split);
 
 
 --
@@ -8501,5 +8403,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QDcQCTTeKegB56DWdYqyHg79JG0QbIami2Sl5yjgvTy0iQNcCcUCPxCqa5Wg5Du
+\unrestrict Y5ag58dt1VDh8wG2SV7ZHCHw26fkpKcIOUfF1fh53y1vigdcCDjMbQkrbkVdNSJ
 
