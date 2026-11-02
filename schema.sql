@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict q7niezCtWdNUp1727upwgH3AKO0lJZQmTDVSGMXiKrr4GbOT0CKdZfr6e1W0pZ6
+\restrict Kus89gBveYrKnQHp1KrT4Q7Yvmvm6XWqmXAuXPGY1LZHwnSFnQvijCGFIaP8W95
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2417,6 +2417,10 @@ BEGIN
         GRANT SELECT ON maplayer.building_cluster_tiles_next TO fundermaps_tileserver;
     END IF;
 
+    -- This table is new on every run, so it has to get its comment here; the rename below keeps it.
+    COMMENT ON TABLE maplayer.building_cluster_tiles_next IS
+        '[tiles · cache] Rows behind the tile function maplayer.building_cluster(z,x,y): one union geometry per cluster. Rebuilt nightly by maplayer.refresh_building_cluster_tiles().';
+
     -- Swap. The only exclusive lock on the live table is taken here and
     -- released at COMMIT a few milliseconds later. Rather than queue behind
     -- a slow tile query (and make every request after it queue too), give
@@ -2525,6 +2529,10 @@ BEGIN
     IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'fundermaps_tileserver') THEN
         GRANT SELECT ON maplayer.building_tiles_next TO fundermaps_tileserver;
     END IF;
+
+    -- This table is new on every run, so it has to get its comment here; the rename below keeps it.
+    COMMENT ON TABLE maplayer.building_tiles_next IS
+        '[tiles · cache] Rows behind the public tile function maplayer.buildings(z,x,y): the default model per building with geometry. Rebuilt nightly by maplayer.refresh_building_tiles().';
 
     -- Swap. The only exclusive lock on the live table is taken here and
     -- released at COMMIT a few milliseconds later. Rather than queue behind
@@ -8722,5 +8730,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict q7niezCtWdNUp1727upwgH3AKO0lJZQmTDVSGMXiKrr4GbOT0CKdZfr6e1W0pZ6
+\unrestrict Kus89gBveYrKnQHp1KrT4Q7Yvmvm6XWqmXAuXPGY1LZHwnSFnQvijCGFIaP8W95
 
