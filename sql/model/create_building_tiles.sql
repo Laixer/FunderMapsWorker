@@ -163,6 +163,10 @@ BEGIN
         GRANT SELECT ON maplayer.building_tiles_next TO fundermaps_tileserver;
     END IF;
 
+    -- This table is new on every run, so it has to get its comment here; the rename below keeps it.
+    COMMENT ON TABLE maplayer.building_tiles_next IS
+        '[tiles · cache] Rows behind the public tile function maplayer.buildings(z,x,y): the default model per building with geometry. Rebuilt nightly by maplayer.refresh_building_tiles().';
+
     -- Swap. The only exclusive lock on the live table is taken here and
     -- released at COMMIT a few milliseconds later. Rather than queue behind
     -- a slow tile query (and make every request after it queue too), give
