@@ -1650,6 +1650,17 @@
    "filter": [
     "all",
     [
+     "==",
+     [
+      "typeof",
+      [
+       "get",
+       "admin_level"
+      ]
+     ],
+     "number"
+    ],
+    [
      "has",
      "admin_level"
     ],
@@ -1921,28 +1932,28 @@
     "symbol-placement": "line",
     "symbol-spacing": 350,
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      " ",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       " ",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -1982,28 +1993,28 @@
    ],
    "layout": {
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -2057,28 +2068,28 @@
     "symbol-placement": "line",
     "symbol-spacing": 350,
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      " ",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       " ",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -2116,28 +2127,28 @@
    "layout": {
     "symbol-placement": "line",
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      " ",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       " ",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -2207,28 +2218,28 @@
    "layout": {
     "symbol-placement": "line",
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      " ",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       " ",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -2285,28 +2296,28 @@
    "layout": {
     "symbol-placement": "line",
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      " ",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       " ",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -2610,28 +2621,28 @@
     "icon-size": 1,
     "text-anchor": "top",
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -2683,32 +2694,108 @@
    ],
    "layout": {
     "text-field": [
-     "case",
+     "match",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name"
      ],
      [
-      "concat",
-      [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
-       "name:nonlatin"
-      ]
+      "Alde Leie",
+      "Aldeboarn",
+      "Aldtsjerk",
+      "Baaium",
+      "Bears",
+      "Berg en Terblijt",
+      "Berltsum",
+      "Bitgum",
+      "Bitgummole",
+      "Blije",
+      "Boazum",
+      "Burgum",
+      "Dearsum",
+      "Dronryp",
+      "Eagum",
+      "Earnew\u00e2ld",
+      "Easterein",
+      "Easterlittens",
+      "Easterwierrum",
+      "Feinsum",
+      "Ferwert",
+      "Garyp",
+      "Ginnum",
+      "Gytsjerk",
+      "Hegebeintum",
+      "Hinnaard",
+      "Hurdegaryp",
+      "Idaerd",
+      "Iens",
+      "Ingelum",
+      "Jannum",
+      "Jistrum",
+      "Jonkersl\u00e2n",
+      "Jorwert",
+      "Klein Zundert",
+      "Koarnjum",
+      "Kollumersweach",
+      "Linden",
+      "Lytsewierrum",
+      "Marsum",
+      "Menaam",
+      "M\u00fbnein",
+      "Nieuwe Wetering",
+      "Nieuwerbrug aan den Rijn",
+      "Noardburgum",
+      "Oentsjerk",
+      "Oudemolen",
+      "Poppenwier",
+      "Ryptsjerk",
+      "Sibrandabuorren",
+      "Skingen",
+      "Spijk",
+      "Sumar",
+      "Suw\u00e2ld",
+      "Tersoal",
+      "Tytsjerk",
+      "Warten",
+      "Wehl",
+      "Westknollendam",
+      "Wetsens",
+      "Wjelsryp",
+      "Wyns",
+      "W\u00e2nswert"
+     ],
+     [
+      "get",
+      "name"
      ],
      [
       "coalesce",
       [
        "get",
-       "name_en"
+       "name:nl"
       ],
       [
-       "get",
-       "name"
+       "case",
+       [
+        "has",
+        "name:nonlatin"
+       ],
+       [
+        "concat",
+        [
+         "get",
+         "name:latin"
+        ],
+        "\n",
+        [
+         "get",
+         "name:nonlatin"
+        ]
+       ],
+       [
+        "get",
+        "name"
+       ]
       ]
      ]
     ],
@@ -2768,32 +2855,108 @@
     "icon-size": 0.2,
     "text-anchor": "bottom",
     "text-field": [
-     "case",
+     "match",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name"
      ],
      [
-      "concat",
-      [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
-       "name:nonlatin"
-      ]
+      "Alde Leie",
+      "Aldeboarn",
+      "Aldtsjerk",
+      "Baaium",
+      "Bears",
+      "Berg en Terblijt",
+      "Berltsum",
+      "Bitgum",
+      "Bitgummole",
+      "Blije",
+      "Boazum",
+      "Burgum",
+      "Dearsum",
+      "Dronryp",
+      "Eagum",
+      "Earnew\u00e2ld",
+      "Easterein",
+      "Easterlittens",
+      "Easterwierrum",
+      "Feinsum",
+      "Ferwert",
+      "Garyp",
+      "Ginnum",
+      "Gytsjerk",
+      "Hegebeintum",
+      "Hinnaard",
+      "Hurdegaryp",
+      "Idaerd",
+      "Iens",
+      "Ingelum",
+      "Jannum",
+      "Jistrum",
+      "Jonkersl\u00e2n",
+      "Jorwert",
+      "Klein Zundert",
+      "Koarnjum",
+      "Kollumersweach",
+      "Linden",
+      "Lytsewierrum",
+      "Marsum",
+      "Menaam",
+      "M\u00fbnein",
+      "Nieuwe Wetering",
+      "Nieuwerbrug aan den Rijn",
+      "Noardburgum",
+      "Oentsjerk",
+      "Oudemolen",
+      "Poppenwier",
+      "Ryptsjerk",
+      "Sibrandabuorren",
+      "Skingen",
+      "Spijk",
+      "Sumar",
+      "Suw\u00e2ld",
+      "Tersoal",
+      "Tytsjerk",
+      "Warten",
+      "Wehl",
+      "Westknollendam",
+      "Wetsens",
+      "Wjelsryp",
+      "Wyns",
+      "W\u00e2nswert"
+     ],
+     [
+      "get",
+      "name"
      ],
      [
       "coalesce",
       [
        "get",
-       "name_en"
+       "name:nl"
       ],
       [
-       "get",
-       "name"
+       "case",
+       [
+        "has",
+        "name:nonlatin"
+       ],
+       [
+        "concat",
+        [
+         "get",
+         "name:latin"
+        ],
+        "\n",
+        [
+         "get",
+         "name:nonlatin"
+        ]
+       ],
+       [
+        "get",
+        "name"
+       ]
       ]
      ]
     ],
@@ -2852,32 +3015,108 @@
     "icon-size": 0.2,
     "text-anchor": "bottom",
     "text-field": [
-     "case",
+     "match",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name"
      ],
      [
-      "concat",
-      [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
-       "name:nonlatin"
-      ]
+      "Alde Leie",
+      "Aldeboarn",
+      "Aldtsjerk",
+      "Baaium",
+      "Bears",
+      "Berg en Terblijt",
+      "Berltsum",
+      "Bitgum",
+      "Bitgummole",
+      "Blije",
+      "Boazum",
+      "Burgum",
+      "Dearsum",
+      "Dronryp",
+      "Eagum",
+      "Earnew\u00e2ld",
+      "Easterein",
+      "Easterlittens",
+      "Easterwierrum",
+      "Feinsum",
+      "Ferwert",
+      "Garyp",
+      "Ginnum",
+      "Gytsjerk",
+      "Hegebeintum",
+      "Hinnaard",
+      "Hurdegaryp",
+      "Idaerd",
+      "Iens",
+      "Ingelum",
+      "Jannum",
+      "Jistrum",
+      "Jonkersl\u00e2n",
+      "Jorwert",
+      "Klein Zundert",
+      "Koarnjum",
+      "Kollumersweach",
+      "Linden",
+      "Lytsewierrum",
+      "Marsum",
+      "Menaam",
+      "M\u00fbnein",
+      "Nieuwe Wetering",
+      "Nieuwerbrug aan den Rijn",
+      "Noardburgum",
+      "Oentsjerk",
+      "Oudemolen",
+      "Poppenwier",
+      "Ryptsjerk",
+      "Sibrandabuorren",
+      "Skingen",
+      "Spijk",
+      "Sumar",
+      "Suw\u00e2ld",
+      "Tersoal",
+      "Tytsjerk",
+      "Warten",
+      "Wehl",
+      "Westknollendam",
+      "Wetsens",
+      "Wjelsryp",
+      "Wyns",
+      "W\u00e2nswert"
+     ],
+     [
+      "get",
+      "name"
      ],
      [
       "coalesce",
       [
        "get",
-       "name_en"
+       "name:nl"
       ],
       [
-       "get",
-       "name"
+       "case",
+       [
+        "has",
+        "name:nonlatin"
+       ],
+       [
+        "concat",
+        [
+         "get",
+         "name:latin"
+        ],
+        "\n",
+        [
+         "get",
+         "name:nonlatin"
+        ]
+       ],
+       [
+        "get",
+        "name"
+       ]
       ]
      ]
     ],
@@ -2924,28 +3163,28 @@
    ],
    "layout": {
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -3020,28 +3259,28 @@
     "icon-size": 0.4,
     "text-anchor": "bottom",
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -3121,28 +3360,28 @@
     "icon-size": 0.5,
     "text-anchor": "bottom",
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -3214,28 +3453,28 @@
    ],
    "layout": {
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -3295,28 +3534,28 @@
    ],
    "layout": {
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",
@@ -3376,28 +3615,28 @@
    ],
    "layout": {
     "text-field": [
-     "case",
+     "coalesce",
      [
-      "has",
-      "name:nonlatin"
+      "get",
+      "name:nl"
      ],
      [
-      "concat",
+      "case",
       [
-       "get",
-       "name:latin"
-      ],
-      "\n",
-      [
-       "get",
+       "has",
        "name:nonlatin"
-      ]
-     ],
-     [
-      "coalesce",
+      ],
       [
-       "get",
-       "name_en"
+       "concat",
+       [
+        "get",
+        "name:latin"
+       ],
+       "\n",
+       [
+        "get",
+        "name:nonlatin"
+       ]
       ],
       [
        "get",

@@ -202,6 +202,59 @@ HOUSENUMBER_LAYER = {
 }
 
 
+# Labels are Dutch, never English (decision of 2026-10-19 for the report, 2026-11-03 for the maps, Studio #35).
+# Positron prefers name_en, and the tiles carry "The Hague", "New Market" for the
+# Nieuwmarkt and "Eastern Scheldt". So: name:nl first, then the name itself.
+#
+# One exception. Where a place's `name` already is its official BAG woonplaats,
+# it stays. In Friesland `name` is often Frisian and sometimes that is what the
+# addresses say (Burgum, whose name:nl is the older "Bergum"), sometimes not
+# (Bakhuzen, where name:nl has the official Bakhuizen): no label should
+# contradict the address next to it. It also keeps out the odd wrong tag
+# (Oudemolen has name:nl "regosol"), since nearly all of those are on places
+# with a sound `name`.
+#
+# The list is every place at zoom 12 over the Netherlands whose `name` is in
+# geocoder.address.city and whose name:nl differs (2026-11-03). OSM moves, so a
+# new wrong name:nl can appear; add it here. A foreign place with the same name
+# keeps its own name too, which does no harm. Street and water names have no
+# such list: their name:nl differs rarely, and to a Dutch name.
+OFFICIAL_PLACE_NAMES = [
+    "Alde Leie", "Aldeboarn", "Aldtsjerk", "Baaium", "Bears", "Berg en Terblijt",
+    "Berltsum", "Bitgum", "Bitgummole", "Blije", "Boazum", "Burgum", "Dearsum",
+    "Dronryp", "Eagum", "Earnewâld", "Easterein", "Easterlittens", "Easterwierrum",
+    "Feinsum", "Ferwert", "Garyp", "Ginnum", "Gytsjerk", "Hegebeintum", "Hinnaard",
+    "Hurdegaryp", "Idaerd", "Iens", "Ingelum", "Jannum", "Jistrum", "Jonkerslân",
+    "Jorwert", "Klein Zundert", "Koarnjum", "Kollumersweach", "Linden", "Lytsewierrum",
+    "Marsum", "Menaam", "Mûnein", "Nieuwe Wetering", "Nieuwerbrug aan den Rijn",
+    "Noardburgum", "Oentsjerk", "Oudemolen", "Poppenwier", "Ryptsjerk",
+    "Sibrandabuorren", "Skingen", "Spijk", "Sumar", "Suwâld", "Tersoal", "Tytsjerk",
+    "Warten", "Wehl", "Westknollendam", "Wetsens", "Wjelsryp", "Wyns", "Wânswert",
+]
+OFFICIAL_NAME_LAYERS = ("label_other", "label_village", "label_town")
+POSITRON_NAME = ["coalesce", ["get", "name_en"], ["get", "name"]]
+
+
+def dutch_labels(style) -> int:
+    """Rewrite Positron's label expression: Dutch first, then what it did, without English."""
+    changed = 0
+    for layer in style["layers"]:
+        layout = layer.get("layout", {})
+        field = layout.get("text-field")
+        if not (isinstance(field, list) and POSITRON_NAME in field):
+            continue
+        local = [["get", "name"] if part == POSITRON_NAME else part for part in field]
+        dutch = ["coalesce", ["get", "name:nl"], local]
+        if layer["id"] in OFFICIAL_NAME_LAYERS:
+            dutch = ["match", ["get", "name"], OFFICIAL_PLACE_NAMES, ["get", "name"], dutch]
+        layout["text-field"] = dutch
+        changed += 1
+    if "name_en" in json.dumps(style):
+        # Positron upstream changed its label expression; this needs a look.
+        raise SystemExit("name_en is still in the style")
+    return changed
+
+
 # Numeric comparisons Positron applies to properties that OpenMapTiles only
 # emits sometimes: `ref_length` exists on a road only if it carries a ref, and
 # most roads do not. MapLibre evaluates the filter anyway, finds null where it
@@ -325,13 +378,14 @@ def main() -> None:
             layer.setdefault("paint", {}).update(override)
             patched += 1
 
+    dutch = dutch_labels(style)
     guarded = guard_missing_properties(style)
     for path, condition in unguarded_comparisons(style):
         print(f"warning: unguarded comparison in {path}: {json.dumps(condition)}")
 
     with open("fundermaps-basemap.json", "w") as fh:
         json.dump(style, fh, indent=1)
-    print(f"patched {patched}/{len(style['layers'])} layers, "
+    print(f"patched {patched}/{len(style['layers'])} layers, {dutch} labels in Dutch, "
           f"guarded {guarded} filters -> fundermaps-basemap.json")
 
 
