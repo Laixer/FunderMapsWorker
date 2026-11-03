@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Kus89gBveYrKnQHp1KrT4Q7Yvmvm6XWqmXAuXPGY1LZHwnSFnQvijCGFIaP8W95
+\restrict koxRiHpVcVGfdsbAfdAMtVu5wRDgNealhpriKskyoQPNORZjtgslO3Gcr6B13VW
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4076,7 +4076,7 @@ CREATE MATERIALIZED VIEW data.building_sample AS
            FROM ((report.inquiry_sample is2
              JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
              JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
-          WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
+          WHERE ((i.document_date >= ((b.built_year)::date - '5 years'::interval)) OR ((i.audit_status = 'done'::report.audit_status) AND (i.document_date >= ((is2.built_year)::date - '5 years'::interval))))
           ORDER BY b.external_id,
                 CASE i.type
                     WHEN 'foundation_research'::report.inquiry_type THEN 0
@@ -4122,6 +4122,76 @@ CREATE MATERIALIZED VIEW data.building_sample AS
 --
 
 COMMENT ON MATERIALIZED VIEW data.building_sample IS '[model evidence] Evidence per building from research reports, the way the risk model reads it. Refreshed by refresh_data_model.';
+
+
+--
+-- Name: building_sample_2024_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.building_sample_2024_1 AS
+ WITH ranked AS (
+         SELECT DISTINCT ON (b.external_id) b.external_id AS building_id,
+            is2.foundation_type,
+            is2.enforcement_term,
+            is2.damage_cause,
+            is2.overall_quality,
+            is2.recovery_advised,
+            (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
+            is2.groundwater_level_temp AS groundwater_level,
+            is2.wood_level,
+            is2.foundation_depth,
+            i.type AS inquiry_type,
+            i.document_date,
+            i.id
+           FROM ((report.inquiry_sample is2
+             JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
+             JOIN geocoder.building b ON ((b.external_id = (is2.building_id)::text)))
+          WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
+          ORDER BY b.external_id,
+                CASE i.type
+                    WHEN 'foundation_research'::report.inquiry_type THEN 0
+                    WHEN 'inspectionpit'::report.inquiry_type THEN 1
+                    WHEN 'second_opinion'::report.inquiry_type THEN 2
+                    WHEN 'note'::report.inquiry_type THEN 3
+                    WHEN 'additional_research'::report.inquiry_type THEN 4
+                    WHEN 'demolition_research'::report.inquiry_type THEN 5
+                    WHEN 'architectural_research'::report.inquiry_type THEN 6
+                    WHEN 'archive_research'::report.inquiry_type THEN 7
+                    WHEN 'quickscan'::report.inquiry_type THEN 8
+                    ELSE 100
+                END, i.document_date DESC
+        ), facade AS (
+         SELECT DISTINCT ON ((is2.building_id)::text) (is2.building_id)::text AS building_id,
+            is2.facade_scan_risk
+           FROM (report.inquiry_sample is2
+             JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
+          WHERE (is2.facade_scan_risk IS NOT NULL)
+          ORDER BY (is2.building_id)::text, i.document_date DESC
+        )
+ SELECT r.building_id,
+    r.foundation_type,
+    r.enforcement_term,
+    r.damage_cause,
+    r.overall_quality,
+    r.recovery_advised,
+    r.built_year,
+    r.groundwater_level,
+    r.wood_level,
+    r.foundation_depth,
+    f.facade_scan_risk,
+    r.inquiry_type,
+    r.document_date,
+    r.id
+   FROM (ranked r
+     LEFT JOIN facade f ON ((f.building_id = r.building_id)))
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW building_sample_2024_1; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.building_sample_2024_1 IS '[model evidence] What model-2024.1 read: building_sample with the BAG-only date guard, as of 2026-11-03. Frozen, no longer refreshed.';
 
 
 --
@@ -4616,7 +4686,7 @@ CREATE VIEW data.model_risk_dynamic_all AS
              LEFT JOIN data.building_pleistocene bpl ON ((bpl.building_id = bp.building_id)))
              LEFT JOIN data.building_cluster bc ON ((bc.building_id = bp.building_id)))
              LEFT JOIN data.supercluster bsc ON ((bsc.cluster_id = bc.cluster_id)))
-             LEFT JOIN data.building_sample established ON ((established.building_id = bp.building_id)))
+             LEFT JOIN data.building_sample_2024_1 established ON ((established.building_id = bp.building_id)))
              LEFT JOIN data.cluster_sample cluster ON ((cluster.cluster_id = bc.cluster_id)))
              LEFT JOIN data.supercluster_sample supercluster ON ((supercluster.supercluster_id = bsc.supercluster_id)))
              LEFT JOIN LATERAL ( SELECT DISTINCT ON (rs.building_id) rs.building_id,
@@ -7344,6 +7414,13 @@ CREATE INDEX building_precomputed_neighborhood_id_idx ON data.building_precomput
 
 
 --
+-- Name: building_sample_2024_1_building_id_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX building_sample_2024_1_building_id_idx ON data.building_sample_2024_1 USING btree (building_id);
+
+
+--
 -- Name: building_sample_2026_3_pkey; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -8730,5 +8807,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Kus89gBveYrKnQHp1KrT4Q7Yvmvm6XWqmXAuXPGY1LZHwnSFnQvijCGFIaP8W95
+\unrestrict koxRiHpVcVGfdsbAfdAMtVu5wRDgNealhpriKskyoQPNORZjtgslO3Gcr6B13VW
 
