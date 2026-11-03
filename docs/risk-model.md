@@ -444,6 +444,8 @@ FROM report.inquiry_sample is2
 JOIN report.inquiry        i  ON is2.inquiry_id = i.id
 JOIN geocoder.building     b  ON b.external_id = is2.building_id::text
 WHERE i.document_date >= b.built_year::date - interval '5 years'
+   OR (i.audit_status = 'done'                                      -- building_sample only, see below
+       AND i.document_date >= is2.built_year::date - interval '5 years')
 ORDER BY b.external_id,
     CASE i.type
         WHEN 'foundation_research'  THEN 0
@@ -463,6 +465,8 @@ CREATE UNIQUE INDEX ON data.building_sample (building_id);
 ```
 
 `data.cluster_sample` is the same query joined through `data.building_cluster` and grouped by `bc.cluster_id`; `data.supercluster_sample` is joined through `supercluster → building_cluster` grouped by `s.supercluster_id`.
+
+**The date guard** skips a report dated more than 5 years before the pand's BAG build year, because such a report is taken to be about a predecessor building. BAG years are often estimates, so in `data.building_sample` a report also passes when a person approved it (`audit_status = 'done'`) and it passes the same test against the build year in its own sample (Worker #347). The year alone proves nothing, since a report about a predecessor also states its own older year; the approval does. `cluster_sample` and `supercluster_sample` keep the BAG-only guard: a report's own year says something about its pand, not about its neighbours. `data.building_sample_2024_1` is the matview as model-2024.1 read it, frozen and no longer refreshed.
 
 **Why `DISTINCT ON` and not `array_agg`:** the original matviews used `array_agg(... ORDER BY ...)[1]`, but Postgres does not guarantee that `array_agg` preserves subquery `ORDER BY` through `GROUP BY`. The Phase A3 rewrite replaced it with `DISTINCT ON (...) ORDER BY ...` for deterministic selection.
 

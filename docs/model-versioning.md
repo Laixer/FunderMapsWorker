@@ -152,7 +152,10 @@ own, built to the spec in Worker #283:
 - **One small sample matview** (`building_sample_2026_3`: QuickScan and
   onderzoek dates, decay) holds what 2026.3 reads from the reports beside the
   leading record of the frozen sample matviews, which it keeps reading. It is
-  refreshed right after `data.building_sample`.
+  refreshed right after `data.building_sample`. Since Worker #347
+  `data.building_sample` is no longer frozen: 2026.3 reads it with a wider date
+  guard, and model-2024.1 keeps the old one as `data.building_sample_2024_1`.
+  That is the one exception to the rule below, under the same slug.
 - **A full national run of its own.** The refresh of model-2026.3 takes about
   as long as that of model-2024.1; `refresh_risk_model` did both until
   2026-10-19, when 2026.3 was approved as the default and the 2024.1 line came
