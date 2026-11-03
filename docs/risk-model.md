@@ -459,14 +459,18 @@ ORDER BY b.external_id,
         WHEN 'quickscan'            THEN 8
         ELSE 100
     END,
-    i.document_date DESC
+    i.document_date DESC,
+    i.id DESC,
+    is2.id DESC
 WITH NO DATA;
 CREATE UNIQUE INDEX ON data.building_sample (building_id);
 ```
 
 `data.cluster_sample` is the same query joined through `data.building_cluster` and grouped by `bc.cluster_id`; `data.supercluster_sample` is joined through `supercluster → building_cluster` grouped by `s.supercluster_id`.
 
-**The date guard** skips a report dated more than 5 years before the pand's BAG build year, because such a report is taken to be about a predecessor building. BAG years are often estimates, so in `data.building_sample` a report also passes when a person approved it (`audit_status = 'done'`) and it passes the same test against the build year in its own sample (Worker #347). The year alone proves nothing, since a report about a predecessor also states its own older year; the approval does. `cluster_sample` and `supercluster_sample` keep the BAG-only guard: a report's own year says something about its pand, not about its neighbours. `data.building_sample_2024_1` is the matview as model-2024.1 read it, frozen and no longer refreshed.
+**The date guard** skips a report dated more than 5 years before the pand's BAG build year, because such a report is taken to be about a predecessor building. BAG years are often estimates, so in `data.building_sample` a report also passes when a person approved it (`audit_status = 'done'`) and it passes the same test against the build year in its own sample (Worker #347). The year alone proves nothing, since a report about a predecessor also states its own older year; the approval does. `cluster_sample` and `supercluster_sample` keep the BAG-only guard: a report's own year says something about its pand, not about its neighbours. 
+
+**The tie-break** (Worker #301): reports that tie on type and date go to the newest entered report, then the newest entered sample. Without a unique last key Postgres returned whichever row the plan put first, so the same data could give another foundation type at the next refresh. This fixes the pick, not the choice: a better choice among tied reports is a model rule for a next version. `data.building_sample_2024_1`, `cluster_sample_2024_1` and `supercluster_sample_2024_1` are the matviews as model-2024.1 read them, frozen and no longer refreshed.
 
 **Why `DISTINCT ON` and not `array_agg`:** the original matviews used `array_agg(... ORDER BY ...)[1]`, but Postgres does not guarantee that `array_agg` preserves subquery `ORDER BY` through `GROUP BY`. The Phase A3 rewrite replaced it with `DISTINCT ON (...) ORDER BY ...` for deterministic selection.
 

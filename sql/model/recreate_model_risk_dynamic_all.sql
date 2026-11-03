@@ -278,8 +278,8 @@ FROM data.building_precomputed bp
     LEFT JOIN data.building_cluster bc ON bc.building_id = bp.building_id
     LEFT JOIN data.supercluster bsc ON bsc.cluster_id = bc.cluster_id
     LEFT JOIN data.building_sample_2024_1 established ON established.building_id = bp.building_id
-    LEFT JOIN data.cluster_sample cluster ON cluster.cluster_id = bc.cluster_id
-    LEFT JOIN data.supercluster_sample supercluster ON supercluster.supercluster_id = bsc.supercluster_id
+    LEFT JOIN data.cluster_sample_2024_1 cluster ON cluster.cluster_id = bc.cluster_id
+    LEFT JOIN data.supercluster_sample_2024_1 supercluster ON supercluster.supercluster_id = bsc.supercluster_id
     LEFT JOIN LATERAL (
         SELECT DISTINCT ON (rs.building_id) rs.building_id, rs.type
         FROM report.recovery_sample rs

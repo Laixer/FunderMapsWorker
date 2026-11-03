@@ -155,7 +155,10 @@ own, built to the spec in Worker #283:
   refreshed right after `data.building_sample`. Since Worker #347
   `data.building_sample` is no longer frozen: 2026.3 reads it with a wider date
   guard, and model-2024.1 keeps the old one as `data.building_sample_2024_1`.
-  That is the one exception to the rule below, under the same slug.
+  Since Worker #301 the three sample matviews and the herstel pick in
+  `model_risk_2026_3_rows` end with a unique key, so tied reports stop flipping;
+  model-2024.1 keeps `cluster_sample_2024_1` and `supercluster_sample_2024_1`.
+  These two are the exceptions to the rule below, under the same slug.
 - **A full national run of its own.** The refresh of model-2026.3 takes about
   as long as that of model-2024.1; `refresh_risk_model` did both until
   2026-10-19, when 2026.3 was approved as the default and the 2024.1 line came
