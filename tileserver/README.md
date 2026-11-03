@@ -70,6 +70,10 @@ MapLibre migration: the legacy hosted style `fundermaps_basemap`
 (OpenMapTiles schema). It is generated — edit the palette/overrides in
 `styles/build_style.py` and rerun it; don't hand-edit the JSON.
 
+Labels are Dutch, never English: `name:nl`, then the name itself. A place whose
+name already is its official BAG woonplaats keeps it (`OFFICIAL_PLACE_NAMES` in
+`build_style.py` says why), so a label never contradicts the address beside it.
+
 Tiles come from OpenFreeMap (self-hostable escape hatch if ever needed).
 Everything else a browser fetches is served by Martin itself: the style at
 `/style/fundermaps-basemap` (baked into the image from `styles/`), glyphs
