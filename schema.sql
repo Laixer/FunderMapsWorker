@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict koxRiHpVcVGfdsbAfdAMtVu5wRDgNealhpriKskyoQPNORZjtgslO3Gcr6B13VW
+\restrict 2fnuWTNZKDCX83yrjvRc7IJseMyaTMg2P7ZBFDFShc5d41vTgJAFyIWWICyvkdK
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -1644,7 +1644,7 @@ FROM (
             SELECT DISTINCT ON (rs.building_id) rs.building_id, rs.type
               FROM report.recovery_sample rs
              WHERE rs.building_id = bp.building_id
-             ORDER BY rs.building_id, rs.create_date DESC
+             ORDER BY rs.building_id, rs.create_date DESC, rs.id DESC
         ) recovery ON true
         -- Spec section 1: an executed, not deleted herstel beats any QuickScan (Worker #222). The
         -- herstel term of the risks keeps model-2024.1's choice (`recovery` above).
@@ -4089,14 +4089,14 @@ CREATE MATERIALIZED VIEW data.building_sample AS
                     WHEN 'archive_research'::report.inquiry_type THEN 7
                     WHEN 'quickscan'::report.inquiry_type THEN 8
                     ELSE 100
-                END, i.document_date DESC
+                END, i.document_date DESC, i.id DESC, is2.id DESC
         ), facade AS (
          SELECT DISTINCT ON ((is2.building_id)::text) (is2.building_id)::text AS building_id,
             is2.facade_scan_risk
            FROM (report.inquiry_sample is2
              JOIN report.inquiry i ON ((i.id = is2.inquiry_id)))
           WHERE (is2.facade_scan_risk IS NOT NULL)
-          ORDER BY (is2.building_id)::text, i.document_date DESC
+          ORDER BY (is2.building_id)::text, i.document_date DESC, i.id DESC, is2.id DESC
         )
  SELECT r.building_id,
     r.foundation_type,
@@ -4319,7 +4319,7 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
             WHEN 'archive_research'::report.inquiry_type THEN 7
             WHEN 'quickscan'::report.inquiry_type THEN 8
             ELSE 100
-        END, i.document_date DESC
+        END, i.document_date DESC, i.id DESC, is2.id DESC
   WITH NO DATA;
 
 
@@ -4328,6 +4328,52 @@ CREATE MATERIALIZED VIEW data.cluster_sample AS
 --
 
 COMMENT ON MATERIALIZED VIEW data.cluster_sample IS '[model evidence] Evidence per building cluster, for buildings without a report of their own. Refreshed by refresh_data_model.';
+
+
+--
+-- Name: cluster_sample_2024_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.cluster_sample_2024_1 AS
+ SELECT DISTINCT ON (bc.cluster_id) bc.cluster_id,
+    is2.foundation_type,
+    is2.enforcement_term,
+    is2.damage_cause,
+    is2.overall_quality,
+    is2.recovery_advised,
+    (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
+    is2.groundwater_level_temp AS groundwater_level,
+    is2.wood_level,
+    is2.foundation_depth,
+    i.type AS inquiry_type,
+    i.document_date,
+    i.id
+   FROM (((data.building_cluster bc
+     JOIN geocoder.building b ON ((b.external_id = bc.building_id)))
+     JOIN report.inquiry_sample is2 ON (((is2.building_id)::text = b.external_id)))
+     JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
+  WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
+  ORDER BY bc.cluster_id,
+        CASE i.type
+            WHEN 'foundation_research'::report.inquiry_type THEN 0
+            WHEN 'inspectionpit'::report.inquiry_type THEN 1
+            WHEN 'second_opinion'::report.inquiry_type THEN 2
+            WHEN 'note'::report.inquiry_type THEN 3
+            WHEN 'additional_research'::report.inquiry_type THEN 4
+            WHEN 'demolition_research'::report.inquiry_type THEN 5
+            WHEN 'architectural_research'::report.inquiry_type THEN 6
+            WHEN 'archive_research'::report.inquiry_type THEN 7
+            WHEN 'quickscan'::report.inquiry_type THEN 8
+            ELSE 100
+        END, i.document_date DESC
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW cluster_sample_2024_1; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.cluster_sample_2024_1 IS '[model evidence] What model-2024.1 read: cluster_sample without a fixed tie-break. Frozen, no longer refreshed.';
 
 
 --
@@ -4472,10 +4518,10 @@ COMMENT ON TABLE data.supercluster IS '[model input] The supercluster each clust
 
 
 --
--- Name: supercluster_sample; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+-- Name: supercluster_sample_2024_1; Type: MATERIALIZED VIEW; Schema: data; Owner: -
 --
 
-CREATE MATERIALIZED VIEW data.supercluster_sample AS
+CREATE MATERIALIZED VIEW data.supercluster_sample_2024_1 AS
  SELECT DISTINCT ON (s.supercluster_id) s.supercluster_id,
     is2.foundation_type,
     is2.enforcement_term,
@@ -4512,10 +4558,10 @@ CREATE MATERIALIZED VIEW data.supercluster_sample AS
 
 
 --
--- Name: MATERIALIZED VIEW supercluster_sample; Type: COMMENT; Schema: data; Owner: -
+-- Name: MATERIALIZED VIEW supercluster_sample_2024_1; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON MATERIALIZED VIEW data.supercluster_sample IS '[model evidence] Evidence per supercluster, the fallback after cluster_sample. Refreshed by refresh_data_model.';
+COMMENT ON MATERIALIZED VIEW data.supercluster_sample_2024_1 IS '[model evidence] What model-2024.1 read: supercluster_sample without a fixed tie-break. Frozen, no longer refreshed.';
 
 
 --
@@ -4687,8 +4733,8 @@ CREATE VIEW data.model_risk_dynamic_all AS
              LEFT JOIN data.building_cluster bc ON ((bc.building_id = bp.building_id)))
              LEFT JOIN data.supercluster bsc ON ((bsc.cluster_id = bc.cluster_id)))
              LEFT JOIN data.building_sample_2024_1 established ON ((established.building_id = bp.building_id)))
-             LEFT JOIN data.cluster_sample cluster ON ((cluster.cluster_id = bc.cluster_id)))
-             LEFT JOIN data.supercluster_sample supercluster ON ((supercluster.supercluster_id = bsc.supercluster_id)))
+             LEFT JOIN data.cluster_sample_2024_1 cluster ON ((cluster.cluster_id = bc.cluster_id)))
+             LEFT JOIN data.supercluster_sample_2024_1 supercluster ON ((supercluster.supercluster_id = bsc.supercluster_id)))
              LEFT JOIN LATERAL ( SELECT DISTINCT ON (rs.building_id) rs.building_id,
                     rs.type
                    FROM report.recovery_sample rs
@@ -5136,6 +5182,53 @@ CREATE MATERIALIZED VIEW data.statistics_product_inquiry_municipality AS
 --
 
 COMMENT ON MATERIALIZED VIEW data.statistics_product_inquiry_municipality IS '[statistics] Webservice statistics product: research reports per year per municipality. Refreshed by refresh_data_model.';
+
+
+--
+-- Name: supercluster_sample; Type: MATERIALIZED VIEW; Schema: data; Owner: -
+--
+
+CREATE MATERIALIZED VIEW data.supercluster_sample AS
+ SELECT DISTINCT ON (s.supercluster_id) s.supercluster_id,
+    is2.foundation_type,
+    is2.enforcement_term,
+    is2.damage_cause,
+    is2.overall_quality,
+    is2.recovery_advised,
+    (date_part('year'::text, (is2.built_year)::date))::integer AS built_year,
+    is2.groundwater_level_temp AS groundwater_level,
+    is2.wood_level,
+    is2.foundation_depth,
+    i.type AS inquiry_type,
+    i.document_date,
+    i.id
+   FROM ((((data.supercluster s
+     JOIN data.building_cluster bc ON ((bc.cluster_id = s.cluster_id)))
+     JOIN geocoder.building b ON ((b.external_id = bc.building_id)))
+     JOIN report.inquiry_sample is2 ON (((is2.building_id)::text = b.external_id)))
+     JOIN report.inquiry i ON ((is2.inquiry_id = i.id)))
+  WHERE (i.document_date >= ((b.built_year)::date - '5 years'::interval))
+  ORDER BY s.supercluster_id,
+        CASE i.type
+            WHEN 'foundation_research'::report.inquiry_type THEN 0
+            WHEN 'inspectionpit'::report.inquiry_type THEN 1
+            WHEN 'second_opinion'::report.inquiry_type THEN 2
+            WHEN 'note'::report.inquiry_type THEN 3
+            WHEN 'additional_research'::report.inquiry_type THEN 4
+            WHEN 'demolition_research'::report.inquiry_type THEN 5
+            WHEN 'architectural_research'::report.inquiry_type THEN 6
+            WHEN 'archive_research'::report.inquiry_type THEN 7
+            WHEN 'quickscan'::report.inquiry_type THEN 8
+            ELSE 100
+        END, i.document_date DESC, i.id DESC, is2.id DESC
+  WITH NO DATA;
+
+
+--
+-- Name: MATERIALIZED VIEW supercluster_sample; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON MATERIALIZED VIEW data.supercluster_sample IS '[model evidence] Evidence per supercluster, the fallback after cluster_sample. Refreshed by refresh_data_model.';
 
 
 --
@@ -7435,6 +7528,13 @@ CREATE UNIQUE INDEX building_sample_building_id_idx ON data.building_sample USIN
 
 
 --
+-- Name: cluster_sample_2024_1_cluster_id_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX cluster_sample_2024_1_cluster_id_idx ON data.cluster_sample_2024_1 USING btree (cluster_id);
+
+
+--
 -- Name: cluster_sample_v2_cluster_id_idx; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -7565,6 +7665,13 @@ CREATE UNIQUE INDEX statistics_product_inquiry_municipality_municipality_year_id
 --
 
 CREATE UNIQUE INDEX supercluster_idx ON data.supercluster USING btree (cluster_id, supercluster_id);
+
+
+--
+-- Name: supercluster_sample_2024_1_supercluster_id_idx; Type: INDEX; Schema: data; Owner: -
+--
+
+CREATE UNIQUE INDEX supercluster_sample_2024_1_supercluster_id_idx ON data.supercluster_sample_2024_1 USING btree (supercluster_id);
 
 
 --
@@ -8807,5 +8914,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict koxRiHpVcVGfdsbAfdAMtVu5wRDgNealhpriKskyoQPNORZjtgslO3Gcr6B13VW
+\unrestrict 2fnuWTNZKDCX83yrjvRc7IJseMyaTMg2P7ZBFDFShc5d41vTgJAFyIWWICyvkdK
 
