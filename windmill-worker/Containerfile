@@ -7,7 +7,7 @@
 #
 # WINDMILL_VERSION must match the Windmill server (App Platform app
 # fundermaps-windmill-prod, image tag) — worker and server move together.
-ARG WINDMILL_VERSION=1.842
+ARG WINDMILL_VERSION=1.854.2
 FROM ghcr.io/windmill-labs/windmill:${WINDMILL_VERSION}
 
 RUN apt-get update \
