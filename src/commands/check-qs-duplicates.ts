@@ -92,7 +92,6 @@ export async function checkDossiers(opts: { dossier?: number }): Promise<Verdict
             FROM report.inquiry i
             JOIN report.inquiry_sample s ON s.inquiry_id = i.id
             WHERE s.building_id = ${d.building_id} AND i.type = 'facade_scan'
-              AND i.delete_date IS NULL AND s.delete_date IS NULL
             ORDER BY 3 DESC`
         : [];
 

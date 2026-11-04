@@ -111,7 +111,7 @@ def build_base(label_date, rebuild):
         WHEN 'note' THEN 3 WHEN 'additional_research' THEN 4 WHEN 'demolition_research' THEN 5
         WHEN 'architectural_research' THEN 6 WHEN 'archive_research' THEN 7 ELSE 100 END AS type_rank
     FROM s JOIN fam f USING (foundation_type)
-    WHERE NOT sample_deleted AND NOT inquiry_deleted AND inquiry_type NOT IN ('quickscan', 'facade_scan')
+    WHERE inquiry_type NOT IN ('quickscan', 'facade_scan')
       AND document_date <= DATE '{label_date}'
       AND (bag_built_year IS NULL OR document_date >= make_date(bag_built_year - 5, 1, 1));
     CREATE TABLE lab AS
@@ -127,7 +127,7 @@ def build_base(label_date, rebuild):
           WHEN f.family = 'no_pile' THEN 1 ELSE 2 END AS t4,
         row_number() OVER (PARTITION BY s.building_id ORDER BY s.document_date DESC, s.sample_id DESC) rn
       FROM s JOIN fam f USING (foundation_type)
-      WHERE NOT s.sample_deleted AND NOT s.inquiry_deleted AND f.family <> 'other'
+      WHERE f.family <> 'other'
         AND s.inquiry_id IN (SELECT inquiry_id FROM read_csv_auto('{HERE}/qs_reliable_inquiries.csv', header=true))
     ) WHERE rn = 1;
     DROP TABLE s; DROP TABLE elig;

@@ -104,7 +104,7 @@ log.info(`extractor: ${EXTRACTOR}`);
 const inquiries = await sql<{ id: number; document_file: string }[]>`
   SELECT i.id, i.document_file
   FROM report.inquiry i
-  WHERE i.type = 'foundation_research' AND i.delete_date IS NULL
+  WHERE i.type = 'foundation_research'
     AND i.document_file ~ '\\.pdf$' AND i.document_date >= '2015-01-01'
     AND EXISTS (SELECT 1 FROM report.inquiry_sample s WHERE s.inquiry_id = i.id AND s.foundation_type IS NOT NULL)
     AND (SELECT count(*) FROM report.inquiry_sample s WHERE s.inquiry_id = i.id) BETWEEN 1 AND 6

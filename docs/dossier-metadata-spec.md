@@ -273,7 +273,7 @@ SELECT i.id,
             WHEN i.note ~* '<product-2-pattern>' THEN '<product-2-slug>' END,
        substring(i.note FROM '(?:<product-1-prefix>|REG-)\s*([0-9]{3,})')
 FROM report.inquiry i
-WHERE i.delete_date IS NULL AND i.note ILIKE '%doorlevering vanuit%'
+WHERE i.note ILIKE '%doorlevering vanuit%'
 ON CONFLICT (inquiry_id) DO NOTHING;
 ```
 
