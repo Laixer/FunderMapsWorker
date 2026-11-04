@@ -1,0 +1,11 @@
+-- Studio #32: "staff" becomes a role on the user, beside administrator and user.
+--
+-- Today staff means membership of the platform organisation, which also decides data scope and billing. Who may use the
+-- Studio and what they may see across organisations are different questions, and they should have different answers.
+--
+-- True on prod 2026-11-04: application.role holds administrator and user, application.user.role is its only column. No code
+-- knows this value yet: the running API treats any role but administrator alike and lets staff in by membership, so this and
+-- the next file change nothing for anyone. The API moves to the role in a later deploy.
+--
+-- Its own file: a new enum value can't be used in the transaction that adds it, and the next file uses it.
+ALTER TYPE application.role ADD VALUE IF NOT EXISTS 'staff';
