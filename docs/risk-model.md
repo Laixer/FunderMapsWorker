@@ -708,7 +708,7 @@ this order:
    job for the queue worker; that worker and its queue are gone (#147). The
    vector tiles themselves come from the Martin tileserver, not from here.
 6. **Log**: `log_refresh_data_model` writes the `refresh_data_model` row in
-   `data.refresh_log`, the dead-man switch on the Grafana board.
+   `data.refresh_log`, the dead-man switch on the Studio's Modellen page.
 7. **Risk follow-up**: `f/fundermaps/dataops/risk_followup` calls the API
    (`POST /api/intake/risk-followup`), which mails each melder whose
    registered risk moved. The step may fail without failing the run.
@@ -730,7 +730,7 @@ Each script is its own transaction, so locks release between steps, and
   ends with exactly that block.
 - The export step retries once after 60 s. If it still fails, the flow fails
   before its "Log Run" step, so no `refresh_data_model` row is written and
-  the "Model refresh age" panel in Grafana keeps growing — that is the alarm.
+  the last run on the Studio's Modellen page stops moving — that is the alarm.
 ---
 
 ## 11. Downstream consumers
