@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2fnuWTNZKDCX83yrjvRc7IJseMyaTMg2P7ZBFDFShc5d41vTgJAFyIWWICyvkdK
+\restrict E0YEHltuAZfhokbfgHQIHebCdRQ6WRQr92E7LjbOt2ZlJ4oW0k608o2R5rxrc7a
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -182,7 +182,8 @@ COMMENT ON DOMAIN application.phone IS 'Domain for a phone number.';
 
 CREATE TYPE application.role AS ENUM (
     'administrator',
-    'user'
+    'user',
+    'staff'
 );
 
 
@@ -8914,5 +8915,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2fnuWTNZKDCX83yrjvRc7IJseMyaTMg2P7ZBFDFShc5d41vTgJAFyIWWICyvkdK
+\unrestrict E0YEHltuAZfhokbfgHQIHebCdRQ6WRQr92E7LjbOt2ZlJ4oW0k608o2R5rxrc7a
 
