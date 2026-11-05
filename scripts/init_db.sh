@@ -6,7 +6,7 @@
 #   1. Sanity-check the target host (refuses prod).
 #   2. Ensures the postgis extension is installed.
 #   3. Creates roles: fundermaps, fundermaps_webapp, fundermaps_webservice,
-#      fundermaps_windmill, grafana.
+#      fundermaps_windmill.
 #      Passwords come from env vars; if unset, random passwords are generated
 #      and printed to stdout once.
 #   4. Loads schema.sql (the schema-only dump committed at repo root).
@@ -23,7 +23,7 @@
 #   DATABASE_URL=postgres://user:pass@host:5432/fundermaps ./scripts/init_db.sh
 #
 # Optional env:
-#   PG_FM_PASS, PG_WEBAPP_PASS, PG_WS_PASS, PG_WINDMILL_PASS, PG_GRAFANA_PASS
+#   PG_FM_PASS, PG_WEBAPP_PASS, PG_WS_PASS, PG_WINDMILL_PASS
 #       Passwords for each role. Random if unset.
 #   FUNDERMAPS_INIT_ALLOW_PROD=1
 #       Override the prod-host refusal. Don't.
@@ -79,7 +79,6 @@ PG_FM_PASS="${PG_FM_PASS:-$(gen_password)}"
 PG_WEBAPP_PASS="${PG_WEBAPP_PASS:-$(gen_password)}"
 PG_WS_PASS="${PG_WS_PASS:-$(gen_password)}"
 PG_WINDMILL_PASS="${PG_WINDMILL_PASS:-$(gen_password)}"
-PG_GRAFANA_PASS="${PG_GRAFANA_PASS:-$(gen_password)}"
 
 # --- Helpers ----------------------------------------------------------------
 psql_exec() {
@@ -121,12 +120,6 @@ BEGIN
     ELSE
         ALTER ROLE fundermaps_windmill WITH LOGIN PASSWORD '${PG_WINDMILL_PASS}';
     END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'grafana') THEN
-        CREATE ROLE grafana LOGIN PASSWORD '${PG_GRAFANA_PASS}';
-    ELSE
-        ALTER ROLE grafana WITH LOGIN PASSWORD '${PG_GRAFANA_PASS}';
-    END IF;
 END
 \$\$;
 SQL
@@ -164,7 +157,6 @@ print_url fundermaps            "${PG_FM_PASS}"
 print_url fundermaps_webapp     "${PG_WEBAPP_PASS}"
 print_url fundermaps_webservice "${PG_WS_PASS}"
 print_url fundermaps_windmill   "${PG_WINDMILL_PASS}"
-print_url grafana               "${PG_GRAFANA_PASS}"
 echo
 echo "Next step: load seed data with"
 echo "  gunzip -c sql/seed.sql.gz | psql \"\$DATABASE_URL\""
