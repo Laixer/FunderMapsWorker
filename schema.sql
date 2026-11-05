@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2fnuWTNZKDCX83yrjvRc7IJseMyaTMg2P7ZBFDFShc5d41vTgJAFyIWWICyvkdK
+\restrict BEkPC4JcUIujXUxToPZ5glCoPohFRqGaLnQ2hWbNBnwEIJ3YsA3QCAbVlgMwwac
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -182,7 +182,8 @@ COMMENT ON DOMAIN application.phone IS 'Domain for a phone number.';
 
 CREATE TYPE application.role AS ENUM (
     'administrator',
-    'user'
+    'user',
+    'staff'
 );
 
 
@@ -1653,7 +1654,6 @@ FROM (
               FROM report.recovery_sample rs
              WHERE rs.building_id = bp.building_id
                AND rs.status = 'executed'
-               AND rs.delete_date IS NULL
              LIMIT 1
         ) executed_recovery ON true
         LEFT JOIN data.cluster_recovery_sample ON cluster_recovery_sample.cluster_id = bc.cluster_id,
@@ -3876,7 +3876,6 @@ CREATE TABLE report.inquiry (
     floor_measurement boolean DEFAULT false NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
-    delete_date timestamp with time zone,
     note text,
     document_date date NOT NULL,
     document_file text NOT NULL,
@@ -3918,13 +3917,6 @@ COMMENT ON COLUMN report.inquiry.update_date IS 'Timestamp of last record update
 
 
 --
--- Name: COLUMN inquiry.delete_date; Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON COLUMN report.inquiry.delete_date IS 'Timestamp of soft delete';
-
-
---
 -- Name: COLUMN inquiry.data_owner_organization_id; Type: COMMENT; Schema: report; Owner: -
 --
 
@@ -3941,7 +3933,6 @@ CREATE TABLE report.inquiry_sample (
     address geocoder.geocoder_id DEFAULT NULL::text,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
-    delete_date timestamp with time zone,
     note text,
     built_year report.year,
     substructure report.substructure,
@@ -4031,13 +4022,6 @@ COMMENT ON COLUMN report.inquiry_sample.create_date IS 'Timestamp of record crea
 --
 
 COMMENT ON COLUMN report.inquiry_sample.update_date IS 'Timestamp of last record update, automatically updated on record modification';
-
-
---
--- Name: COLUMN inquiry_sample.delete_date; Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON COLUMN report.inquiry_sample.delete_date IS 'Timestamp of soft delete';
 
 
 --
@@ -4573,7 +4557,6 @@ CREATE TABLE report.recovery_sample (
     recovery_id integer NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
-    delete_date timestamp with time zone,
     note text,
     status report.recovery_status,
     type report.recovery_type DEFAULT 'unknown'::report.recovery_type NOT NULL,
@@ -4607,13 +4590,6 @@ COMMENT ON COLUMN report.recovery_sample.create_date IS 'Timestamp of record cre
 --
 
 COMMENT ON COLUMN report.recovery_sample.update_date IS 'Timestamp of last record update, automatically updated on record modification';
-
-
---
--- Name: COLUMN recovery_sample.delete_date; Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON COLUMN report.recovery_sample.delete_date IS 'Timestamp of soft delete';
 
 
 --
@@ -5050,7 +5026,6 @@ CREATE TABLE report.incident (
     document_file text[],
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
-    delete_date timestamp with time zone,
     foundation_damage_characteristics report.foundation_damage_characteristics[],
     environment_damage_characteristics report.environment_damage_characteristics[],
     metadata jsonb,
@@ -5081,13 +5056,6 @@ COMMENT ON COLUMN report.incident.create_date IS 'Timestamp of record creation, 
 --
 
 COMMENT ON COLUMN report.incident.update_date IS 'Timestamp of last record update, automatically updated on record modification';
-
-
---
--- Name: COLUMN incident.delete_date; Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON COLUMN report.incident.delete_date IS 'Timestamp of soft delete';
 
 
 --
@@ -6509,7 +6477,6 @@ CREATE TABLE report.recovery (
     id integer NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_date timestamp with time zone,
-    delete_date timestamp with time zone,
     note text,
     attribution_id integer NOT NULL,
     access_policy application.access_policy DEFAULT 'private'::application.access_policy NOT NULL,
@@ -6541,13 +6508,6 @@ COMMENT ON COLUMN report.recovery.create_date IS 'Timestamp of record creation, 
 --
 
 COMMENT ON COLUMN report.recovery.update_date IS 'Timestamp of last record update, automatically updated on record modification';
-
-
---
--- Name: COLUMN recovery.delete_date; Type: COMMENT; Schema: report; Owner: -
---
-
-COMMENT ON COLUMN report.recovery.delete_date IS 'Timestamp of soft delete';
 
 
 --
@@ -8914,5 +8874,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2fnuWTNZKDCX83yrjvRc7IJseMyaTMg2P7ZBFDFShc5d41vTgJAFyIWWICyvkdK
+\unrestrict BEkPC4JcUIujXUxToPZ5glCoPohFRqGaLnQ2hWbNBnwEIJ3YsA3QCAbVlgMwwac
 
