@@ -54,10 +54,9 @@ more. Scoring exact equality punishes it for answering `wood` when the surveyor
 wrote `wood_rotterdam`. Score the family — `data.is_wood_family()` /
 `data.is_no_pile_family()` — as every script here does.
 
-Two smaller ones: 12,645 buildings carry inspections asserting **different**
+A smaller one: 12,645 buildings carry inspections asserting **different**
 foundation types for the same building, and are excluded from the denominator
-rather than resolved; and 101 samples are soft-deleted (`delete_date`), which
-moves only 22 buildings and is therefore immaterial but worth filtering.
+rather than resolved.
 
 ---
 

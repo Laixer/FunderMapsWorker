@@ -25,7 +25,6 @@ truth AS (
     FROM   report.inquiry_sample s
     JOIN   report.inquiry i ON i.id = s.inquiry_id
     WHERE  s.foundation_type IS NOT NULL
-      AND  s.delete_date IS NULL
       AND  (:'truth_status' = 'ALL' OR i.audit_status::text = :'truth_status')
       AND  s.building_id NOT IN (SELECT building_id FROM conflicted)
     ORDER  BY s.building_id, i.document_date DESC NULLS LAST, s.id DESC

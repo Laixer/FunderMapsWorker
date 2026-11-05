@@ -32,7 +32,7 @@
 CREATE TEMP TABLE t AS
 SELECT DISTINCT ON (s.building_id) s.building_id, s.foundation_type AS observed
 FROM report.inquiry_sample s JOIN report.inquiry i ON i.id=s.inquiry_id
-WHERE s.foundation_type IS NOT NULL AND s.delete_date IS NULL
+WHERE s.foundation_type IS NOT NULL
 ORDER BY s.building_id, i.document_date DESC NULLS LAST, s.id DESC;
 CREATE INDEX ON t(building_id); ANALYZE t;
 
