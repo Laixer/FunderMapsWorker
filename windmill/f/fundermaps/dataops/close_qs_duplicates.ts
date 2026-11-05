@@ -29,7 +29,7 @@ const WORKER_REPO = "https://github.com/Laixer/FunderMapsWorker.git";
  * exported). To ship Worker changes here, set this to a commit on main, in
  * Windmill and in the windmill/ mirror together.
  */
-const WORKER_REF = "0d83e9702575c26a0f1d7820498731437288832b";
+const WORKER_REF = "aeaa4a5e91ee2c683c9b052a4156ee5846cd8ba1";
 /** Where intake objects live; the s3 resource's own bucket is fundermaps-data. */
 const BUCKET = "fundermaps";
 const API_URL = "https://api.fundermaps.com";
