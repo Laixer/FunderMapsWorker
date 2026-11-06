@@ -27,7 +27,7 @@ BEGIN
         SELECT FROM pg_index
         WHERE indexrelid = to_regclass('application.product_tracker_org_prod_building_date_idx') AND indisvalid
     ) THEN
-        RAISE EXCEPTION 'product_tracker_org_prod_building_date_idx is missing or invalid: DROP INDEX CONCURRENTLY it, CREATE it again as in 20261105_005, and rerun';
+        RAISE EXCEPTION 'product_tracker_org_prod_building_date_idx is missing or invalid: DROP INDEX CONCURRENTLY it, CREATE it again as in 20261106_001, and rerun';
     END IF;
 END
 $$;
