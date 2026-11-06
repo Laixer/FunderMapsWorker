@@ -127,10 +127,10 @@ export async function migrate(opts: { dryRun: boolean; status: boolean; allowPro
         const m = a.migration;
         const t0 = performance.now();
         if (m.noTransaction) {
-          // Statements run one by one outside a transaction (CREATE INDEX
-          // CONCURRENTLY refuses to run inside one). A failure half-way leaves
-          // the earlier statements in place and no ledger row: rerun after
-          // fixing the file, which must therefore be idempotent.
+          // One statement outside a transaction (CREATE INDEX CONCURRENTLY
+          // refuses to run inside one, and next to another statement in one
+          // query). A failure leaves no ledger row: rerun after fixing the
+          // file, which must therefore be idempotent.
           await sql.unsafe(m.body);
           await sql.unsafe(`insert into ${LEDGER} (version, name, checksum, duration_ms) values ($1, $2, $3, $4)`, [m.version, m.name, m.checksum, Math.round(performance.now() - t0)]);
         } else {

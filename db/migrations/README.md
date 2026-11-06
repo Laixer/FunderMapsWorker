@@ -17,7 +17,10 @@ DATABASE_URL=postgres://... bun run migrate --status      # ledger vs files
 - One transaction per file: everything applies or nothing does, and the ledger
   row commits with it. A file whose first lines carry `-- migrate: no-transaction`
   runs outside a transaction instead (for `CREATE INDEX CONCURRENTLY`); such a
-  file must be idempotent, because a failure half-way is retried by rerunning.
+  file must be idempotent, because a failure half-way is retried by rerunning. It
+  holds one statement: the runner sends the file as one query, and `CONCURRENTLY`
+  refuses to run next to another statement. A failed build leaves an INVALID index
+  that `IF NOT EXISTS` passes over, so have the next migration check `indisvalid`.
 - **Ownership: every object belongs to `fundermaps`** (Yorick, 2026-09-20). The runner
   applies as `doadmin` on prod, so anything a file creates is owned by doadmin unless
   the file hands it over. A migration that creates a table, view, function or sequence
