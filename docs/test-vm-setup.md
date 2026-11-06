@@ -32,8 +32,8 @@ What it does:
   `do-user-871803` substring).
 - Installs `postgis`.
 - Creates four roles: `fundermaps`, `fundermaps_webapp`,
-  `fundermaps_webservice`, `grafana`. If `PG_FM_PASS`, `PG_WEBAPP_PASS`,
-  `PG_WS_PASS`, `PG_GRAFANA_PASS` are set, those are used; otherwise random
+  `fundermaps_webservice`, `fundermaps_windmill`. If `PG_FM_PASS`, `PG_WEBAPP_PASS`,
+  `PG_WS_PASS`, `PG_WINDMILL_PASS` are set, those are used; otherwise random
   passwords are generated and printed once at the end.
 - Loads `schema.sql` (strips the pg_dump 18 `\restrict` directive that
   breaks psql ≤ 17, and the `timescaledb` extension lines).
