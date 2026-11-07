@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict a1o0fmTzt7568R0ccCpgmkDqeM42j8WfCEgXhmznEwTGdNKj3C4x4kuaw50lohV
+\restrict X7O9UHgaKgzWUDvt9E4qtqq41fFp6LKK1CmFA528XzaQZSmEl96IEuQkDb98Md5
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -838,6 +838,27 @@ CREATE DOMAIN report.year AS date
 --
 
 COMMENT ON DOMAIN report.year IS 'Domain for a year between 900 and 2100.';
+
+
+--
+-- Name: product_tracker_count_insert(); Type: FUNCTION; Schema: application; Owner: -
+--
+
+CREATE FUNCTION application.product_tracker_count_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    INSERT INTO application.product_tracker_count AS c (organization_id, product, day, count)
+    VALUES (NEW.organization_id, NEW.product, (NEW.create_date AT TIME ZONE 'UTC')::date, 1)
+    ON CONFLICT (organization_id, product, day) DO UPDATE SET count = c.count + 1;
+    RETURN NULL;
+EXCEPTION WHEN OTHERS THEN
+    -- The billing row matters more than the counter. Callers swallow a failed insert, so an error here
+    -- would lose it without a trace; a count that's one short is the smaller mistake.
+    RAISE WARNING 'product_tracker_count not updated: %', SQLERRM;
+    RETURN NULL;
+END;
+$$;
 
 
 --
@@ -2831,7 +2852,7 @@ CREATE TABLE application.api_key_rate_limit (
 -- Name: TABLE api_key_rate_limit; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.api_key_rate_limit IS '[billing] Per-(API key, product) billing-event rate limits enforced by FunderMapsWebservice.';
+COMMENT ON TABLE application.api_key_rate_limit IS '[billing] Replaced by organization_rate_limit (2026-11-05). Stays until the Webservice and the API have moved; a later migration drops it.';
 
 
 --
@@ -3299,6 +3320,29 @@ COMMENT ON TABLE application.organization_mapset IS '[access] Which organisation
 
 
 --
+-- Name: organization_rate_limit; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.organization_rate_limit (
+    organization_id uuid NOT NULL,
+    product text NOT NULL,
+    period text NOT NULL,
+    limit_count integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT organization_rate_limit_limit_count_check CHECK ((limit_count >= 0)),
+    CONSTRAINT organization_rate_limit_period_check CHECK ((period = ANY (ARRAY['day'::text, 'month'::text])))
+);
+
+
+--
+-- Name: TABLE organization_rate_limit; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_rate_limit IS '[billing] Per-(organization, product) limits on billable events, enforced by FunderMapsWebservice. No row = unlimited; limit_count 0 = no access to that product.';
+
+
+--
 -- Name: organization_user; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -3362,6 +3406,26 @@ CREATE TABLE application.product_tracker (
 --
 
 COMMENT ON TABLE application.product_tracker IS '[billing] The billing record: one row per billable lookup (organisation, product, building, time). Never edit or prune.';
+
+
+--
+-- Name: product_tracker_count; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.product_tracker_count (
+    organization_id uuid NOT NULL,
+    product text NOT NULL,
+    day date NOT NULL,
+    count bigint NOT NULL
+)
+WITH (fillfactor='50');
+
+
+--
+-- Name: TABLE product_tracker_count; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.product_tracker_count IS '[billing] Rows of application.product_tracker per organisation, product and UTC day, kept by a trigger, so a rate limit reads at most 31 rows instead of counting. Complete from the month it was created in. product_tracker stays the billing record; deleting rows there does not lower this.';
 
 
 --
@@ -6757,6 +6821,14 @@ ALTER TABLE ONLY application.organization
 
 
 --
+-- Name: organization_rate_limit organization_rate_limit_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_rate_limit
+    ADD CONSTRAINT organization_rate_limit_pkey PRIMARY KEY (organization_id, product);
+
+
+--
 -- Name: organization_user organization_user_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -6770,6 +6842,14 @@ ALTER TABLE ONLY application.organization_user
 
 ALTER TABLE ONLY application.passkey
     ADD CONSTRAINT passkey_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: product_tracker_count product_tracker_count_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.product_tracker_count
+    ADD CONSTRAINT product_tracker_count_pkey PRIMARY KEY (organization_id, product, day);
 
 
 --
@@ -7429,6 +7509,13 @@ CREATE INDEX product_tracker_building_id_idx ON application.product_tracker USIN
 --
 
 CREATE INDEX product_tracker_create_date_idx ON application.product_tracker USING btree (create_date DESC);
+
+
+--
+-- Name: product_tracker_org_prod_building_date_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX product_tracker_org_prod_building_date_idx ON application.product_tracker USING btree (organization_id, product, building_id, create_date);
 
 
 --
@@ -8181,6 +8268,13 @@ CREATE INDEX recovery_type_idx ON report.recovery USING btree (type);
 
 
 --
+-- Name: product_tracker product_tracker_count_insert; Type: TRIGGER; Schema: application; Owner: -
+--
+
+CREATE TRIGGER product_tracker_count_insert AFTER INSERT ON application.product_tracker FOR EACH ROW EXECUTE FUNCTION application.product_tracker_count_insert();
+
+
+--
 -- Name: inquiry_sample inquiry_sample_damage_lists; Type: TRIGGER; Schema: report; Owner: -
 --
 
@@ -8383,6 +8477,14 @@ ALTER TABLE ONLY application.organization_mapset
 
 
 --
+-- Name: organization_rate_limit organization_rate_limit_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_rate_limit
+    ADD CONSTRAINT organization_rate_limit_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: organization_user organization_user_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -8412,6 +8514,14 @@ ALTER TABLE ONLY application.passkey
 
 ALTER TABLE ONLY application.product_tracker
     ADD CONSTRAINT product_tracker_building_id_fkey FOREIGN KEY (building_id) REFERENCES geocoder.building(external_id) ON UPDATE CASCADE;
+
+
+--
+-- Name: product_tracker_count product_tracker_count_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.product_tracker_count
+    ADD CONSTRAINT product_tracker_count_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8874,5 +8984,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict a1o0fmTzt7568R0ccCpgmkDqeM42j8WfCEgXhmznEwTGdNKj3C4x4kuaw50lohV
+\unrestrict X7O9UHgaKgzWUDvt9E4qtqq41fFp6LKK1CmFA528XzaQZSmEl96IEuQkDb98Md5
 
