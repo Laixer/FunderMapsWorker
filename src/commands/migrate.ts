@@ -64,7 +64,7 @@ export async function migrate(opts: { dryRun: boolean; status: boolean; allowPro
     return 2;
   }
   const [files, baseline] = await Promise.all([loadFiles(), loadBaseline()]);
-  const sql = postgres(url, { max: 1, ssl: url.includes("ondigitalocean") ? "require" : "prefer", connection: { application_name: "fundermaps-migrate" } });
+  const sql = postgres(url, { infer: true, max: 1, ssl: url.includes("ondigitalocean") ? "require" : "prefer", connection: { application_name: "fundermaps-migrate" } });
   try {
     console.log(`target   ${redact(url)}`);
     console.log(`baseline ${baseline}   files ${files.length}`);
