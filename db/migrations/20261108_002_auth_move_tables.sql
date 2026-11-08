@@ -16,7 +16,26 @@ DECLARE
     t text;
     ty text;
     kind "char";
+    c record;
+    names text := 'organization_custom_role|organization_user|organization_role|organization_id|organization|verification'
+                  '|invitation|passkey|session|account|apikey|user_id|user|email|phone|role';
 BEGIN
+    -- Comments that name the old places (on 2026-11-08: api_key_rate_limit.source, auth_key, organization_custom_role)
+    -- name the new ones. First, so the table locks below are held only for the moves themselves.
+    FOR c IN SELECT d.objoid, d.objsubid, d.description,
+                    regexp_replace(d.description, 'application\.("?)(' || names || ')\1(?![a-z_])', 'auth.\1\2\1', 'g') AS fixed
+               FROM pg_description d
+               JOIN pg_class k ON k.oid = d.objoid
+              WHERE d.classoid = 'pg_class'::regclass AND k.relkind IN ('r', 'p')
+                AND d.description ~ ('application\.("?)(' || names || ')\1(?![a-z_])') LOOP
+        IF c.objsubid = 0 THEN
+            EXECUTE format('COMMENT ON TABLE %s IS %L', c.objoid::regclass, c.fixed);
+        ELSE
+            EXECUTE format('COMMENT ON COLUMN %s.%I IS %L', c.objoid::regclass,
+                           (SELECT attname FROM pg_attribute WHERE attrelid = c.objoid AND attnum = c.objsubid), c.fixed);
+        END IF;
+    END LOOP;
+
     FOREACH t IN ARRAY ARRAY['user', 'session', 'account', 'verification', 'passkey', 'apikey', 'organization',
                              'organization_user', 'invitation', 'organization_custom_role'] LOOP
         IF (SELECT relkind FROM pg_class WHERE oid = to_regclass(format('auth.%I', t))) IS DISTINCT FROM 'v' THEN
@@ -40,6 +59,7 @@ BEGIN
             RAISE EXCEPTION 'type application.% not found as a domain or enum; stopping', ty;
         END IF;
     END LOOP;
+
 END
 $$;
 
