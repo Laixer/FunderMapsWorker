@@ -310,16 +310,16 @@ INSERT INTO application.contractor (id, name) VALUES
   (${SYNTH.contractorId}, ${q("Test Contractor")})
   ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO application.organization (id, name) VALUES
+INSERT INTO auth.organization (id, name) VALUES
   (${q(SYNTH.organizationId)}, ${q("Test Organization")})
   ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO application."user" (id, given_name, last_name, email, role, email_verified) VALUES
+INSERT INTO auth."user" (id, given_name, last_name, email, role, email_verified) VALUES
   (${q(SYNTH.adminUserId)},    ${q("Test")}, ${q("Admin")},    ${q("admin@test.local")},    'administrator', true),
   (${q(SYNTH.reviewerUserId)}, ${q("Test")}, ${q("Reviewer")}, ${q("reviewer@test.local")}, 'user',          true)
   ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO application.organization_user (user_id, organization_id, role) VALUES
+INSERT INTO auth.organization_user (user_id, organization_id, role) VALUES
   (${q(SYNTH.adminUserId)},    ${q(SYNTH.organizationId)}, 'superuser'),
   (${q(SYNTH.reviewerUserId)}, ${q(SYNTH.organizationId)}, 'reader')
   ON CONFLICT DO NOTHING;

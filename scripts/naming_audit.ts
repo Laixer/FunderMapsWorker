@@ -8,7 +8,7 @@
 // side of an equality.
 import { sql } from "../src/db.ts";
 
-const SCHEMAS = ["application", "report", "geocoder", "data", "maplayer"];
+const SCHEMAS = ["application", "auth", "report", "geocoder", "data", "maplayer"];
 
 try {
   console.log("=== FK columns missing _id suffix ===");
