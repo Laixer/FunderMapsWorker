@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict X7O9UHgaKgzWUDvt9E4qtqq41fFp6LKK1CmFA528XzaQZSmEl96IEuQkDb98Md5
+\restrict BsNlajbvI3ebw7BJdbFHSSIdfhE8HaL6CQsMsB5j1YKHoHlr5Y2hqcho7SFLLFN
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -24,6 +24,20 @@ SET row_security = off;
 --
 
 CREATE SCHEMA application;
+
+
+--
+-- Name: auth; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA auth;
+
+
+--
+-- Name: SCHEMA auth; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA auth IS 'Better Auth''s tables: users, logins, sessions, passkeys, API keys, organisations and their members. Better Auth in the Studio API writes them. No default privileges: every grant here is explicit.';
 
 
 --
@@ -3527,6 +3541,260 @@ COMMENT ON TABLE application.verification IS '[Better Auth · core] Short-lived 
 
 
 --
+-- Name: account; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.account AS
+ SELECT id,
+    user_id,
+    account_id,
+    provider_id,
+    access_token,
+    refresh_token,
+    access_token_expires_at,
+    refresh_token_expires_at,
+    scope,
+    id_token,
+    password,
+    created_at,
+    updated_at,
+    issuer
+   FROM application.account;
+
+
+--
+-- Name: VIEW account; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.account IS '[Better Auth] Stand-in for application.account while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: apikey; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.apikey AS
+ SELECT id,
+    config_id,
+    name,
+    start,
+    reference_id,
+    prefix,
+    key,
+    refill_interval,
+    refill_amount,
+    last_refill_at,
+    enabled,
+    rate_limit_enabled,
+    rate_limit_time_window,
+    rate_limit_max,
+    request_count,
+    remaining,
+    last_request,
+    expires_at,
+    created_at,
+    updated_at,
+    permissions,
+    metadata
+   FROM application.apikey;
+
+
+--
+-- Name: VIEW apikey; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.apikey IS '[Better Auth] Stand-in for application.apikey while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: invitation; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.invitation AS
+ SELECT id,
+    organization_id,
+    email,
+    role,
+    status,
+    team_id,
+    inviter_id,
+    expires_at,
+    created_at
+   FROM application.invitation;
+
+
+--
+-- Name: VIEW invitation; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.invitation IS '[Better Auth] Stand-in for application.invitation while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: organization; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.organization AS
+ SELECT id,
+    name,
+    slug,
+    logo,
+    metadata,
+    created_at
+   FROM application.organization;
+
+
+--
+-- Name: VIEW organization; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.organization IS '[Better Auth] Stand-in for application.organization while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: organization_custom_role; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.organization_custom_role AS
+ SELECT id,
+    organization_id,
+    role,
+    permission,
+    created_at,
+    updated_at
+   FROM application.organization_custom_role;
+
+
+--
+-- Name: VIEW organization_custom_role; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.organization_custom_role IS '[Better Auth] Stand-in for application.organization_custom_role while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: organization_user; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.organization_user AS
+ SELECT user_id,
+    organization_id,
+    role,
+    id,
+    created_at
+   FROM application.organization_user;
+
+
+--
+-- Name: VIEW organization_user; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.organization_user IS '[Better Auth] Stand-in for application.organization_user while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: passkey; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.passkey AS
+ SELECT id,
+    name,
+    public_key,
+    user_id,
+    credential_id,
+    counter,
+    device_type,
+    backed_up,
+    transports,
+    created_at,
+    aaguid
+   FROM application.passkey;
+
+
+--
+-- Name: VIEW passkey; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.passkey IS '[Better Auth] Stand-in for application.passkey while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: session; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.session AS
+ SELECT id,
+    user_id,
+    token,
+    expires_at,
+    ip_address,
+    user_agent,
+    created_at,
+    updated_at,
+    impersonated_by,
+    active_organization_id
+   FROM application.session;
+
+
+--
+-- Name: VIEW session; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.session IS '[Better Auth] Stand-in for application.session while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: user; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth."user" AS
+ SELECT id,
+    given_name,
+    last_name,
+    email,
+    avatar,
+    job_title,
+    phone_number,
+    role,
+    name,
+    email_verified,
+    created_at,
+    updated_at,
+    banned,
+    ban_reason,
+    ban_expires
+   FROM application."user";
+
+
+--
+-- Name: VIEW "user"; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth."user" IS '[Better Auth] Stand-in for application.user while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
+-- Name: verification; Type: VIEW; Schema: auth; Owner: -
+--
+
+CREATE VIEW auth.verification AS
+ SELECT id,
+    identifier,
+    value,
+    expires_at,
+    created_at,
+    updated_at
+   FROM application.verification;
+
+
+--
+-- Name: VIEW verification; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON VIEW auth.verification IS '[Better Auth] Stand-in for application.verification while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+
+
+--
 -- Name: building_cluster; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -6641,6 +6909,202 @@ ALTER TABLE ONLY application.contractor ALTER COLUMN id SET DEFAULT nextval('app
 
 
 --
+-- Name: account created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.account ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: account updated_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.account ALTER COLUMN updated_at SET DEFAULT now();
+
+
+--
+-- Name: account issuer; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.account ALTER COLUMN issuer SET DEFAULT 'local:credential'::text;
+
+
+--
+-- Name: apikey config_id; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.apikey ALTER COLUMN config_id SET DEFAULT 'default'::text;
+
+
+--
+-- Name: apikey enabled; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.apikey ALTER COLUMN enabled SET DEFAULT true;
+
+
+--
+-- Name: apikey rate_limit_enabled; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.apikey ALTER COLUMN rate_limit_enabled SET DEFAULT true;
+
+
+--
+-- Name: apikey request_count; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.apikey ALTER COLUMN request_count SET DEFAULT 0;
+
+
+--
+-- Name: invitation id; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+
+--
+-- Name: invitation role; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation ALTER COLUMN role SET DEFAULT 'reader'::text;
+
+
+--
+-- Name: invitation status; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation ALTER COLUMN status SET DEFAULT 'pending'::text;
+
+
+--
+-- Name: invitation created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: organization id; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+
+--
+-- Name: organization created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: organization_custom_role id; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_custom_role ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+
+--
+-- Name: organization_custom_role created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_custom_role ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: organization_user role; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_user ALTER COLUMN role SET DEFAULT 'reader'::application.organization_role;
+
+
+--
+-- Name: organization_user id; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_user ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+
+--
+-- Name: organization_user created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_user ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: passkey created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.passkey ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: session created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.session ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: session updated_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.session ALTER COLUMN updated_at SET DEFAULT now();
+
+
+--
+-- Name: user id; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth."user" ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+
+--
+-- Name: user role; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth."user" ALTER COLUMN role SET DEFAULT 'user'::application.role;
+
+
+--
+-- Name: user email_verified; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth."user" ALTER COLUMN email_verified SET DEFAULT false;
+
+
+--
+-- Name: user created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth."user" ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: user updated_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth."user" ALTER COLUMN updated_at SET DEFAULT now();
+
+
+--
+-- Name: verification created_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.verification ALTER COLUMN created_at SET DEFAULT now();
+
+
+--
+-- Name: verification updated_at; Type: DEFAULT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.verification ALTER COLUMN updated_at SET DEFAULT now();
+
+
+--
 -- Name: inquiry id; Type: DEFAULT; Schema: report; Owner: -
 --
 
@@ -8984,5 +9448,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict X7O9UHgaKgzWUDvt9E4qtqq41fFp6LKK1CmFA528XzaQZSmEl96IEuQkDb98Md5
+\unrestrict BsNlajbvI3ebw7BJdbFHSSIdfhE8HaL6CQsMsB5j1YKHoHlr5Y2hqcho7SFLLFN
 
