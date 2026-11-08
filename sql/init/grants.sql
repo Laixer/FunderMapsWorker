@@ -16,7 +16,7 @@
 -- ---------------------------------------------------------------------------
 -- Schema USAGE
 -- ---------------------------------------------------------------------------
-GRANT USAGE ON SCHEMA application, data, geocoder, maplayer, report
+GRANT USAGE ON SCHEMA application, auth, data, geocoder, maplayer, report
     TO fundermaps_webapp, fundermaps_webservice;
 
 -- ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ GRANT USAGE ON SCHEMA application, data, geocoder, maplayer, report
 -- inquiries, recovery samples, sessions, auth_keys, mapsets, etc.).
 -- ---------------------------------------------------------------------------
 GRANT SELECT, INSERT, UPDATE, DELETE
-    ON ALL TABLES IN SCHEMA application, data, geocoder, maplayer, report
+    ON ALL TABLES IN SCHEMA application, auth, data, geocoder, maplayer, report
     TO fundermaps_webapp;
 
 GRANT USAGE, SELECT, UPDATE
@@ -49,22 +49,25 @@ GRANT INSERT ON application.product_tracker
 GRANT UPDATE (last_used) ON application.auth_key
     TO fundermaps_webservice;
 
+-- Of schema auth (Better Auth) the webservice reads only the keys and the memberships, and bumps two usage
+-- columns of a key. Nothing schema-wide there.
+GRANT SELECT ON auth.apikey, auth.organization_user TO fundermaps_webservice;
+GRANT UPDATE (last_request, request_count) ON auth.apikey TO fundermaps_webservice;
+
 -- A secret-bearing table nobody reads through this role (migration
 -- 20261009_003): application.application holds the legacy app secrets. The
 -- webservice keeps apikey to verify keys.
 REVOKE SELECT ON application.application FROM fundermaps_webservice;
 
 -- Passkeys (Better Auth passkey plugin): API full CRUD; nothing else reads them.
-GRANT SELECT, INSERT, UPDATE, DELETE ON application.passkey TO fundermaps_webapp;
-REVOKE SELECT ON application.passkey FROM fundermaps_webservice;
+GRANT SELECT, INSERT, UPDATE, DELETE ON auth.passkey TO fundermaps_webapp;
 
 -- Least privilege for the read-only role (migration 20261009_007): the
 -- schema-wide SELECT above covers objects it does not read.
-REVOKE SELECT ON application.application_user, application.invitation,
-                 application.organization, application.organization_custom_role,
+REVOKE SELECT ON application.application_user,
                  application.organization_geolock_district,
                  application.organization_geolock_municipality,
-                 application.organization_geolock_neighborhood, application."user",
+                 application.organization_geolock_neighborhood,
                  data.building_elevation, data.building_geographic_region,
                  data.building_groundwater_level, data.building_height,
                  data.building_ownership, data.building_sample, data.building_subsidence,
