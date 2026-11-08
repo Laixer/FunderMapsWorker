@@ -205,7 +205,7 @@ CREATE TABLE report.dossier_kenmerk (
   inquiry_id  integer NOT NULL REFERENCES report.inquiry(id) ON DELETE CASCADE,
   kenmerk     text    NOT NULL,          -- slug from the registry, validated app-side
   create_date timestamptz NOT NULL DEFAULT now(),
-  created_by  uuid REFERENCES application.user(id),
+  created_by  uuid REFERENCES auth.user(id),
   PRIMARY KEY (inquiry_id, kenmerk)
 );
 CREATE INDEX ON report.dossier_kenmerk (kenmerk);
