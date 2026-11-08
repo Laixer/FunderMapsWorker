@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict BsNlajbvI3ebw7BJdbFHSSIdfhE8HaL6CQsMsB5j1YKHoHlr5Y2hqcho7SFLLFN
+\restrict 8FadXQ7XlGPr9N5TdyzWmbDjHLuOvsOGeKR60RCGicXrzN6fXA5RWkn1uakKC0g
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -37,7 +37,7 @@ CREATE SCHEMA auth;
 -- Name: SCHEMA auth; Type: COMMENT; Schema: -; Owner: -
 --
 
-COMMENT ON SCHEMA auth IS 'Better Auth''s tables: users, logins, sessions, passkeys, API keys, organisations and their members. Better Auth in the Studio API writes them. No default privileges: every grant here is explicit.';
+COMMENT ON SCHEMA auth IS 'Better Auth''s tables: users, logins, sessions, passkeys, API keys, organisations and their members, with their types. Better Auth in the Studio API writes them. No default privileges: every grant here is explicit.';
 
 
 --
@@ -135,39 +135,39 @@ CREATE TYPE application.access_policy AS ENUM (
 
 
 --
--- Name: email; Type: DOMAIN; Schema: application; Owner: -
+-- Name: email; Type: DOMAIN; Schema: auth; Owner: -
 --
 
-CREATE DOMAIN application.email AS text
+CREATE DOMAIN auth.email AS text
 	CONSTRAINT at CHECK (("position"(VALUE, '@'::text) > 0));
 
 
 --
--- Name: DOMAIN email; Type: COMMENT; Schema: application; Owner: -
+-- Name: DOMAIN email; Type: COMMENT; Schema: auth; Owner: -
 --
 
-COMMENT ON DOMAIN application.email IS 'Domain for an email address.';
-
-
---
--- Name: organization_id; Type: DOMAIN; Schema: application; Owner: -
---
-
-CREATE DOMAIN application.organization_id AS uuid;
+COMMENT ON DOMAIN auth.email IS 'Domain for an email address.';
 
 
 --
--- Name: DOMAIN organization_id; Type: COMMENT; Schema: application; Owner: -
+-- Name: organization_id; Type: DOMAIN; Schema: auth; Owner: -
 --
 
-COMMENT ON DOMAIN application.organization_id IS 'Domain for an organization identifier.';
+CREATE DOMAIN auth.organization_id AS uuid;
 
 
 --
--- Name: organization_role; Type: TYPE; Schema: application; Owner: -
+-- Name: DOMAIN organization_id; Type: COMMENT; Schema: auth; Owner: -
 --
 
-CREATE TYPE application.organization_role AS ENUM (
+COMMENT ON DOMAIN auth.organization_id IS 'Domain for an organization identifier.';
+
+
+--
+-- Name: organization_role; Type: TYPE; Schema: auth; Owner: -
+--
+
+CREATE TYPE auth.organization_role AS ENUM (
     'superuser',
     'verifier',
     'writer',
@@ -176,25 +176,25 @@ CREATE TYPE application.organization_role AS ENUM (
 
 
 --
--- Name: phone; Type: DOMAIN; Schema: application; Owner: -
+-- Name: phone; Type: DOMAIN; Schema: auth; Owner: -
 --
 
-CREATE DOMAIN application.phone AS text
+CREATE DOMAIN auth.phone AS text
 	CONSTRAINT all_int CHECK ((VALUE ~* '^[0-9]+$'::text));
 
 
 --
--- Name: DOMAIN phone; Type: COMMENT; Schema: application; Owner: -
+-- Name: DOMAIN phone; Type: COMMENT; Schema: auth; Owner: -
 --
 
-COMMENT ON DOMAIN application.phone IS 'Domain for a phone number.';
+COMMENT ON DOMAIN auth.phone IS 'Domain for a phone number.';
 
 
 --
--- Name: role; Type: TYPE; Schema: application; Owner: -
+-- Name: role; Type: TYPE; Schema: auth; Owner: -
 --
 
-CREATE TYPE application.role AS ENUM (
+CREATE TYPE auth.role AS ENUM (
     'administrator',
     'user',
     'staff'
@@ -202,17 +202,17 @@ CREATE TYPE application.role AS ENUM (
 
 
 --
--- Name: user_id; Type: DOMAIN; Schema: application; Owner: -
+-- Name: user_id; Type: DOMAIN; Schema: auth; Owner: -
 --
 
-CREATE DOMAIN application.user_id AS uuid;
+CREATE DOMAIN auth.user_id AS uuid;
 
 
 --
--- Name: DOMAIN user_id; Type: COMMENT; Schema: application; Owner: -
+-- Name: DOMAIN user_id; Type: COMMENT; Schema: auth; Owner: -
 --
 
-COMMENT ON DOMAIN application.user_id IS 'Domain for a user identifier.';
+COMMENT ON DOMAIN auth.user_id IS 'Domain for a user identifier.';
 
 
 --
@@ -2816,35 +2816,6 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: account; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.account (
-    id text NOT NULL,
-    user_id uuid NOT NULL,
-    account_id text NOT NULL,
-    provider_id text NOT NULL,
-    access_token text,
-    refresh_token text,
-    access_token_expires_at timestamp without time zone,
-    refresh_token_expires_at timestamp without time zone,
-    scope text,
-    id_token text,
-    password text,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    issuer text DEFAULT 'local:credential'::text
-);
-
-
---
--- Name: TABLE account; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.account IS '[Better Auth · core] Login methods per user: one row per provider; for email login it holds the password hash.';
-
-
---
 -- Name: api_key_rate_limit; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2873,7 +2844,7 @@ COMMENT ON TABLE application.api_key_rate_limit IS '[billing] Replaced by organi
 -- Name: COLUMN api_key_rate_limit.source; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON COLUMN application.api_key_rate_limit.source IS '''ba'' = application.apikey, ''legacy'' = application.auth_key (key id is unique within a source, not across).';
+COMMENT ON COLUMN application.api_key_rate_limit.source IS '''ba'' = auth.apikey, ''legacy'' = application.auth_key (key id is unique within a source, not across).';
 
 
 --
@@ -2898,43 +2869,6 @@ COMMENT ON COLUMN application.api_key_rate_limit.limit_count IS 'Max billable ev
 
 
 --
--- Name: apikey; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.apikey (
-    id text NOT NULL,
-    config_id text DEFAULT 'default'::text NOT NULL,
-    name text,
-    start text,
-    reference_id uuid NOT NULL,
-    prefix text,
-    key text NOT NULL,
-    refill_interval integer,
-    refill_amount integer,
-    last_refill_at timestamp with time zone,
-    enabled boolean DEFAULT true,
-    rate_limit_enabled boolean DEFAULT true,
-    rate_limit_time_window integer,
-    rate_limit_max integer,
-    request_count integer DEFAULT 0,
-    remaining integer,
-    last_request timestamp with time zone,
-    expires_at timestamp with time zone,
-    created_at timestamp with time zone NOT NULL,
-    updated_at timestamp with time zone NOT NULL,
-    permissions text,
-    metadata text
-);
-
-
---
--- Name: TABLE apikey; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.apikey IS '[Better Auth · api-key] API keys issued by the plugin (prefix fmsk.): hashed key, owner (reference_id), enabled flag and expiry. Per-product billing limits live in application.api_key_rate_limit.';
-
-
---
 -- Name: application; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2945,7 +2879,7 @@ CREATE TABLE application.application (
     secret text DEFAULT concat('app-sk-', application.random_string(32)) NOT NULL,
     redirect_url text,
     public boolean DEFAULT false NOT NULL,
-    user_id application.user_id
+    user_id auth.user_id
 );
 
 
@@ -2961,7 +2895,7 @@ COMMENT ON TABLE application.application IS '[legacy] Registry of the old Funder
 --
 
 CREATE TABLE application.application_user (
-    user_id application.user_id NOT NULL,
+    user_id auth.user_id NOT NULL,
     application_id text NOT NULL,
     metadata jsonb,
     update_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -2981,9 +2915,9 @@ COMMENT ON TABLE application.application_user IS '[access] Per-user settings for
 
 CREATE TABLE application.attribution (
     id integer NOT NULL,
-    reviewer_id application.user_id NOT NULL,
-    creator_id application.user_id NOT NULL,
-    owner_id application.organization_id NOT NULL,
+    reviewer_id auth.user_id NOT NULL,
+    creator_id auth.user_id NOT NULL,
+    owner_id auth.organization_id NOT NULL,
     contractor_id integer NOT NULL,
     CONSTRAINT creator_reviewer_chk CHECK (((creator_id)::uuid <> (reviewer_id)::uuid))
 );
@@ -3035,7 +2969,7 @@ CREATE TABLE application.auth_key (
 -- Name: TABLE auth_key; Type: COMMENT; Schema: application; Owner: -
 --
 
-COMMENT ON TABLE application.auth_key IS '[legacy] API keys from before Better Auth (hashed). Still read next to application.apikey until the last customers have moved to fmsk. keys; then drop.';
+COMMENT ON TABLE application.auth_key IS '[legacy] API keys from before Better Auth (hashed). Still read next to auth.apikey until the last customers have moved to fmsk. keys; then drop.';
 
 
 --
@@ -3124,31 +3058,6 @@ COMMENT ON VIEW application.file_resources IS '[legacy] Old name of application.
 
 
 --
--- Name: invitation; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.invitation (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    organization_id application.organization_id NOT NULL,
-    email text NOT NULL,
-    role text DEFAULT 'reader'::text NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    team_id uuid,
-    inviter_id application.user_id NOT NULL,
-    expires_at timestamp with time zone NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT invitation_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text, 'canceled'::text])))
-);
-
-
---
--- Name: TABLE invitation; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.invitation IS '[Better Auth · organization] Invitations to join an organisation. Not used yet.';
-
-
---
 -- Name: mapset; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -3223,53 +3132,11 @@ COMMENT ON VIEW application.mapset_collection IS '[maps] Each mapset with its la
 
 
 --
--- Name: organization; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.organization (
-    id application.organization_id DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    slug text NOT NULL,
-    logo text,
-    metadata jsonb,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: TABLE organization; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.organization IS '[Better Auth · organization] Organisations: customers and our own. Our existing table, mapped onto the plugin''s organization model.';
-
-
---
--- Name: organization_custom_role; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.organization_custom_role (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    organization_id application.organization_id NOT NULL,
-    role text NOT NULL,
-    permission jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone
-);
-
-
---
--- Name: TABLE organization_custom_role; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.organization_custom_role IS '[Better Auth · organization] Better Auth dynamic access control: admin-defined per-organization roles with a JSON permission map (resource -> actions). Named *_custom_role because application.organization_role is the role enum type.';
-
-
---
 -- Name: organization_geolock_district; Type: TABLE; Schema: application; Owner: -
 --
 
 CREATE TABLE application.organization_geolock_district (
-    organization_id application.organization_id NOT NULL,
+    organization_id auth.organization_id NOT NULL,
     district_id text NOT NULL
 );
 
@@ -3286,7 +3153,7 @@ COMMENT ON TABLE application.organization_geolock_district IS '[access] Limits a
 --
 
 CREATE TABLE application.organization_geolock_municipality (
-    organization_id application.organization_id NOT NULL,
+    organization_id auth.organization_id NOT NULL,
     municipality_id text NOT NULL
 );
 
@@ -3303,7 +3170,7 @@ COMMENT ON TABLE application.organization_geolock_municipality IS '[access] Limi
 --
 
 CREATE TABLE application.organization_geolock_neighborhood (
-    organization_id application.organization_id NOT NULL,
+    organization_id auth.organization_id NOT NULL,
     neighborhood_id text NOT NULL
 );
 
@@ -3320,7 +3187,7 @@ COMMENT ON TABLE application.organization_geolock_neighborhood IS '[access] Limi
 --
 
 CREATE TABLE application.organization_mapset (
-    organization_id application.organization_id NOT NULL,
+    organization_id auth.organization_id NOT NULL,
     mapset_id text NOT NULL,
     metadata jsonb
 );
@@ -3357,57 +3224,11 @@ COMMENT ON TABLE application.organization_rate_limit IS '[billing] Per-(organiza
 
 
 --
--- Name: organization_user; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.organization_user (
-    user_id application.user_id NOT NULL,
-    organization_id application.organization_id NOT NULL,
-    role application.organization_role DEFAULT 'reader'::application.organization_role NOT NULL,
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: TABLE organization_user; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.organization_user IS '[Better Auth · organization] Membership of a user in an organisation, with their role (superuser, verifier, writer, reader). The plugin''s member model, renamed in auth.ts.';
-
-
---
--- Name: passkey; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.passkey (
-    id text NOT NULL,
-    name text,
-    public_key text NOT NULL,
-    user_id uuid NOT NULL,
-    credential_id text NOT NULL,
-    counter integer NOT NULL,
-    device_type text NOT NULL,
-    backed_up boolean NOT NULL,
-    transports text,
-    created_at timestamp without time zone DEFAULT now(),
-    aaguid text
-);
-
-
---
--- Name: TABLE passkey; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.passkey IS '[Better Auth · passkey] WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
-
-
---
 -- Name: product_tracker; Type: TABLE; Schema: application; Owner: -
 --
 
 CREATE TABLE application.product_tracker (
-    organization_id application.organization_id NOT NULL,
+    organization_id auth.organization_id NOT NULL,
     product text NOT NULL,
     building_id geocoder.geocoder_id NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -3465,10 +3286,189 @@ COMMENT ON TABLE application.schema_migrations IS '[ops] Ledger of the Worker mi
 
 
 --
--- Name: session; Type: TABLE; Schema: application; Owner: -
+-- Name: account; Type: TABLE; Schema: auth; Owner: -
 --
 
-CREATE TABLE application.session (
+CREATE TABLE auth.account (
+    id text NOT NULL,
+    user_id uuid NOT NULL,
+    account_id text NOT NULL,
+    provider_id text NOT NULL,
+    access_token text,
+    refresh_token text,
+    access_token_expires_at timestamp without time zone,
+    refresh_token_expires_at timestamp without time zone,
+    scope text,
+    id_token text,
+    password text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    issuer text DEFAULT 'local:credential'::text
+);
+
+
+--
+-- Name: TABLE account; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.account IS '[Better Auth · core] Login methods per user: one row per provider; for email login it holds the password hash.';
+
+
+--
+-- Name: apikey; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.apikey (
+    id text NOT NULL,
+    config_id text DEFAULT 'default'::text NOT NULL,
+    name text,
+    start text,
+    reference_id uuid NOT NULL,
+    prefix text,
+    key text NOT NULL,
+    refill_interval integer,
+    refill_amount integer,
+    last_refill_at timestamp with time zone,
+    enabled boolean DEFAULT true,
+    rate_limit_enabled boolean DEFAULT true,
+    rate_limit_time_window integer,
+    rate_limit_max integer,
+    request_count integer DEFAULT 0,
+    remaining integer,
+    last_request timestamp with time zone,
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    permissions text,
+    metadata text
+);
+
+
+--
+-- Name: TABLE apikey; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.apikey IS '[Better Auth · api-key] API keys issued by the plugin (prefix fmsk.): hashed key, owner (reference_id), enabled flag and expiry. Per-product billing limits live in application.api_key_rate_limit.';
+
+
+--
+-- Name: invitation; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.invitation (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id auth.organization_id NOT NULL,
+    email text NOT NULL,
+    role text DEFAULT 'reader'::text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    team_id uuid,
+    inviter_id auth.user_id NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT invitation_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text, 'canceled'::text])))
+);
+
+
+--
+-- Name: TABLE invitation; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.invitation IS '[Better Auth · organization] Invitations to join an organisation. Not used yet.';
+
+
+--
+-- Name: organization; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.organization (
+    id auth.organization_id DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    slug text NOT NULL,
+    logo text,
+    metadata jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE organization; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.organization IS '[Better Auth · organization] Organisations: customers and our own. Our existing table, mapped onto the plugin''s organization model.';
+
+
+--
+-- Name: organization_custom_role; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.organization_custom_role (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id auth.organization_id NOT NULL,
+    role text NOT NULL,
+    permission jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: TABLE organization_custom_role; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.organization_custom_role IS '[Better Auth · organization] Better Auth dynamic access control: admin-defined per-organization roles with a JSON permission map (resource -> actions). Named *_custom_role because auth.organization_role is the role enum type.';
+
+
+--
+-- Name: organization_user; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.organization_user (
+    user_id auth.user_id NOT NULL,
+    organization_id auth.organization_id NOT NULL,
+    role auth.organization_role DEFAULT 'reader'::auth.organization_role NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE organization_user; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.organization_user IS '[Better Auth · organization] Membership of a user in an organisation, with their role (superuser, verifier, writer, reader). The plugin''s member model, renamed in auth.ts.';
+
+
+--
+-- Name: passkey; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.passkey (
+    id text NOT NULL,
+    name text,
+    public_key text NOT NULL,
+    user_id uuid NOT NULL,
+    credential_id text NOT NULL,
+    counter integer NOT NULL,
+    device_type text NOT NULL,
+    backed_up boolean NOT NULL,
+    transports text,
+    created_at timestamp without time zone DEFAULT now(),
+    aaguid text
+);
+
+
+--
+-- Name: TABLE passkey; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.passkey IS '[Better Auth · passkey] WebAuthn credentials (Better Auth passkey plugin). One row per registered passkey; rpID fundermaps.com.';
+
+
+--
+-- Name: session; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.session (
     id text NOT NULL,
     user_id uuid NOT NULL,
     token text NOT NULL,
@@ -3478,30 +3478,30 @@ CREATE TABLE application.session (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
     impersonated_by uuid,
-    active_organization_id application.organization_id
+    active_organization_id auth.organization_id
 );
 
 
 --
--- Name: TABLE session; Type: COMMENT; Schema: application; Owner: -
+-- Name: TABLE session; Type: COMMENT; Schema: auth; Owner: -
 --
 
-COMMENT ON TABLE application.session IS '[Better Auth · core] Login sessions (the cookie token). The admin plugin adds impersonated_by, the organization plugin active_organization_id.';
+COMMENT ON TABLE auth.session IS '[Better Auth · core] Login sessions (the cookie token). The admin plugin adds impersonated_by, the organization plugin active_organization_id.';
 
 
 --
--- Name: user; Type: TABLE; Schema: application; Owner: -
+-- Name: user; Type: TABLE; Schema: auth; Owner: -
 --
 
-CREATE TABLE application."user" (
-    id application.user_id DEFAULT gen_random_uuid() NOT NULL,
+CREATE TABLE auth."user" (
+    id auth.user_id DEFAULT gen_random_uuid() NOT NULL,
     given_name text,
     last_name text,
-    email application.email NOT NULL,
+    email auth.email NOT NULL,
     avatar text,
     job_title text,
-    phone_number application.phone,
-    role application.role DEFAULT 'user'::application.role NOT NULL,
+    phone_number auth.phone,
+    role auth.role DEFAULT 'user'::auth.role NOT NULL,
     name text,
     email_verified boolean DEFAULT false NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
@@ -3513,17 +3513,17 @@ CREATE TABLE application."user" (
 
 
 --
--- Name: TABLE "user"; Type: COMMENT; Schema: application; Owner: -
+-- Name: TABLE "user"; Type: COMMENT; Schema: auth; Owner: -
 --
 
-COMMENT ON TABLE application."user" IS '[Better Auth · core] People who can log in. The admin plugin adds role, banned, ban_reason and ban_expires; we add given_name, last_name, job_title and phone_number; Better Auth''s image is our avatar.';
+COMMENT ON TABLE auth."user" IS '[Better Auth · core] People who can log in. The admin plugin adds role, banned, ban_reason and ban_expires; we add given_name, last_name, job_title and phone_number; Better Auth''s image is our avatar.';
 
 
 --
--- Name: verification; Type: TABLE; Schema: application; Owner: -
+-- Name: verification; Type: TABLE; Schema: auth; Owner: -
 --
 
-CREATE TABLE application.verification (
+CREATE TABLE auth.verification (
     id text NOT NULL,
     identifier text NOT NULL,
     value text NOT NULL,
@@ -3534,264 +3534,10 @@ CREATE TABLE application.verification (
 
 
 --
--- Name: TABLE verification; Type: COMMENT; Schema: application; Owner: -
+-- Name: TABLE verification; Type: COMMENT; Schema: auth; Owner: -
 --
 
-COMMENT ON TABLE application.verification IS '[Better Auth · core] Short-lived tokens for password reset and email checks.';
-
-
---
--- Name: account; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.account AS
- SELECT id,
-    user_id,
-    account_id,
-    provider_id,
-    access_token,
-    refresh_token,
-    access_token_expires_at,
-    refresh_token_expires_at,
-    scope,
-    id_token,
-    password,
-    created_at,
-    updated_at,
-    issuer
-   FROM application.account;
-
-
---
--- Name: VIEW account; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.account IS '[Better Auth] Stand-in for application.account while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: apikey; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.apikey AS
- SELECT id,
-    config_id,
-    name,
-    start,
-    reference_id,
-    prefix,
-    key,
-    refill_interval,
-    refill_amount,
-    last_refill_at,
-    enabled,
-    rate_limit_enabled,
-    rate_limit_time_window,
-    rate_limit_max,
-    request_count,
-    remaining,
-    last_request,
-    expires_at,
-    created_at,
-    updated_at,
-    permissions,
-    metadata
-   FROM application.apikey;
-
-
---
--- Name: VIEW apikey; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.apikey IS '[Better Auth] Stand-in for application.apikey while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: invitation; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.invitation AS
- SELECT id,
-    organization_id,
-    email,
-    role,
-    status,
-    team_id,
-    inviter_id,
-    expires_at,
-    created_at
-   FROM application.invitation;
-
-
---
--- Name: VIEW invitation; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.invitation IS '[Better Auth] Stand-in for application.invitation while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: organization; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.organization AS
- SELECT id,
-    name,
-    slug,
-    logo,
-    metadata,
-    created_at
-   FROM application.organization;
-
-
---
--- Name: VIEW organization; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.organization IS '[Better Auth] Stand-in for application.organization while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: organization_custom_role; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.organization_custom_role AS
- SELECT id,
-    organization_id,
-    role,
-    permission,
-    created_at,
-    updated_at
-   FROM application.organization_custom_role;
-
-
---
--- Name: VIEW organization_custom_role; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.organization_custom_role IS '[Better Auth] Stand-in for application.organization_custom_role while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: organization_user; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.organization_user AS
- SELECT user_id,
-    organization_id,
-    role,
-    id,
-    created_at
-   FROM application.organization_user;
-
-
---
--- Name: VIEW organization_user; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.organization_user IS '[Better Auth] Stand-in for application.organization_user while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: passkey; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.passkey AS
- SELECT id,
-    name,
-    public_key,
-    user_id,
-    credential_id,
-    counter,
-    device_type,
-    backed_up,
-    transports,
-    created_at,
-    aaguid
-   FROM application.passkey;
-
-
---
--- Name: VIEW passkey; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.passkey IS '[Better Auth] Stand-in for application.passkey while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: session; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.session AS
- SELECT id,
-    user_id,
-    token,
-    expires_at,
-    ip_address,
-    user_agent,
-    created_at,
-    updated_at,
-    impersonated_by,
-    active_organization_id
-   FROM application.session;
-
-
---
--- Name: VIEW session; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.session IS '[Better Auth] Stand-in for application.session while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: user; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth."user" AS
- SELECT id,
-    given_name,
-    last_name,
-    email,
-    avatar,
-    job_title,
-    phone_number,
-    role,
-    name,
-    email_verified,
-    created_at,
-    updated_at,
-    banned,
-    ban_reason,
-    ban_expires
-   FROM application."user";
-
-
---
--- Name: VIEW "user"; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth."user" IS '[Better Auth] Stand-in for application.user while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
-
-
---
--- Name: verification; Type: VIEW; Schema: auth; Owner: -
---
-
-CREATE VIEW auth.verification AS
- SELECT id,
-    identifier,
-    value,
-    expires_at,
-    created_at,
-    updated_at
-   FROM application.verification;
-
-
---
--- Name: VIEW verification; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON VIEW auth.verification IS '[Better Auth] Stand-in for application.verification while the Better Auth tables move to auth: the table itself takes this name in step 3 of 3.';
+COMMENT ON TABLE auth.verification IS '[Better Auth · core] Short-lived tokens for password reset and email checks.';
 
 
 --
@@ -4216,7 +3962,7 @@ CREATE TABLE report.inquiry (
     type report.inquiry_type NOT NULL,
     standard_f3o boolean DEFAULT false NOT NULL,
     audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL,
-    data_owner_organization_id application.organization_id
+    data_owner_organization_id auth.organization_id
 );
 
 
@@ -6735,7 +6481,7 @@ CREATE TABLE report.dossier_event (
     inquiry_id integer,
     recovery_id integer,
     incident_id text,
-    actor application.user_id,
+    actor auth.user_id,
     note text,
     metadata jsonb,
     CONSTRAINT dossier_event_one_subject CHECK ((((((inquiry_id IS NOT NULL))::integer + ((recovery_id IS NOT NULL))::integer) + ((incident_id IS NOT NULL))::integer) = 1))
@@ -6817,7 +6563,7 @@ CREATE TABLE report.recovery (
     document_file text NOT NULL,
     audit_status report.audit_status DEFAULT 'todo'::report.audit_status NOT NULL,
     document_name text NOT NULL,
-    data_owner_organization_id application.organization_id
+    data_owner_organization_id auth.organization_id
 );
 
 
@@ -6909,202 +6655,6 @@ ALTER TABLE ONLY application.contractor ALTER COLUMN id SET DEFAULT nextval('app
 
 
 --
--- Name: account created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.account ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: account updated_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.account ALTER COLUMN updated_at SET DEFAULT now();
-
-
---
--- Name: account issuer; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.account ALTER COLUMN issuer SET DEFAULT 'local:credential'::text;
-
-
---
--- Name: apikey config_id; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.apikey ALTER COLUMN config_id SET DEFAULT 'default'::text;
-
-
---
--- Name: apikey enabled; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.apikey ALTER COLUMN enabled SET DEFAULT true;
-
-
---
--- Name: apikey rate_limit_enabled; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.apikey ALTER COLUMN rate_limit_enabled SET DEFAULT true;
-
-
---
--- Name: apikey request_count; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.apikey ALTER COLUMN request_count SET DEFAULT 0;
-
-
---
--- Name: invitation id; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.invitation ALTER COLUMN id SET DEFAULT gen_random_uuid();
-
-
---
--- Name: invitation role; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.invitation ALTER COLUMN role SET DEFAULT 'reader'::text;
-
-
---
--- Name: invitation status; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.invitation ALTER COLUMN status SET DEFAULT 'pending'::text;
-
-
---
--- Name: invitation created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.invitation ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: organization id; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization ALTER COLUMN id SET DEFAULT gen_random_uuid();
-
-
---
--- Name: organization created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: organization_custom_role id; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization_custom_role ALTER COLUMN id SET DEFAULT gen_random_uuid();
-
-
---
--- Name: organization_custom_role created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization_custom_role ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: organization_user role; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization_user ALTER COLUMN role SET DEFAULT 'reader'::application.organization_role;
-
-
---
--- Name: organization_user id; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization_user ALTER COLUMN id SET DEFAULT gen_random_uuid();
-
-
---
--- Name: organization_user created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.organization_user ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: passkey created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.passkey ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: session created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.session ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: session updated_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.session ALTER COLUMN updated_at SET DEFAULT now();
-
-
---
--- Name: user id; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth."user" ALTER COLUMN id SET DEFAULT gen_random_uuid();
-
-
---
--- Name: user role; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth."user" ALTER COLUMN role SET DEFAULT 'user'::application.role;
-
-
---
--- Name: user email_verified; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth."user" ALTER COLUMN email_verified SET DEFAULT false;
-
-
---
--- Name: user created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth."user" ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: user updated_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth."user" ALTER COLUMN updated_at SET DEFAULT now();
-
-
---
--- Name: verification created_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.verification ALTER COLUMN created_at SET DEFAULT now();
-
-
---
--- Name: verification updated_at; Type: DEFAULT; Schema: auth; Owner: -
---
-
-ALTER TABLE ONLY auth.verification ALTER COLUMN updated_at SET DEFAULT now();
-
-
---
 -- Name: inquiry id; Type: DEFAULT; Schema: report; Owner: -
 --
 
@@ -7133,27 +6683,11 @@ ALTER TABLE ONLY report.recovery_sample ALTER COLUMN id SET DEFAULT nextval('rep
 
 
 --
--- Name: account account_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.account
-    ADD CONSTRAINT account_pkey PRIMARY KEY (id);
-
-
---
 -- Name: api_key_rate_limit api_key_rate_limit_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.api_key_rate_limit
     ADD CONSTRAINT api_key_rate_limit_pkey PRIMARY KEY (api_key_id, source, product);
-
-
---
--- Name: apikey apikey_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.apikey
-    ADD CONSTRAINT apikey_pkey PRIMARY KEY (id);
 
 
 --
@@ -7205,14 +6739,6 @@ ALTER TABLE ONLY application.file_resource
 
 
 --
--- Name: invitation invitation_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.invitation
-    ADD CONSTRAINT invitation_pkey PRIMARY KEY (id);
-
-
---
 -- Name: mapset_layer mapset_layer_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -7226,22 +6752,6 @@ ALTER TABLE ONLY application.mapset_layer
 
 ALTER TABLE ONLY application.mapset
     ADD CONSTRAINT mapset_pkey PRIMARY KEY (id);
-
-
---
--- Name: organization_custom_role organization_custom_role_organization_id_role_key; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization_custom_role
-    ADD CONSTRAINT organization_custom_role_organization_id_role_key UNIQUE (organization_id, role);
-
-
---
--- Name: organization_custom_role organization_custom_role_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization_custom_role
-    ADD CONSTRAINT organization_custom_role_pkey PRIMARY KEY (id);
 
 
 --
@@ -7277,35 +6787,11 @@ ALTER TABLE ONLY application.organization_mapset
 
 
 --
--- Name: organization organization_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization
-    ADD CONSTRAINT organization_pkey PRIMARY KEY (id);
-
-
---
 -- Name: organization_rate_limit organization_rate_limit_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
 ALTER TABLE ONLY application.organization_rate_limit
     ADD CONSTRAINT organization_rate_limit_pkey PRIMARY KEY (organization_id, product);
-
-
---
--- Name: organization_user organization_user_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization_user
-    ADD CONSTRAINT organization_user_pkey PRIMARY KEY (user_id, organization_id);
-
-
---
--- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.passkey
-    ADD CONSTRAINT passkey_pkey PRIMARY KEY (id);
 
 
 --
@@ -7325,34 +6811,98 @@ ALTER TABLE ONLY application.schema_migrations
 
 
 --
--- Name: session session_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+-- Name: account account_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
 --
 
-ALTER TABLE ONLY application.session
+ALTER TABLE ONLY auth.account
+    ADD CONSTRAINT account_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: apikey apikey_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.apikey
+    ADD CONSTRAINT apikey_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: invitation invitation_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation
+    ADD CONSTRAINT invitation_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organization_custom_role organization_custom_role_organization_id_role_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_custom_role
+    ADD CONSTRAINT organization_custom_role_organization_id_role_key UNIQUE (organization_id, role);
+
+
+--
+-- Name: organization_custom_role organization_custom_role_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_custom_role
+    ADD CONSTRAINT organization_custom_role_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organization organization_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization
+    ADD CONSTRAINT organization_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organization_user organization_user_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_user
+    ADD CONSTRAINT organization_user_pkey PRIMARY KEY (user_id, organization_id);
+
+
+--
+-- Name: passkey passkey_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.passkey
+    ADD CONSTRAINT passkey_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: session session_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.session
     ADD CONSTRAINT session_pkey PRIMARY KEY (id);
 
 
 --
--- Name: session session_token_key; Type: CONSTRAINT; Schema: application; Owner: -
+-- Name: session session_token_key; Type: CONSTRAINT; Schema: auth; Owner: -
 --
 
-ALTER TABLE ONLY application.session
+ALTER TABLE ONLY auth.session
     ADD CONSTRAINT session_token_key UNIQUE (token);
 
 
 --
--- Name: user user_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+-- Name: user user_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
 --
 
-ALTER TABLE ONLY application."user"
+ALTER TABLE ONLY auth."user"
     ADD CONSTRAINT user_pkey PRIMARY KEY (id);
 
 
 --
--- Name: verification verification_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+-- Name: verification verification_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
 --
 
-ALTER TABLE ONLY application.verification
+ALTER TABLE ONLY auth.verification
     ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
 
 
@@ -7773,27 +7323,6 @@ ALTER TABLE ONLY report.recovery_sample
 
 
 --
--- Name: apikey_config_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX apikey_config_id_idx ON application.apikey USING btree (config_id);
-
-
---
--- Name: apikey_key_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX apikey_key_idx ON application.apikey USING btree (key);
-
-
---
--- Name: apikey_reference_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX apikey_reference_id_idx ON application.apikey USING btree (reference_id);
-
-
---
 -- Name: application_user_application_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -7871,34 +7400,6 @@ CREATE INDEX file_resource_status_idx ON application.file_resource USING btree (
 
 
 --
--- Name: idx_account_user_id; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX idx_account_user_id ON application.account USING btree (user_id);
-
-
---
--- Name: idx_session_token; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX idx_session_token ON application.session USING btree (token);
-
-
---
--- Name: idx_session_user_id; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX idx_session_user_id ON application.session USING btree (user_id);
-
-
---
--- Name: invitation_organization_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX invitation_organization_id_idx ON application.invitation USING btree (organization_id);
-
-
---
 -- Name: organization_geolock_district_district_id_idx; Type: INDEX; Schema: application; Owner: -
 --
 
@@ -7924,41 +7425,6 @@ CREATE INDEX organization_geolock_neighborhood_neighborhood_id_idx ON applicatio
 --
 
 CREATE INDEX organization_mapset_mapset_id_idx ON application.organization_mapset USING btree (mapset_id);
-
-
---
--- Name: organization_slug_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE UNIQUE INDEX organization_slug_idx ON application.organization USING btree (slug);
-
-
---
--- Name: organization_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE UNIQUE INDEX organization_user_id_idx ON application.organization_user USING btree (id);
-
-
---
--- Name: organization_user_organization_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX organization_user_organization_id_idx ON application.organization_user USING btree (organization_id);
-
-
---
--- Name: passkey_credential_id_key; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE UNIQUE INDEX passkey_credential_id_key ON application.passkey USING btree (credential_id);
-
-
---
--- Name: passkey_user_id_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX passkey_user_id_idx ON application.passkey USING btree (user_id);
 
 
 --
@@ -7997,10 +7463,94 @@ CREATE INDEX product_tracker_org_prod_id_date_idx ON application.product_tracker
 
 
 --
--- Name: user_email_unique_idx; Type: INDEX; Schema: application; Owner: -
+-- Name: apikey_config_id_idx; Type: INDEX; Schema: auth; Owner: -
 --
 
-CREATE UNIQUE INDEX user_email_unique_idx ON application."user" USING btree (lower((email)::text));
+CREATE INDEX apikey_config_id_idx ON auth.apikey USING btree (config_id);
+
+
+--
+-- Name: apikey_key_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX apikey_key_idx ON auth.apikey USING btree (key);
+
+
+--
+-- Name: apikey_reference_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX apikey_reference_id_idx ON auth.apikey USING btree (reference_id);
+
+
+--
+-- Name: idx_account_user_id; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX idx_account_user_id ON auth.account USING btree (user_id);
+
+
+--
+-- Name: idx_session_token; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX idx_session_token ON auth.session USING btree (token);
+
+
+--
+-- Name: idx_session_user_id; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX idx_session_user_id ON auth.session USING btree (user_id);
+
+
+--
+-- Name: invitation_organization_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX invitation_organization_id_idx ON auth.invitation USING btree (organization_id);
+
+
+--
+-- Name: organization_slug_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX organization_slug_idx ON auth.organization USING btree (slug);
+
+
+--
+-- Name: organization_user_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX organization_user_id_idx ON auth.organization_user USING btree (id);
+
+
+--
+-- Name: organization_user_organization_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX organization_user_organization_id_idx ON auth.organization_user USING btree (organization_id);
+
+
+--
+-- Name: passkey_credential_id_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX passkey_credential_id_key ON auth.passkey USING btree (credential_id);
+
+
+--
+-- Name: passkey_user_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX passkey_user_id_idx ON auth.passkey USING btree (user_id);
+
+
+--
+-- Name: user_email_unique_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX user_email_unique_idx ON auth."user" USING btree (lower((email)::text));
 
 
 --
@@ -8781,22 +8331,6 @@ CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery_sample FOR EA
 
 
 --
--- Name: account account_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.account
-    ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
-
-
---
--- Name: apikey apikey_reference_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.apikey
-    ADD CONSTRAINT apikey_reference_id_fkey FOREIGN KEY (reference_id) REFERENCES application."user"(id) ON DELETE CASCADE;
-
-
---
 -- Name: application_user application_user_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -8809,7 +8343,7 @@ ALTER TABLE ONLY application.application_user
 --
 
 ALTER TABLE ONLY application.application_user
-    ADD CONSTRAINT application_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT application_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8825,7 +8359,7 @@ ALTER TABLE ONLY application.attribution
 --
 
 ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT attribution_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -8833,7 +8367,7 @@ ALTER TABLE ONLY application.attribution
 --
 
 ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT attribution_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -8841,7 +8375,7 @@ ALTER TABLE ONLY application.attribution
 --
 
 ALTER TABLE ONLY application.attribution
-    ADD CONSTRAINT attribution_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT attribution_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES auth."user"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -8849,31 +8383,7 @@ ALTER TABLE ONLY application.attribution
 --
 
 ALTER TABLE ONLY application.auth_key
-    ADD CONSTRAINT auth_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: invitation invitation_inviter_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.invitation
-    ADD CONSTRAINT invitation_inviter_id_fkey FOREIGN KEY (inviter_id) REFERENCES application."user"(id);
-
-
---
--- Name: invitation invitation_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.invitation
-    ADD CONSTRAINT invitation_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON DELETE CASCADE;
-
-
---
--- Name: organization_custom_role organization_custom_role_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization_custom_role
-    ADD CONSTRAINT organization_custom_role_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON DELETE CASCADE;
+    ADD CONSTRAINT auth_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8889,7 +8399,7 @@ ALTER TABLE ONLY application.organization_geolock_district
 --
 
 ALTER TABLE ONLY application.organization_geolock_district
-    ADD CONSTRAINT organization_geolock_district_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT organization_geolock_district_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8905,7 +8415,7 @@ ALTER TABLE ONLY application.organization_geolock_municipality
 --
 
 ALTER TABLE ONLY application.organization_geolock_municipality
-    ADD CONSTRAINT organization_geolock_municipality_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT organization_geolock_municipality_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8921,7 +8431,7 @@ ALTER TABLE ONLY application.organization_geolock_neighborhood
 --
 
 ALTER TABLE ONLY application.organization_geolock_neighborhood
-    ADD CONSTRAINT organization_geolock_neighborhood_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT organization_geolock_neighborhood_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8937,7 +8447,7 @@ ALTER TABLE ONLY application.organization_mapset
 --
 
 ALTER TABLE ONLY application.organization_mapset
-    ADD CONSTRAINT organization_mapset_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT organization_mapset_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8945,31 +8455,7 @@ ALTER TABLE ONLY application.organization_mapset
 --
 
 ALTER TABLE ONLY application.organization_rate_limit
-    ADD CONSTRAINT organization_rate_limit_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: organization_user organization_user_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization_user
-    ADD CONSTRAINT organization_user_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: organization_user organization_user_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.organization_user
-    ADD CONSTRAINT organization_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: passkey passkey_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.passkey
-    ADD CONSTRAINT passkey_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT organization_rate_limit_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8985,7 +8471,7 @@ ALTER TABLE ONLY application.product_tracker
 --
 
 ALTER TABLE ONLY application.product_tracker_count
-    ADD CONSTRAINT product_tracker_count_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT product_tracker_count_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -8993,31 +8479,95 @@ ALTER TABLE ONLY application.product_tracker_count
 --
 
 ALTER TABLE ONLY application.product_tracker
-    ADD CONSTRAINT product_tracker_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT product_tracker_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
--- Name: session session_active_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+-- Name: account account_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
 --
 
-ALTER TABLE ONLY application.session
-    ADD CONSTRAINT session_active_organization_id_fkey FOREIGN KEY (active_organization_id) REFERENCES application.organization(id) ON DELETE SET NULL;
-
-
---
--- Name: session session_impersonated_by_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.session
-    ADD CONSTRAINT session_impersonated_by_fkey FOREIGN KEY (impersonated_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+ALTER TABLE ONLY auth.account
+    ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON DELETE CASCADE;
 
 
 --
--- Name: session session_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+-- Name: apikey apikey_reference_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
 --
 
-ALTER TABLE ONLY application.session
-    ADD CONSTRAINT session_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+ALTER TABLE ONLY auth.apikey
+    ADD CONSTRAINT apikey_reference_id_fkey FOREIGN KEY (reference_id) REFERENCES auth."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: invitation invitation_inviter_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation
+    ADD CONSTRAINT invitation_inviter_id_fkey FOREIGN KEY (inviter_id) REFERENCES auth."user"(id);
+
+
+--
+-- Name: invitation invitation_organization_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.invitation
+    ADD CONSTRAINT invitation_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON DELETE CASCADE;
+
+
+--
+-- Name: organization_custom_role organization_custom_role_organization_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_custom_role
+    ADD CONSTRAINT organization_custom_role_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON DELETE CASCADE;
+
+
+--
+-- Name: organization_user organization_user_organization_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_user
+    ADD CONSTRAINT organization_user_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: organization_user organization_user_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.organization_user
+    ADD CONSTRAINT organization_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: passkey passkey_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.passkey
+    ADD CONSTRAINT passkey_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: session session_active_organization_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.session
+    ADD CONSTRAINT session_active_organization_id_fkey FOREIGN KEY (active_organization_id) REFERENCES auth.organization(id) ON DELETE SET NULL;
+
+
+--
+-- Name: session session_impersonated_by_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.session
+    ADD CONSTRAINT session_impersonated_by_fkey FOREIGN KEY (impersonated_by) REFERENCES auth."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: session session_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.session
+    ADD CONSTRAINT session_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -9129,7 +8679,7 @@ ALTER TABLE ONLY dataops.dossier_address
 --
 
 ALTER TABLE ONLY dataops.dossier
-    ADD CONSTRAINT dossier_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES application."user"(id) ON DELETE SET NULL;
+    ADD CONSTRAINT dossier_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES auth."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -9185,7 +8735,7 @@ ALTER TABLE ONLY dataops.dossier_entry
 --
 
 ALTER TABLE ONLY dataops.dossier_inquiry
-    ADD CONSTRAINT dossier_inquiry_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+    ADD CONSTRAINT dossier_inquiry_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES auth."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -9249,7 +8799,7 @@ ALTER TABLE ONLY dataops.extraction_field
 --
 
 ALTER TABLE ONLY dataops.staff_capacity
-    ADD CONSTRAINT staff_capacity_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+    ADD CONSTRAINT staff_capacity_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -9257,7 +8807,7 @@ ALTER TABLE ONLY dataops.staff_capacity
 --
 
 ALTER TABLE ONLY dataops.staff_capacity
-    ADD CONSTRAINT staff_capacity_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT staff_capacity_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -9273,7 +8823,7 @@ ALTER TABLE ONLY dataops.verdict
 --
 
 ALTER TABLE ONLY dataops.work_package_assignment
-    ADD CONSTRAINT work_package_assignment_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES application."user"(id) ON DELETE SET NULL;
+    ADD CONSTRAINT work_package_assignment_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES auth."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -9281,7 +8831,7 @@ ALTER TABLE ONLY dataops.work_package_assignment
 --
 
 ALTER TABLE ONLY dataops.work_package_assignment
-    ADD CONSTRAINT work_package_assignment_user_id_fkey FOREIGN KEY (user_id) REFERENCES application."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT work_package_assignment_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -9337,7 +8887,7 @@ ALTER TABLE ONLY geocoder.residence
 --
 
 ALTER TABLE ONLY report.dossier_event
-    ADD CONSTRAINT dossier_event_actor_fkey FOREIGN KEY (actor) REFERENCES application."user"(id) ON DELETE SET NULL;
+    ADD CONSTRAINT dossier_event_actor_fkey FOREIGN KEY (actor) REFERENCES auth."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -9385,7 +8935,7 @@ ALTER TABLE ONLY report.inquiry
 --
 
 ALTER TABLE ONLY report.inquiry
-    ADD CONSTRAINT inquiry_data_owner_organization_id_fkey FOREIGN KEY (data_owner_organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT inquiry_data_owner_organization_id_fkey FOREIGN KEY (data_owner_organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -9417,7 +8967,7 @@ ALTER TABLE ONLY report.recovery
 --
 
 ALTER TABLE ONLY report.recovery
-    ADD CONSTRAINT recovery_data_owner_organization_id_fkey FOREIGN KEY (data_owner_organization_id) REFERENCES application.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT recovery_data_owner_organization_id_fkey FOREIGN KEY (data_owner_organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -9448,5 +8998,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict BsNlajbvI3ebw7BJdbFHSSIdfhE8HaL6CQsMsB5j1YKHoHlr5Y2hqcho7SFLLFN
+\unrestrict 8FadXQ7XlGPr9N5TdyzWmbDjHLuOvsOGeKR60RCGicXrzN6fXA5RWkn1uakKC0g
 
