@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict lByzEu5UiGWQFJ4CgXnOTU5FhqamyqGn7GY42Dj4vRG1ldFM4tnw17sbPcCLpFd
+\restrict H9knKbA8TNqdziggXzzeEVN7XiEIBarUFcwVQ0pNYYiCVYgbjq7B0cYBwQGDFfg
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2814,6 +2814,46 @@ COMMENT ON FUNCTION report.set_update_date() IS 'Trigger function that sets the 
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: api_key_event; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.api_key_event (
+    id bigint NOT NULL,
+    api_key_id text NOT NULL,
+    key_start text,
+    action text NOT NULL,
+    user_id uuid NOT NULL,
+    organization_id uuid,
+    actor_user_id uuid NOT NULL,
+    via text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT api_key_event_action_check CHECK ((action = ANY (ARRAY['create'::text, 'revoke'::text]))),
+    CONSTRAINT api_key_event_via_check CHECK ((via = ANY (ARRAY['self'::text, 'beheer'::text])))
+);
+
+
+--
+-- Name: TABLE api_key_event; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.api_key_event IS '[audit] Who created or revoked which API key and when (Studio #40). Written by the API with each change; rows outlive the key, the user and the organisation.';
+
+
+--
+-- Name: api_key_event_id_seq; Type: SEQUENCE; Schema: application; Owner: -
+--
+
+ALTER TABLE application.api_key_event ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME application.api_key_event_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 --
 -- Name: api_key_rate_limit; Type: TABLE; Schema: application; Owner: -
@@ -6634,6 +6674,14 @@ ALTER TABLE ONLY report.recovery_sample ALTER COLUMN id SET DEFAULT nextval('rep
 
 
 --
+-- Name: api_key_event api_key_event_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.api_key_event
+    ADD CONSTRAINT api_key_event_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: api_key_rate_limit api_key_rate_limit_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -7271,6 +7319,20 @@ ALTER TABLE ONLY report.recovery
 
 ALTER TABLE ONLY report.recovery_sample
     ADD CONSTRAINT recovery_sample_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_key_event_organization_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX api_key_event_organization_idx ON application.api_key_event USING btree (organization_id, created_at DESC);
+
+
+--
+-- Name: api_key_event_user_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX api_key_event_user_idx ON application.api_key_event USING btree (user_id, created_at DESC);
 
 
 --
@@ -8949,5 +9011,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lByzEu5UiGWQFJ4CgXnOTU5FhqamyqGn7GY42Dj4vRG1ldFM4tnw17sbPcCLpFd
+\unrestrict H9knKbA8TNqdziggXzzeEVN7XiEIBarUFcwVQ0pNYYiCVYgbjq7B0cYBwQGDFfg
 
