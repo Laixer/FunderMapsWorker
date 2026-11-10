@@ -54,11 +54,6 @@ GRANT UPDATE (last_used) ON application.auth_key
 GRANT SELECT ON auth.apikey, auth.organization_user TO fundermaps_webservice;
 GRANT UPDATE (last_request, request_count) ON auth.apikey TO fundermaps_webservice;
 
--- A secret-bearing table nobody reads through this role (migration
--- 20261009_003): application.application holds the legacy app secrets. The
--- webservice keeps apikey to verify keys.
-REVOKE SELECT ON application.application FROM fundermaps_webservice;
-
 -- Passkeys (Better Auth passkey plugin): API full CRUD; nothing else reads them.
 GRANT SELECT, INSERT, UPDATE, DELETE ON auth.passkey TO fundermaps_webapp;
 
