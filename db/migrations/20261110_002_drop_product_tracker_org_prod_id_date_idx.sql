@@ -1,0 +1,14 @@
+-- migrate: no-transaction
+--
+-- Drop product_tracker_org_prod_id_date_idx (organization_id, product, identifier, create_date): about 2.6 GB that every
+-- billing insert keeps up to date, for a check another index now does.
+--
+-- True on prod 2026-11-10: 231 scans since 2026-10-28, all from the API's own billing insert (/api/product, middleware/
+-- tracker.ts), whose duplicate check matches organization_id, product, building_id, identifier and create_date.
+-- product_tracker_org_prod_building_date_idx (20261106_001) covers the first four and the date range, so that check
+-- uses it once this one is gone; identifier becomes a filter on a handful of rows. The Webservice's checks and its
+-- /v4/usage queries use the other two indexes. No constraint is behind it.
+--
+-- One statement, because the runner sends a no-transaction file as one query. CONCURRENTLY keeps inserts going; it
+-- waits for older transactions, so not during the model refresh (it reads the tracker for product_tracker_daily).
+DROP INDEX CONCURRENTLY IF EXISTS application.product_tracker_org_prod_id_date_idx;
