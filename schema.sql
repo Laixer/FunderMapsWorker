@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict UOnGmLPEmgbESygVK20fveBCA8kmBPSYuqk8fiZ4XgFMIxkUTXJaItohWL26xB4
+\restrict SUbiiU1hXRtqxNptPMOZJIguRtrVssXrcf6H2T6OXuHXdeCeFmB2BH57FlFQKH8
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -898,6 +898,77 @@ BEGIN
     RETURN result;
 END;
 $$;
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: session; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.session (
+    id text NOT NULL,
+    user_id uuid NOT NULL,
+    token text NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    ip_address text,
+    user_agent text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    impersonated_by uuid,
+    active_organization_id auth.organization_id
+);
+
+
+--
+-- Name: TABLE session; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.session IS '[Better Auth · core] Login sessions (the cookie token). The admin plugin adds impersonated_by, the organization plugin active_organization_id.';
+
+
+--
+-- Name: verification; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.verification (
+    id text NOT NULL,
+    identifier text NOT NULL,
+    value text NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE verification; Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON TABLE auth.verification IS '[Better Auth · core] Short-lived tokens for password reset and email checks.';
+
+
+--
+-- Name: cleanup_expired(); Type: PROCEDURE; Schema: auth; Owner: -
+--
+
+CREATE PROCEDURE auth.cleanup_expired()
+    LANGUAGE sql
+    BEGIN ATOMIC
+ DELETE FROM auth.session
+   WHERE (session.expires_at < (now() AT TIME ZONE 'UTC'::text));
+ DELETE FROM auth.verification
+   WHERE (verification.expires_at < (now() AT TIME ZONE 'UTC'::text));
+END;
+
+
+--
+-- Name: PROCEDURE cleanup_expired(); Type: COMMENT; Schema: auth; Owner: -
+--
+
+COMMENT ON PROCEDURE auth.cleanup_expired() IS '[Better Auth] Deletes expired sessions and verification tokens. Called every 10 minutes by pg_cron job 5, which lives in database defaultdb (db/cron.sql in FunderMapsWorker). Do not drop or rename it without changing that job.';
 
 
 --
@@ -2811,10 +2882,6 @@ $$;
 COMMENT ON FUNCTION report.set_update_date() IS 'Trigger function that sets the update date when a record is updated.';
 
 
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
 --
 -- Name: api_key_event; Type: TABLE; Schema: application; Owner: -
 --
@@ -3428,31 +3495,6 @@ COMMENT ON TABLE auth.passkey IS '[Better Auth · passkey] WebAuthn credentials 
 
 
 --
--- Name: session; Type: TABLE; Schema: auth; Owner: -
---
-
-CREATE TABLE auth.session (
-    id text NOT NULL,
-    user_id uuid NOT NULL,
-    token text NOT NULL,
-    expires_at timestamp without time zone NOT NULL,
-    ip_address text,
-    user_agent text,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    impersonated_by uuid,
-    active_organization_id auth.organization_id
-);
-
-
---
--- Name: TABLE session; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON TABLE auth.session IS '[Better Auth · core] Login sessions (the cookie token). The admin plugin adds impersonated_by, the organization plugin active_organization_id.';
-
-
---
 -- Name: user; Type: TABLE; Schema: auth; Owner: -
 --
 
@@ -3480,27 +3522,6 @@ CREATE TABLE auth."user" (
 --
 
 COMMENT ON TABLE auth."user" IS '[Better Auth · core] People who can log in. The admin plugin adds role, banned, ban_reason and ban_expires; we add given_name, last_name, job_title and phone_number; Better Auth''s image is our avatar.';
-
-
---
--- Name: verification; Type: TABLE; Schema: auth; Owner: -
---
-
-CREATE TABLE auth.verification (
-    id text NOT NULL,
-    identifier text NOT NULL,
-    value text NOT NULL,
-    expires_at timestamp without time zone NOT NULL,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: TABLE verification; Type: COMMENT; Schema: auth; Owner: -
---
-
-COMMENT ON TABLE auth.verification IS '[Better Auth · core] Short-lived tokens for password reset and email checks.';
 
 
 --
@@ -8943,5 +8964,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict UOnGmLPEmgbESygVK20fveBCA8kmBPSYuqk8fiZ4XgFMIxkUTXJaItohWL26xB4
+\unrestrict SUbiiU1hXRtqxNptPMOZJIguRtrVssXrcf6H2T6OXuHXdeCeFmB2BH57FlFQKH8
 
