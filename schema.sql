@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict H9knKbA8TNqdziggXzzeEVN7XiEIBarUFcwVQ0pNYYiCVYgbjq7B0cYBwQGDFfg
+\restrict UOnGmLPEmgbESygVK20fveBCA8kmBPSYuqk8fiZ4XgFMIxkUTXJaItohWL26xB4
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -2853,59 +2853,6 @@ ALTER TABLE application.api_key_event ALTER COLUMN id ADD GENERATED ALWAYS AS ID
     NO MAXVALUE
     CACHE 1
 );
-
-
---
--- Name: api_key_rate_limit; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.api_key_rate_limit (
-    api_key_id text NOT NULL,
-    source text NOT NULL,
-    product text NOT NULL,
-    period text NOT NULL,
-    limit_count integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT api_key_rate_limit_limit_count_check CHECK ((limit_count >= 0)),
-    CONSTRAINT api_key_rate_limit_period_check CHECK ((period = ANY (ARRAY['day'::text, 'month'::text]))),
-    CONSTRAINT api_key_rate_limit_source_check CHECK ((source = ANY (ARRAY['ba'::text, 'legacy'::text])))
-);
-
-
---
--- Name: TABLE api_key_rate_limit; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.api_key_rate_limit IS '[billing] Replaced by organization_rate_limit (2026-11-05). Stays until the Webservice and the API have moved; a later migration drops it.';
-
-
---
--- Name: COLUMN api_key_rate_limit.source; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON COLUMN application.api_key_rate_limit.source IS '''ba'' = auth.apikey, ''legacy'' = application.auth_key (key id is unique within a source, not across).';
-
-
---
--- Name: COLUMN api_key_rate_limit.product; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON COLUMN application.api_key_rate_limit.product IS 'Tracker product name, e.g. analysis3, risk3, light3, statistics3.';
-
-
---
--- Name: COLUMN api_key_rate_limit.period; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON COLUMN application.api_key_rate_limit.period IS 'Calendar window: ''day'' resets at UTC midnight; ''month'' resets at first-of-month UTC.';
-
-
---
--- Name: COLUMN api_key_rate_limit.limit_count; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON COLUMN application.api_key_rate_limit.limit_count IS 'Max billable events allowed within one period. Absent row = unlimited.';
 
 
 --
@@ -6682,14 +6629,6 @@ ALTER TABLE ONLY application.api_key_event
 
 
 --
--- Name: api_key_rate_limit api_key_rate_limit_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.api_key_rate_limit
-    ADD CONSTRAINT api_key_rate_limit_pkey PRIMARY KEY (api_key_id, source, product);
-
-
---
 -- Name: application application_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -7466,13 +7405,6 @@ CREATE INDEX product_tracker_org_prod_building_date_idx ON application.product_t
 --
 
 CREATE INDEX product_tracker_org_prod_date_idx ON application.product_tracker USING btree (organization_id, product, create_date);
-
-
---
--- Name: product_tracker_org_prod_id_date_idx; Type: INDEX; Schema: application; Owner: -
---
-
-CREATE INDEX product_tracker_org_prod_id_date_idx ON application.product_tracker USING btree (organization_id, product, identifier, create_date);
 
 
 --
@@ -9011,5 +8943,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict H9knKbA8TNqdziggXzzeEVN7XiEIBarUFcwVQ0pNYYiCVYgbjq7B0cYBwQGDFfg
+\unrestrict UOnGmLPEmgbESygVK20fveBCA8kmBPSYuqk8fiZ4XgFMIxkUTXJaItohWL26xB4
 
