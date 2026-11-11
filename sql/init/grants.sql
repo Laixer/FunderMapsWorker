@@ -100,3 +100,24 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA application, data, geocoder, maplayer, report
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA application, data, geocoder, maplayer, report
     GRANT SELECT ON TABLES TO fundermaps_webservice;
+
+-- ---------------------------------------------------------------------------
+-- Limits for the roles that serve requests (migration 20261111_005). Role
+-- settings are not in schema.sql, so a fresh database gets them here.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    s record;
+BEGIN
+    FOR s IN SELECT * FROM (VALUES
+            ('fundermaps_api',        'statement_timeout',                   '60s'),
+            ('fundermaps_api',        'idle_in_transaction_session_timeout', '5min'),
+            ('fundermaps_webservice', 'statement_timeout',                   '30s'),
+            ('fundermaps_webservice', 'idle_in_transaction_session_timeout', '60s')
+        ) v(role, name, value) LOOP
+        IF EXISTS (SELECT FROM pg_roles WHERE rolname = s.role) THEN
+            EXECUTE format('ALTER ROLE %I SET %I = %L', s.role, s.name, s.value);
+        END IF;
+    END LOOP;
+END
+$$;
