@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict SUbiiU1hXRtqxNptPMOZJIguRtrVssXrcf6H2T6OXuHXdeCeFmB2BH57FlFQKH8
+\restrict dhjLGc3TJTED5WRKZpZX5RAC8AB1lMlrQYM1ik7QvCOtgkKgaz0EPb7Bbh0hCHC
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -94,20 +94,6 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
--- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
-
-
---
--- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 
 
 --
@@ -1090,6 +1076,13 @@ $$;
 
 
 --
+-- Name: FUNCTION compute_indicative_dewatering_risk(ft report.foundation_type, velocity double precision, gwl double precision, has_recovery boolean); Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON FUNCTION data.compute_indicative_dewatering_risk(ft report.foundation_type, velocity double precision, gwl double precision, has_recovery boolean) IS '[model-2024.1, frozen] The 2024.1 logic, kept only for the view model_risk_dynamic_all behind the frozen matview. The current model uses compute_indicative_dewatering_risk_2026_3.';
+
+
+--
 -- Name: compute_indicative_dewatering_risk_2026_3(report.foundation_type, double precision, double precision, boolean, double precision); Type: FUNCTION; Schema: data; Owner: -
 --
 
@@ -1173,6 +1166,13 @@ CREATE FUNCTION data.compute_indicative_drystand_risk(ft report.foundation_type,
         ELSE NULL
     END;
 $$;
+
+
+--
+-- Name: FUNCTION compute_indicative_drystand_risk(ft report.foundation_type, velocity double precision, gwl double precision, has_recovery boolean); Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON FUNCTION data.compute_indicative_drystand_risk(ft report.foundation_type, velocity double precision, gwl double precision, has_recovery boolean) IS '[model-2024.1, frozen] The 2024.1 logic, kept only for the view model_risk_dynamic_all behind the frozen matview. The current model uses compute_indicative_drystand_risk_2026_3.';
 
 
 --
@@ -4314,6 +4314,13 @@ COMMENT ON TABLE data.building_subsidence_history IS '[model input] Subsidence m
 
 
 --
+-- Name: COLUMN building_subsidence_history.velocity; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON COLUMN data.building_subsidence_history.velocity IS 'Cumulative displacement in mm since the first measurement (InSAR), NOT a velocity; the name is historical. The velocity itself is data.building_subsidence.velocity, the least-squares slope of this series.';
+
+
+--
 -- Name: cluster_recovery_sample; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -4923,7 +4930,7 @@ CREATE TABLE data.refresh_log (
 -- Name: TABLE refresh_log; Type: COMMENT; Schema: data; Owner: -
 --
 
-COMMENT ON TABLE data.refresh_log IS '[ops] One row per completed scheduled job (e.g. refresh_data_model). Read by Grafana and, later, /health/nightly as a dead-man switch.';
+COMMENT ON TABLE data.refresh_log IS '[ops] One row per completed scheduled job (e.g. refresh_data_model). Read by the Studio (Modellen, Vandaag), the intake follow-up mail and the Webservice''s delivery stamp. A missing row is the only sign that a refresh failed.';
 
 
 --
@@ -6197,9 +6204,6 @@ CREATE TABLE maplayer.bundle (
     tileset text NOT NULL,
     enabled boolean DEFAULT true NOT NULL,
     name text NOT NULL,
-    zoom_min_level integer NOT NULL,
-    zoom_max_level integer NOT NULL,
-    generate_tileset boolean DEFAULT true,
     upload_dataset boolean
 );
 
@@ -7527,13 +7531,6 @@ CREATE UNIQUE INDEX building_cluster_idx ON data.building_cluster USING btree (c
 
 
 --
--- Name: building_precomputed_neighborhood_id_idx; Type: INDEX; Schema: data; Owner: -
---
-
-CREATE INDEX building_precomputed_neighborhood_id_idx ON data.building_precomputed USING btree (neighborhood_id);
-
-
---
 -- Name: building_sample_2024_1_building_id_idx; Type: INDEX; Schema: data; Owner: -
 --
 
@@ -7723,13 +7720,6 @@ CREATE INDEX artifact_parent_idx ON dataops.artifact USING btree (parent_artifac
 
 
 --
--- Name: dossier_address_dossier_idx; Type: INDEX; Schema: dataops; Owner: -
---
-
-CREATE INDEX dossier_address_dossier_idx ON dataops.dossier_address USING btree (dossier_id);
-
-
---
 -- Name: dossier_assigned_to_idx; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -7828,13 +7818,6 @@ CREATE UNIQUE INDEX extraction_field_reading_field_value_addr_idx ON dataops.ext
 
 
 --
--- Name: extraction_field_state_idx; Type: INDEX; Schema: dataops; Owner: -
---
-
-CREATE INDEX extraction_field_state_idx ON dataops.extraction_field USING btree (state) WHERE (state = 'pending'::dataops.review_state);
-
-
---
 -- Name: extraction_reviewer_once; Type: INDEX; Schema: dataops; Owner: -
 --
 
@@ -7912,13 +7895,6 @@ CREATE INDEX district_municipality_idx ON geocoder.district USING btree (municip
 
 
 --
--- Name: district_name_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX district_name_idx ON geocoder.district USING btree (name);
-
-
---
 -- Name: municipality_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
@@ -7961,13 +7937,6 @@ CREATE INDEX neighborhood_geom_idx ON geocoder.neighborhood USING gist (geom);
 
 
 --
--- Name: neighborhood_name_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX neighborhood_name_idx ON geocoder.neighborhood USING btree (name);
-
-
---
 -- Name: residence_address_id_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
@@ -7982,31 +7951,10 @@ CREATE INDEX residence_building_id_idx ON geocoder.residence USING btree (buildi
 
 
 --
--- Name: state_country_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX state_country_idx ON geocoder.state USING btree (country_id);
-
-
---
 -- Name: state_external_id_idx; Type: INDEX; Schema: geocoder; Owner: -
 --
 
 CREATE UNIQUE INDEX state_external_id_idx ON geocoder.state USING btree (external_id);
-
-
---
--- Name: state_geom_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX state_geom_idx ON geocoder.state USING gist (geom);
-
-
---
--- Name: state_name_idx; Type: INDEX; Schema: geocoder; Owner: -
---
-
-CREATE INDEX state_name_idx ON geocoder.state USING btree (name);
 
 
 --
@@ -8122,13 +8070,6 @@ CREATE INDEX incident_building_id_idx ON report.incident USING btree (building_i
 
 
 --
--- Name: inquiry_access_policy_idx; Type: INDEX; Schema: report; Owner: -
---
-
-CREATE INDEX inquiry_access_policy_idx ON report.inquiry USING btree (access_policy);
-
-
---
 -- Name: inquiry_attribution_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
@@ -8178,13 +8119,6 @@ CREATE INDEX inquiry_type_idx ON report.inquiry USING btree (type);
 
 
 --
--- Name: recovery_access_policy_idx; Type: INDEX; Schema: report; Owner: -
---
-
-CREATE INDEX recovery_access_policy_idx ON report.recovery USING btree (access_policy);
-
-
---
 -- Name: recovery_attribution_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
@@ -8213,38 +8147,10 @@ CREATE INDEX recovery_sample_contractor_id_idx ON report.recovery_sample USING b
 
 
 --
--- Name: recovery_sample_pile_type_idx; Type: INDEX; Schema: report; Owner: -
---
-
-CREATE INDEX recovery_sample_pile_type_idx ON report.recovery_sample USING btree (pile_type);
-
-
---
 -- Name: recovery_sample_recovery_id_idx; Type: INDEX; Schema: report; Owner: -
 --
 
 CREATE INDEX recovery_sample_recovery_id_idx ON report.recovery_sample USING btree (recovery_id);
-
-
---
--- Name: recovery_sample_status_idx; Type: INDEX; Schema: report; Owner: -
---
-
-CREATE INDEX recovery_sample_status_idx ON report.recovery_sample USING btree (status);
-
-
---
--- Name: recovery_sample_type_idx; Type: INDEX; Schema: report; Owner: -
---
-
-CREATE INDEX recovery_sample_type_idx ON report.recovery_sample USING btree (type);
-
-
---
--- Name: recovery_type_idx; Type: INDEX; Schema: report; Owner: -
---
-
-CREATE INDEX recovery_type_idx ON report.recovery USING btree (type);
 
 
 --
@@ -8964,5 +8870,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SUbiiU1hXRtqxNptPMOZJIguRtrVssXrcf6H2T6OXuHXdeCeFmB2BH57FlFQKH8
+\unrestrict dhjLGc3TJTED5WRKZpZX5RAC8AB1lMlrQYM1ik7QvCOtgkKgaz0EPb7Bbh0hCHC
 
