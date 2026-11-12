@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict H8JpbGelKkLg9ZVxsh7I0KaUL76K9DGdws2D2g4j27SYCyYgOFfUgdFNZ83IYkf
+\restrict gXCkOQxoZlEPuPBTDvoDnwzdChxecbZ80bpFUOemr93VpXAmX8n7fi2Keb3WFu5
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -4823,6 +4823,27 @@ COMMENT ON MATERIALIZED VIEW data.model_risk_static_2024_1 IS '[model output · 
 
 
 --
+-- Name: model_risk_static_source; Type: VIEW; Schema: data; Owner: -
+--
+
+CREATE VIEW data.model_risk_static_source AS
+ SELECT building_id,
+    quickscan_gate,
+    drystand_source,
+    bio_infection_source,
+    dewatering_depth_source,
+    unclassified_source
+   FROM data.model_risk_static_2026_3;
+
+
+--
+-- Name: VIEW model_risk_static_source; Type: COMMENT; Schema: data; Owner: -
+--
+
+COMMENT ON VIEW data.model_risk_static_source IS '[model output] Per building, where each risk of the default model came from (quickscan, research, herstel, cluster, model, build_year) and the QuickScan gate. Pointer beside data.model_risk_static: repoint both together. See docs/model-versioning.md.';
+
+
+--
 -- Name: model_version; Type: TABLE; Schema: data; Owner: -
 --
 
@@ -8864,5 +8885,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict H8JpbGelKkLg9ZVxsh7I0KaUL76K9DGdws2D2g4j27SYCyYgOFfUgdFNZ83IYkf
+\unrestrict gXCkOQxoZlEPuPBTDvoDnwzdChxecbZ80bpFUOemr93VpXAmX8n7fi2Keb3WFu5
 
