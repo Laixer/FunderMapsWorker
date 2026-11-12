@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict dhjLGc3TJTED5WRKZpZX5RAC8AB1lMlrQYM1ik7QvCOtgkKgaz0EPb7Bbh0hCHC
+\restrict WfqC8S6vJmZ17UDOjS8zbfkJfspbKLj1Ighpg3eo1TAIf7QQ8bcUcmoaNsRuOih
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -857,31 +857,6 @@ EXCEPTION WHEN OTHERS THEN
     -- would lose it without a trace; a count that's one short is the smaller mistake.
     RAISE WARNING 'product_tracker_count not updated: %', SQLERRM;
     RETURN NULL;
-END;
-$$;
-
-
---
--- Name: random_string(integer); Type: FUNCTION; Schema: application; Owner: -
---
-
-CREATE FUNCTION application.random_string(length integer) RETURNS text
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    chars TEXT[] := '{2,3,4,5,6,7,8,9,a,b,c,d,e,f,g,h,j,k,m,n,p,q,r,s,t,u,v,w,x,y,z}';
-    result TEXT := '';
-    i INTEGER := 0;
-BEGIN
-    IF length < 0 THEN
-        RAISE EXCEPTION 'Given length cannot be less than 0';
-    END IF;
-
-    FOR i IN 1..length LOOP
-        result := result || chars[1 + floor(random() * array_length(chars, 1))];
-    END LOOP;
-
-    RETURN result;
 END;
 $$;
 
@@ -2923,28 +2898,6 @@ ALTER TABLE application.api_key_event ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 
 
 --
--- Name: application; Type: TABLE; Schema: application; Owner: -
---
-
-CREATE TABLE application.application (
-    application_id text DEFAULT concat('app-', application.random_string(8)) NOT NULL,
-    name text NOT NULL,
-    data jsonb,
-    secret text DEFAULT concat('app-sk-', application.random_string(32)) NOT NULL,
-    redirect_url text,
-    public boolean DEFAULT false NOT NULL,
-    user_id auth.user_id
-);
-
-
---
--- Name: TABLE application; Type: COMMENT; Schema: application; Owner: -
---
-
-COMMENT ON TABLE application.application IS '[legacy] Registry of the old FunderMaps apps and portals (21 rows, most unused). application_user hangs off it.';
-
-
---
 -- Name: application_user; Type: TABLE; Schema: application; Owner: -
 --
 
@@ -2961,6 +2914,13 @@ CREATE TABLE application.application_user (
 --
 
 COMMENT ON TABLE application.application_user IS '[access] Per-user settings for an app (JSON metadata), keyed by user and application_id.';
+
+
+--
+-- Name: COLUMN application_user.application_id; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON COLUMN application.application_user.application_id IS 'Which app the settings belong to: app-default = the map (the API''s MAP_APP_ID). app-0blu4s39 = the old map, nothing written since 2026-04. Plain text since application.application was dropped (2026-11-10).';
 
 
 --
@@ -6654,14 +6614,6 @@ ALTER TABLE ONLY application.api_key_event
 
 
 --
--- Name: application application_pkey; Type: CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.application
-    ADD CONSTRAINT application_pkey PRIMARY KEY (application_id);
-
-
---
 -- Name: application_user application_user_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -8203,14 +8155,6 @@ CREATE TRIGGER update_date_record BEFORE UPDATE ON report.recovery_sample FOR EA
 
 
 --
--- Name: application_user application_user_application_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
---
-
-ALTER TABLE ONLY application.application_user
-    ADD CONSTRAINT application_user_application_id_fkey FOREIGN KEY (application_id) REFERENCES application.application(application_id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
 -- Name: application_user application_user_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -8870,5 +8814,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dhjLGc3TJTED5WRKZpZX5RAC8AB1lMlrQYM1ik7QvCOtgkKgaz0EPb7Bbh0hCHC
+\unrestrict WfqC8S6vJmZ17UDOjS8zbfkJfspbKLj1Ighpg3eo1TAIf7QQ8bcUcmoaNsRuOih
 
