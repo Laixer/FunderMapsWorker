@@ -203,6 +203,10 @@ derived objects follow the pointer. Then run the refresh flow once, because the
 statistics matviews, the map tiles and the archive export only pick the new
 default up at a refresh, and the logged run is what moves `calculatedAt`.
 
+`data.model_risk_static_source` is a second pointer beside it: per building, where each risk came from (the
+`*_source` columns and `quickscan_gate`, which only models from 2026.3 on have). Repoint it in the same migration as
+`data.model_risk_static`, or the Studio explains one model's letters with another model's reasons.
+
 Take the exclusive locks last and with a `lock_timeout`, and not during a refresh
 run: the tile refresh reads `building_geo_hierarchy` for minutes, and a DDL
 statement queued behind it queues every product read behind itself.
