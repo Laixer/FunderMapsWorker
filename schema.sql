@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WfqC8S6vJmZ17UDOjS8zbfkJfspbKLj1Ighpg3eo1TAIf7QQ8bcUcmoaNsRuOih
+\restrict H8JpbGelKkLg9ZVxsh7I0KaUL76K9DGdws2D2g4j27SYCyYgOFfUgdFNZ83IYkf
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-1.pgdg26.04+2)
@@ -3119,6 +3119,25 @@ CREATE VIEW application.mapset_collection AS
 --
 
 COMMENT ON VIEW application.mapset_collection IS '[maps] Each mapset with its layers inlined as one JSON array (layerset), the way the map app loads it.';
+
+
+--
+-- Name: organization_account_holder; Type: TABLE; Schema: application; Owner: -
+--
+
+CREATE TABLE application.organization_account_holder (
+    organization_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE organization_account_holder; Type: COMMENT; Schema: application; Owner: -
+--
+
+COMMENT ON TABLE application.organization_account_holder IS '[platform] The FunderMaps user who is an organisation''s fixed contact (Studio #86). No row = none; the user''s own profile holds the contact details.';
 
 
 --
@@ -6670,6 +6689,14 @@ ALTER TABLE ONLY application.mapset
 
 
 --
+-- Name: organization_account_holder organization_account_holder_pkey; Type: CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_account_holder
+    ADD CONSTRAINT organization_account_holder_pkey PRIMARY KEY (organization_id);
+
+
+--
 -- Name: organization_geolock_district organization_geolock_district_pkey; Type: CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -7326,6 +7353,13 @@ CREATE INDEX file_resource_key_idx ON application.file_resource USING btree (key
 --
 
 CREATE INDEX file_resource_status_idx ON application.file_resource USING btree (status);
+
+
+--
+-- Name: organization_account_holder_user_idx; Type: INDEX; Schema: application; Owner: -
+--
+
+CREATE INDEX organization_account_holder_user_idx ON application.organization_account_holder USING btree (user_id);
 
 
 --
@@ -8203,6 +8237,22 @@ ALTER TABLE ONLY application.auth_key
 
 
 --
+-- Name: organization_account_holder organization_account_holder_organization_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_account_holder
+    ADD CONSTRAINT organization_account_holder_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES auth.organization(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: organization_account_holder organization_account_holder_user_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
+--
+
+ALTER TABLE ONLY application.organization_account_holder
+    ADD CONSTRAINT organization_account_holder_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth."user"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: organization_geolock_district organization_geolock_district_district_id_fkey; Type: FK CONSTRAINT; Schema: application; Owner: -
 --
 
@@ -8814,5 +8864,5 @@ ALTER TABLE ONLY report.recovery_sample
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WfqC8S6vJmZ17UDOjS8zbfkJfspbKLj1Ighpg3eo1TAIf7QQ8bcUcmoaNsRuOih
+\unrestrict H8JpbGelKkLg9ZVxsh7I0KaUL76K9DGdws2D2g4j27SYCyYgOFfUgdFNZ83IYkf
 
